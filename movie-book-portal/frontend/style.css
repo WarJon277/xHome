@@ -1,0 +1,637 @@
+/* Адаптивные стили для портала фильмов и книг */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+header {
+    background-color: #1e1e1e;
+    padding: 1rem;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem 0;
+    word-wrap: break-word;
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+nav button {
+    background-color: #333;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    flex: 1;
+    min-width: 100px;
+    font-size: 0.9rem;
+}
+
+nav button:hover {
+    background-color: #555;
+}
+
+#search {
+    width: 100%;
+    max-width: 300px;
+    padding: 0.5rem;
+    margin: 1rem auto 0;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+#main-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+#main-nav button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    flex: 1;
+    min-width: 120px;
+    font-size: 0.9rem;
+}
+
+#main-nav button:hover {
+    background-color: #218838;
+}
+
+main {
+    padding: 1rem;
+}
+
+#add-form {
+    max-width: 100%;
+    margin: 0 auto;
+    background-color: #1e1e1e;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+#add-form h2 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+#item-form {
+    display: flex;
+    flex-direction: column;
+}
+
+#item-form input,
+#item-form textarea,
+#item-form select {
+    width: 100%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: Arial, sans-serif;
+}
+
+#item-form button[type="submit"] {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#item-form button[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+#file-upload-container {
+    margin: 1rem 0.5rem;
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    border: 1px solid #555;
+}
+
+#file-info {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: #333;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+#loading-message,
+#error-message {
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+#loading-message {
+    background-color: #1e3a5f;
+    color: #9cd0f7;
+    border: 1px solid #2a5a8f;
+}
+
+#error-message {
+    background-color: #5f1e1e;
+    color: #f79c9c;
+    border: 1px solid #8f2a2a;
+}
+
+#file-upload-container label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #aaa;
+}
+
+#file-upload-container input[type="file"] {
+    margin: 0;
+    width: 100%;
+}
+
+main {
+    padding: 1rem;
+}
+
+#main-nav {
+    margin-bottom: 1rem;
+}
+
+#add-form {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #1e1e1e;
+    padding: 2rem;
+    border-radius: 8px;
+}
+
+#add-form h2 {
+    margin-top: 0;
+}
+
+#item-form {
+    display: flex;
+    flex-direction: column;
+}
+
+#item-form input,
+#item-form textarea,
+#item-form select {
+    width: calc(100% - 1rem);
+}
+
+#item-form button[type="submit"] {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #4caf50;
+    font-size: 1rem;
+}
+
+#item-form button[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+#items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.card {
+    background-color: #1e1e1e;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    word-wrap: break-word;
+}
+
+.card p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.card video {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    margin: 0.5rem 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.card video:hover {
+    transform: scale(1.02);
+}
+
+.card .thumbnail {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    object-fit: cover;
+    margin: 0.5rem 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+
+.card .thumbnail:hover {
+    opacity: 0.8;
+}
+
+.edit-btn, .delete-btn {
+    align-self: flex-start;
+    margin-top: 0.75rem;
+}
+
+.edit-btn {
+    background-color: #1976d2;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.edit-btn:hover {
+    background-color: #1565c0;
+}
+
+.delete-btn {
+    background-color: #d32f2f;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+
+.delete-btn:hover {
+    background-color: #b71c1c;
+}
+
+/* Адаптивные стили для мобильных устройств */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+    
+    header h1 {
+        font-size: 1.3rem;
+    }
+    
+    nav button {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        min-width: 80px;
+    }
+    
+    #search {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    #add-form {
+        padding: 1rem;
+    }
+    
+    #add-form h2 {
+        font-size: 1.3rem;
+    }
+    
+    #item-form input,
+    #item-form textarea,
+    #item-form select {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    #main-nav button,
+    #item-form button[type="submit"] {
+        padding: 0.6rem;
+        font-size: 0.9rem;
+    }
+    
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .card p {
+        font-size: 0.85rem;
+    }
+    
+    .edit-btn, .delete-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 600px) {
+    header h1 {
+        font-size: 1.2rem;
+    }
+    
+    nav {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    nav button {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+    
+    #search {
+        width: 100%;
+        margin: 1rem 0 0;
+    }
+    
+    #main-nav {
+        flex-direction: column;
+    }
+    
+    #main-nav button {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+    
+    #add-form {
+        margin: 0 0.5rem;
+        padding: 1rem;
+    }
+    
+    #items-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .card video,
+    .card .thumbnail {
+        max-height: 150px;
+    }
+    
+    .edit-btn, .delete-btn {
+        width: 48%;
+        text-align: center;
+    }
+    
+    .edit-btn {
+        margin-right: 0.5rem;
+    }
+    
+    .delete-btn {
+        margin-left: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 12px;
+        padding: 0;
+    }
+    
+    header {
+        padding: 0.75rem;
+    }
+    
+    header h1 {
+        font-size: 1.1rem;
+    }
+    
+    main {
+        padding: 0.5rem;
+    }
+    
+    #add-form {
+        padding: 0.75rem;
+    }
+    
+    #add-form h2 {
+        font-size: 1.1rem;
+    }
+    
+    #item-form input,
+    #item-form textarea,
+    #item-form select {
+        padding: 0.4rem;
+        margin: 0.25rem 0;
+    }
+    
+    #file-upload-container,
+    #thumbnail-upload-container {
+        padding: 0.75rem;
+    }
+    
+    #progress-text {
+        font-size: 0.8em;
+    }
+    
+    .card {
+        padding: 0.5rem;
+    }
+    
+    .card h3 {
+        font-size: 1rem;
+    }
+    
+    .card p {
+        font-size: 0.8rem;
+    }
+    
+    .card video,
+    .card .thumbnail {
+        max-height: 120px;
+    }
+    
+    .edit-btn, .delete-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Стили для модального окна видео */
+#video-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    flex-direction: column;
+}
+
+#video-modal .video-js {
+    width: 100% !important;
+    max-width: 95vw;
+    max-height: 70vh;
+    height: auto !important;
+}
+
+#video-modal .vjs-tech {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+/* Улучшаем отображение в полноэкранном режиме */
+.plyr:-webkit-full-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9999 !important;
+}
+
+.plyr:-moz-full-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9999 !important;
+}
+
+.plyr:-ms-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9999 !important;
+}
+
+.plyr:fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9999 !important;
+}
+
+.plyr:-webkit-full-screen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+.plyr:-moz-full-screen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+.plyr:-ms-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+.plyr:fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+#video-modal video {
+    max-width: 95%;
+    max-height: 80vh;
+    width: auto;
+    height: auto;
+}
+
+#video-modal h3 {
+    color: white;
+    margin-top: 10px;
+    text-align: center;
+}
+
+#video-modal button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Адаптивность для модального окна */
+@media (max-width: 768px) {
+    #video-modal video {
+        max-width: 98%;
+        max-height: 70vh;
+    }
+    
+    #video-modal button {
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+    
+    #video-modal h3 {
+        font-size: 1rem;
+        margin: 5px 10px;
+    }
+}

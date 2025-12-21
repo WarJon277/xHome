@@ -271,134 +271,120 @@ function getVideoType(filePath) {
 
 // Функция для открытия видео-плеера
 function openVideoPlayer(filePath, title) {
-    // Создаем модальное окно для видео-плеера
+    // Создаем модальное окно
     const modal = document.createElement('div');
     modal.id = 'video-modal';
-    
-    // Создаем контейнер для плеера
+
+    // Контейнер для плеера
     const videoContainer = document.createElement('div');
-    videoContainer.style.position = 'relative';
-    videoContainer.style.maxWidth = '95%';
-    videoContainer.style.maxHeight = '80vh';
-    
-    // Создаем элемент video
-    const videoId = 'video-player-' + Date.now();
+    videoContainer.className = 'plyr-container';
+
+    // Элемент video
     const videoElement = document.createElement('video');
-    videoElement.id = videoId;
     videoElement.className = 'plyr';
     videoElement.controls = true;
-    videoElement.preload = 'auto';
-    videoElement.autoplay = true;
-    
+    videoElement.preload = 'metadata'; // Лучше чем auto — экономит трафик
+    videoElement.playsInline = true;
+
     const source = document.createElement('source');
     source.src = '/' + filePath;
     source.type = getVideoType(filePath);
     videoElement.appendChild(source);
-    
+
     videoContainer.appendChild(videoElement);
-    
+
+    // Название фильма
     const titleElement = document.createElement('h3');
     titleElement.textContent = title;
-    titleElement.style.color = 'white';
-    titleElement.style.marginTop = '10px';
-    titleElement.style.textAlign = 'center';
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = 'Закрыть';
-    closeBtn.onclick = function() {
-        // Уничтожаем Plyr плеер перед закрытием
-        const plyrInstance = videoElement.plyr;
-        if (plyrInstance) {
-            plyrInstance.destroy();
-        }
-        document.body.removeChild(modal);
-    };
-    
-    videoContainer.appendChild(closeBtn);
+
+    // Собираем модальное окно
     modal.appendChild(videoContainer);
     modal.appendChild(titleElement);
     document.body.appendChild(modal);
-    
-    // Инициализируем Plyr плеер после добавления в DOM
-    setTimeout(() => {
-        const player = new Plyr(videoElement, {
-            controls: [
-                'play-large',
-                'play',
-                'progress',
-                'current-time',
-                'duration',
-                'mute',
-                'volume',
-                'captions',
-                'settings',
-                'pip',
-                'airplay',
-                'fullscreen'
-            ],
-            volume: 0.5,
-            clickToPlay: true,
-            keyboard: {
-                focused: true,
-                global: true,
-            },
-            fullscreen: {
-                enabled: true,
-                fallback: true,
-                iosNative: false,
-            }
-        });
-        
-        // Обработка ошибок воспроизведения
-        player.on('error', function(event) {
-            const error = event.detail;
-            if (error) {
-                let errorMessage = 'Не удалось воспроизвести видео. ';
-                // Plyr не предоставляет столько же информации об ошибках, сколько Video.js
-                errorMessage += 'Видео повреждено или имеет неподдерживаемый формат/кодек (например, XviD, DivX).';
-                
-                // Заменяем плеер на сообщение об ошибке
-                modal.innerHTML = `
-                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; flex-direction: column; color: white; text-align: center; padding: 20px;">
-                        <h3>Ошибка воспроизведения видео</h3>
-                        <p style="margin: 20px 0; font-size: 1.1em;">${errorMessage}</p>
-                        <p style="margin: 10px 0;">Для воспроизведения файла используйте внешний плеер:</p>
-                        <div style="margin: 15px 0;">
-                            <a href="/${filePath}" download="${title}" style="background-color: #4caf50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 0 10px; display: inline-block; font-size: 1.1em;">Скачать файл</a>
-                        </div>
-                        <p style="margin: 15px 0; font-size: 0.9em; color: #ccc;">
-                            Рекомендуемые плееры: VLC Player, MPC-HC, PotPlayer<br>
-                            Для лучшей совместимости конвертируйте видео в формат MP4 с кодеком H.264
-                        </p>
-                        <button onclick="this.parentElement.parentElement.remove()" style="background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; font-size: 1em;">Закрыть</button>
-                    </div>
-                `;
-            }
-        });
-    }, 100);
-    
-    // Добавляем обработчик клавиши Escape для закрытия модального окна
+
+    // Инициализируем Plyr
+    const player = new Plyr(videoElement, {
+        controls: [
+            'play-large',
+            'play',
+            'progress',
+            'current-time',
+            'duration',
+            'mute',
+            'volume',
+            'captions',
+            'settings',
+            'pip',
+            'airplay',
+            'fullscreen'
+        ],
+        volume: 0.5,
+        clickToPlay: true,
+        keyboard: { focused: true, global: true },
+        fullscreen: { enabled: true, fallback: true, iosNative: true },
+        hideControls: true,         // Авто-скрытие controls при бездействии
+        controlsTimeout: 3000       // Скрывать через 3 секунды
+    });
+
+    // Добавляем кнопку "Закрыть" в панель управления после готовности плеера
+    player.on('ready', () => {
+        const closeControl = document.createElement('button');
+        closeControl.type = 'button';
+        closeControl.className = 'plyr__control plyr__control--close';
+        closeControl.setAttribute('aria-label', 'Закрыть');
+        closeControl.innerHTML = `
+            <svg role="presentation" focusable="false" viewBox="0 0 24 24" width="18" height="18">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+            </svg>
+            <span class="plyr__tooltip">Закрыть</span>
+        `;
+
+        closeControl.onclick = () => {
+            player.destroy();
+            document.body.removeChild(modal);
+            document.removeEventListener('keydown', handleEscape);
+        };
+
+        // Добавляем в конец панели управления (справа)
+        player.elements.controls.appendChild(closeControl);
+    });
+
+    // Обработка ошибок воспроизведения
+    player.on('error', () => {
+        modal.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; padding: 20px; z-index: 1000;">
+                <h3>Ошибка воспроизведения</h3>
+                <p style="max-width: 800px; margin: 20px 0; font-size: 1.1em;">
+                    Не удалось воспроизвести видео. Возможно, формат или кодек не поддерживается браузером.
+                </p>
+                <a href="/${filePath}" download="${title}" style="background:#4caf50; color:white; padding:12px 24px; text-decoration:none; border-radius:6px; font-size:1.1em;">
+                    Скачать видео
+                </a>
+                <p style="margin-top: 20px; color: #aaa; font-size: 0.9em;">
+                    Рекомендуем VLC, MPC-HC или PotPlayer<br>
+                    Для лучшей совместимости: MP4 + H.264
+                </p>
+                <button onclick="this.closest('#video-modal').remove()" style="margin-top: 20px; background:#dc3545; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">
+                    Закрыть
+                </button>
+            </div>
+        `;
+    });
+
+    // Закрытие по Esc
     const handleEscape = (e) => {
         if (e.key === 'Escape') {
-            // Уничтожаем Plyr плеер перед закрытием
-            const plyrInstance = videoElement.plyr;
-            if (plyrInstance) {
-                plyrInstance.destroy();
-            }
+            player.destroy();
             document.body.removeChild(modal);
             document.removeEventListener('keydown', handleEscape);
         }
     };
     document.addEventListener('keydown', handleEscape);
-    
-    // Закрытие по клику вне видео
-    modal.addEventListener('click', function(e) {
+
+    // Закрытие по клику вне плеера
+    modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            // Уничтожаем Plyr плеер перед закрытием
-            const plyrInstance = videoElement.plyr;
-            if (plyrInstance) {
-                plyrInstance.destroy();
-            }
+            player.destroy();
             document.body.removeChild(modal);
             document.removeEventListener('keydown', handleEscape);
         }

@@ -14,9 +14,9 @@ sleep 2
 
 # Open browser
 if command -v xdg-open > /dev/null; then
-    xdg-open http://192.168.0.182:5050/static/index.html
+    xdg-open http://192.168.0.182:5050
 elif command -v open > /dev/null; then
-    open http://192.168.0.182:5050/static/index.html
+    open http://192.168.0.182:5050
 else
     echo "Open http://192.168.0.182:5050/static/index.html in your browser"
 fi

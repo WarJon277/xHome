@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Портал фильмов и книг</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 </head>
 <body>
     <header>
@@ -15,49 +16,68 @@
             <input type="text" id="search" placeholder="Поиск по названию">
         </nav>
     </header>
+
     <main>
         <nav id="main-nav">
             <button id="show-view">Просмотр</button>
             <button id="show-add">Добавление</button>
         </nav>
+
+        <!-- Форма добавления/редактирования -->
         <section id="add-form" style="display: none;">
-            <h2>Добавить новый элемент</h2>
+            <h2 id="form-title">Добавить новый элемент</h2>
             <form id="item-form">
                 <select id="category">
                     <option value="movie">Фильм</option>
                     <option value="book">Книга</option>
                 </select>
-                <input type="text" id="title" placeholder="Название" required>
-                <input type="number" id="year" placeholder="Год" required>
-                <input type="text" id="director-author" placeholder="Режиссёр/Автор" required>
-                <input type="text" id="genre" placeholder="Жанр" required>
-                <input type="number" id="rating" placeholder="Рейтинг (1-10)" min="1" max="10" required>
+
+                <input type="text" id="title" placeholder="Название">
+                <input type="number" id="year" placeholder="Год">
+                <input type="text" id="director-author" placeholder="Режиссёр / Автор">
+                <input type="text" id="genre" placeholder="Жанр">
+                <input type="number" id="rating" placeholder="Рейтинг (1-10)" min="1" max="10" step="0.1">
                 <textarea id="description" placeholder="Описание" rows="4"></textarea>
-                <div id="file-upload-container" style="display: none;">
-                    <label for="file">Выберите файл фильма:</label>
-                    <input type="file" id="file" accept="video/*,.mkv,.mp4,.mp4v,.avi,.mov,.m4v,.3gp,.3g2,.ogv,.qt,.wmv,.flv,.webm">
-                    <div id="file-info" style="margin-top: 5px; font-size: 0.9em; color: #666;"></div>
-                    <div id="progress-container" style="display: none; margin-top: 10px;">
-                        <div id="progress-bar" style="width: 100%; background-color: #e0e0e0; border-radius: 4px; overflow: hidden;">
-                            <div id="progress" style="width: 0%; height: 20px; background-color: #4caf50; transition: width 0.3s;"></div>
-                        </div>
-                        <div id="progress-text" style="text-align: center; margin-top: 5px; font-size: 0.9em; color: #666;">0%</div>
-                    </div>
-                <div id="thumbnail-upload-container" style="display: none; margin-top: 1rem;">
-                    <label for="thumbnail">Выберите миниатюру фильма:</label>
-                    <input type="file" id="thumbnail" accept="image/*">
-                    <div id="thumbnail-info" style="margin-top: 5px; font-size: 0.9em; color: #666;"></div>
+
+                <!-- Загрузка основного файла (видео или книга) -->
+                <div id="file-upload-container">
+                    <label for="file">
+                        <span id="file-label-text">Файл видео / книги (PDF, DjVu, CBZ)</span>:
+                    </label>
+                    <input type="file" id="file" accept="video/*,.pdf,.djvu,.djv,.cbz,.zip">
+                    <div id="file-info"></div>
                 </div>
-                <button type="submit">Добавить</button>
-                <div id="loading-message" style="display: none; margin-top: 10px; color: #007bff;">Загрузка файла...</div>
-                <div id="error-message" style="display: none; margin-top: 10px; color: #dc3545;"></div>
+
+                <!-- Загрузка миниатюры только для фильмов -->
+                <div id="thumbnail-upload-container">
+                    <label for="thumbnail">Миниатюра (обложка фильма):</label>
+                    <input type="file" id="thumbnail" accept="image/*">
+                    <div id="thumbnail-info"></div>
+                </div>
+
+                <div id="progress-container" style="display: none; margin-top: 15px;">
+                    <div id="progress-bar" style="width: 100%; background-color: #333; border-radius: 4px; overflow: hidden;">
+                        <div id="progress" style="width: 0%; height: 24px; background-color: #4caf50; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="progress-text" style="text-align: center; margin-top: 5px;">0%</div>
+                </div>
+
+                <button type="submit" id="submit-btn">Добавить</button>
+
+                <div id="loading-message" style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
+                    Загрузка...
+                </div>
+                <div id="error-message" style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;"></div>
             </form>
         </section>
+
+        <!-- Сетка элементов -->
         <section id="items-grid">
-            <!-- Cards will be inserted here -->
+            <!-- Карточки будут вставляться сюда через JS -->
         </section>
     </main>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+    <!-- Plyr для видео -->
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     <script src="/static/api.js"></script>
     <script src="/static/app.js"></script>

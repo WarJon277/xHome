@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Читалка</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background: #000;
+            color: #eee;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #reader-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-color, #f5f0e1);
+            color: var(--text-color, #333);
+            transition: background 0.4s, color 0.4s;
+        }
+
+        #header {
+            background: rgba(0,0,0,0.8);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            z-index: 10;
+        }
+
+        #title { font-size: 1.1rem; font-weight: 600; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button, select {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        button:hover { background: rgba(255,255,255,0.3); }
+
+        #content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 60px;
+            line-height: 1.8;
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 18px;
+        }
+
+        #text-content {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: justify;
+            hyphens: auto;
+        }
+
+        #text-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        #bottom-bar {
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            font-size: 0.95rem;
+        }
+
+        #progress-container {
+            flex: 1;
+            margin: 0 20px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #4caf50;
+            transition: width 0.3s;
+        }
+
+        /* Темы */
+        .theme-light {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+        }
+
+        .theme-sepia {
+            --bg-color: #f4ece0;
+            --text-color: #5c4636;
+        }
+
+        .theme-night {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            #content-area { padding: 20px; font-size: 17px; }
+            #header, #bottom-bar { padding: 10px; }
+            #title { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="reader-container" class="theme-sepia">
+        <div id="header">
+            <div id="title">Загрузка...</div>
+            <div class="controls">
+                <button id="font-smaller">A-</button>
+                <button id="font-larger">A+</button>
+                <select id="theme-selector">
+                    <option value="light">Светлая</option>
+                    <option value="sepia" selected>Сепия</option>
+                    <option value="night">Ночная</option>
+                </select>
+                <button id="exit-reader">✕</button>
+            </div>
+        </div>
+
+        <div id="content-area">
+            <div id="text-content"></div>
+            <img id="pdf-page" style="display:none; max-width:100%; height:auto; margin:0 auto; display:block;">
+        </div>
+
+        <div id="bottom-bar">
+            <button id="prev-page">‹ Предыдущая</button>
+            <div>
+                <span id="page-info">Стр. 1 из 1</span>
+            </div>
+            <div id="progress-container"><div id="progress-bar"></div></div>
+            <button id="next-page">Следующая ›</button>
+        </div>
+    </div>
+
+    <script src="/static/reader.js"></script>
+    <script>
+        // Открываем в полноэкранном режиме при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.opener || !document.referrer.includes(location.hostname)) {
+                // Если открыто как отдельное окно — пытаемся полноэкранный режим
+                document.documentElement.requestFullscreen?.();
+            }
+        });
+    </script>
+</body>
+</html>

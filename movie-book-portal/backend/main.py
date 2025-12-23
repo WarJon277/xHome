@@ -13,16 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 
+
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from database import get_db, create_tables, add_sample_data as add_sample_data_movies, Movie
-from database_books import (
-    get_db_books,
-    create_books_tables,
-    add_sample_books_data,
-    Book,
-)
+from database_books import get_db_books, create_books_tables, Book  # ← обязательно импортируем модель Book
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -50,9 +46,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
 
 # Создание таблиц и тестовых данных
 create_tables()
-create_books_tables()
-add_sample_data_movies()
-add_sample_books_data()
+create_books_tables()          # ← это создаст books со ВСЕМИ колонками из модели
 
 
 @app.get("/")
@@ -96,8 +90,11 @@ class BookCreate(BaseModel):
 # ==================== ФИЛЬМЫ ====================
 
 @app.get("/movies")
-def get_movies(db: Session = Depends(get_db)):
-    return db.query(Movie).all()
+def get_movies(genre: str = None, db: Session = Depends(get_db)):
+    query = db.query(Movie)
+    if genre and genre != "Все":
+        query = query.filter(Movie.genre.ilike(f"%{genre}%"))
+    return query.all()
 
 
 @app.post("/movies")
@@ -197,8 +194,11 @@ def get_db_books_simple():
 
 
 @app.get("/books")
-def get_books(db: Session = Depends(get_db_books_simple)):
-    return db.query(Book).all()
+def get_books(genre: str = None, db: Session = Depends(get_db)):
+    query = db.query(Book)
+    if genre and genre != "Все":
+        query = query.filter(Book.genre.ilike(f"%{genre}%"))
+    return query.all()
 
 
 @app.post("/books")

@@ -22,72 +22,85 @@
       <button class="nav-item active" data-category="movie">Фильмы</button>
       <button class="nav-item" data-category="book">Книги</button>
 
+      <div class="genre-filter-container">
+        <label for="genre-filter">Жанр:</label>
+        <select id="genre-filter" class="genre-select">
+          <!-- заполняется динамически -->
+        </select>
+      </div>
+
       <button class="nav-item add-btn" id="show-add">+ Добавить</button>
     </nav>
   </div>
 </header>
 
-    <main>
+<main>
+    <!-- Форма добавления/редактирования -->
+    <section id="add-form" style="display: none;">
+        <h2 id="form-title">Добавить новый элемент</h2>
+        <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
+        
+        <form id="item-form">
+            <select id="category">
+                <option value="movie">Фильм</option>
+                <option value="book">Книга</option>
+            </select>
 
-        <!-- Форма добавления/редактирования -->
-         
-        <section id="add-form" style="display: none;">
-            <h2 id="form-title">Добавить новый элемент</h2>
-            <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
-            <form id="item-form">
-                <select id="category">
-                    <option value="movie">Фильм</option>
-                    <option value="book">Книга</option>
+            <input type="text" id="title" placeholder="Название" required>
+            <input type="number" id="year" placeholder="Год">
+            
+            <div class="genre-row">
+                <select id="genre-select" name="genre-select">
+                    <option value="">Выберите жанр</option>
                 </select>
+                <input type="text" id="genre" placeholder="Или введите свой жанр..." style="margin-left:10px; flex:1;">
+            </div>
+            
+            <input type="text" id="director-author" placeholder="Режиссёр / Автор">
+            <input type="number" id="rating" placeholder="Рейтинг (1-10)" min="1" max="10" step="0.1">
+            <textarea id="description" placeholder="Описание" rows="4"></textarea>
 
-                <input type="text" id="title" placeholder="Название">
-                <input type="number" id="year" placeholder="Год">
-                <input type="text" id="director-author" placeholder="Режиссёр / Автор">
-                <input type="text" id="genre" placeholder="Жанр">
-                <input type="number" id="rating" placeholder="Рейтинг (1-10)" min="1" max="10" step="0.1">
-                <textarea id="description" placeholder="Описание" rows="4"></textarea>
+            <!-- Загрузка основного файла -->
+            <div id="file-upload-container">
+                <label for="file">
+                    <span id="file-label-text">Файл видео / книги (PDF, DjVu, CBZ, EPUB)</span>:
+                </label>
+                <input type="file" id="file" accept="video/*,.pdf,.djvu,.djv,.cbz,.zip,.epub">
+                <div id="file-info"></div>
+            </div>
 
-                <!-- Загрузка основного файла (видео или книга) -->
-                <div id="file-upload-container">
-                    <label for="file">
-                        <span id="file-label-text">Файл видео / книги (PDF, DjVu, CBZ)</span>:
-                    </label>
-                    <input type="file" id="file" accept="video/*,.pdf,.djvu,.djv,.cbz,.zip">
-                    <div id="file-info"></div>
+            <!-- Загрузка миниатюры -->
+            <div id="thumbnail-upload-container">
+                <label for="thumbnail">Миниатюра (обложка):</label>
+                <input type="file" id="thumbnail" accept="image/*">
+                <div id="thumbnail-info"></div>
+            </div>
+
+            <div id="progress-container" style="display: none; margin-top: 15px;">
+                <div id="progress-bar" style="width: 100%; background-color: #333; border-radius: 4px; overflow: hidden;">
+                    <div id="progress" style="width: 0%; height: 24px; background-color: #4caf50; transition: width 0.3s;"></div>
                 </div>
+                <div id="progress-text" style="text-align: center; margin-top: 5px;">0%</div>
+            </div>
 
-                <!-- Загрузка миниатюры только для фильмов -->
-                <div id="thumbnail-upload-container">
-                    <label for="thumbnail">Миниатюра (обложка фильма):</label>
-                    <input type="file" id="thumbnail" accept="image/*">
-                    <div id="thumbnail-info"></div>
-                </div>
+            <button type="submit" id="submit-btn">Добавить</button>
 
-                <div id="progress-container" style="display: none; margin-top: 15px;">
-                    <div id="progress-bar" style="width: 100%; background-color: #333; border-radius: 4px; overflow: hidden;">
-                        <div id="progress" style="width: 0%; height: 24px; background-color: #4caf50; transition: width 0.3s;"></div>
-                    </div>
-                    <div id="progress-text" style="text-align: center; margin-top: 5px;">0%</div>
-                </div>
+            <div id="loading-message" style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
+                Загрузка...
+            </div>
+            <div id="error-message" style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;"></div>
+        </form>
+    </section>
 
-                <button type="submit" id="submit-btn">Добавить</button>
+    <!-- Сетка элементов -->
+    <section id="items-grid">
+        <!-- Карточки будут вставляться сюда через JS -->
+    </section>
+</main>
 
-                <div id="loading-message" style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
-                    Загрузка...
-                </div>
-                <div id="error-message" style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;"></div>
-            </form>
-        </section>
-
-        <!-- Сетка элементов -->
-        <section id="items-grid">
-            <!-- Карточки будут вставляться сюда через JS -->
-        </section>
-    </main>
-
-    <!-- Plyr для видео -->
-    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-    <script src="/static/api.js"></script>
-    <script src="/static/app.js"></script>
+<!-- Plyr для видео -->
+<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+<script src="/static/api.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>

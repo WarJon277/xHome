@@ -1,168 +1,481 @@
+// Жанры
+const MOVIE_GENRES = [
+    "Все", "Боевик", "Приключения", "Анимация", "Комедия", "Криминал",
+    "Документальный", "Драма", "Семейный", "Фэнтези", "Ужасы",
+    "Детектив", "Мелодрама", "Научная фантастика", "Триллер", "Военный", "Вестерн"
+];
+const BOOK_GENRES = [
+    "Все", "Фантастика", "Фэнтези", "Детектив", "Роман", "Приключения",
+    "Классика", "Научная фантастика", "Ужасы", "Поэзия", "Биография",
+    "Исторический", "Драма", "Дистопия", "Триллер", "Нон-фикшн", "Философия"
+];
+
 let currentCategory = 'movie';
+let currentGenre = 'Все';
 let editingItem = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadItems();
+    updateGenreSelect();
+    updateGenreSelectInForm();
+    updateFormLabels();
 
-    document.getElementById('show-movies').addEventListener('click', () => {
-        currentCategory = 'movie';
-        document.getElementById('category').value = 'movie';
-        loadItems();
-        updateFormLabels();
+    // Навигация по категориям
+    document.querySelectorAll('.nav-item[data-category]').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item[data-category]').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            currentCategory = item.dataset.category;
+            document.getElementById('category').value = currentCategory;
+            currentGenre = 'Все';
+            updateGenreSelect();
+            updateGenreSelectInForm();
+            updateFormLabels();
+            loadItems();
+
+            // Закрываем мобильное меню
+            document.getElementById('menu-toggle')?.classList.remove('active');
+            document.getElementById('dropdown-menu')?.classList.remove('active');
+        });
     });
 
-    document.getElementById('show-books').addEventListener('click', () => {
-        currentCategory = 'book';
-        document.getElementById('category').value = 'book';
+    // Фильтр по жанру
+    document.getElementById('genre-filter').addEventListener('change', (e) => {
+        currentGenre = e.target.value;
         loadItems();
-        updateFormLabels();
     });
 
+    // Переключение вида (список / форма)
+    document.getElementById('show-add').addEventListener('click', showAddMode);
+    document.getElementById('show-view').addEventListener('click', showViewMode);
 
-
+    // Форма
+    document.getElementById('item-form').addEventListener('submit', handleSubmit);
     document.getElementById('category').addEventListener('change', () => {
         currentCategory = document.getElementById('category').value;
         updateFormLabels();
+        updateGenreSelectInForm();
     });
-
-    document.getElementById('item-form').addEventListener('submit', handleSubmit);
-
-    document.getElementById('show-view').addEventListener('click', showViewMode);
-    document.getElementById('show-add').addEventListener('click', showAddMode);
 
     document.getElementById('file').addEventListener('change', updateFileInfo);
     document.getElementById('thumbnail').addEventListener('change', updateThumbnailInfo);
 
-    updateFormLabels();
+    // Мобильное меню
+    const menuToggle = document.getElementById('menu-toggle');
+    const dropdownMenu = document.getElementById('dropdown-menu');
+    if (menuToggle && dropdownMenu) {
+        menuToggle.addEventListener('click', () => {
+            menuToggle.classList.toggle('active');
+            dropdownMenu.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!menuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                menuToggle.classList.remove('active');
+                dropdownMenu.classList.remove('active');
+            }
+        });
+    }
 });
 
-function updateFormLabels() {
-    const isMovie = currentCategory === 'movie';
+// ============================================
+// Обновление выпадающего списка жанров в шапке
+// ============================================
+function updateGenreSelect() {
+    const select = document.getElementById('genre-filter');
+    if (!select) return;
 
-    document.getElementById('file-label-text').textContent =
-        isMovie ? 'Файл видео' : 'Файл книги (PDF, DjVu, CBZ, EPUB)';
+    select.innerHTML = '';
+    const genres = currentCategory === 'movie' ? MOVIE_GENRES : BOOK_GENRES;
 
-    document.getElementById('director-author').placeholder =
-        isMovie ? 'Режиссёр' : 'Автор';
-
-    document.getElementById('thumbnail-upload-container').style.display = 'block';
-
-    const thumbLabel = document.querySelector('#thumbnail-upload-container label');
-    if (thumbLabel) {
-        thumbLabel.textContent = isMovie
-            ? 'Миниатюра (обложка фильма):'
-            : 'Миниатюра (обложка книги, опционально):';
-    }
-
-    document.getElementById('file-upload-container').style.display = 'block';
-
-    const fileInput = document.getElementById('file');
-    if (isMovie) {
-        fileInput.accept = 'video/*,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.m4v,.3gp,.3g2,.ogv,.qt';
-    } else {
-        fileInput.accept = '.pdf,.djvu,.djv,.cbz,.zip,.epub';
-    }
+    genres.forEach(genre => {
+        const option = document.createElement('option');
+        option.value = genre;
+        option.textContent = genre;
+        if (genre === currentGenre) option.selected = true;
+        select.appendChild(option);
+    });
 }
 
+// ============================================
+// Жанры в форме добавления/редактирования
+// ============================================
+function updateGenreSelectInForm() {
+    const select = document.getElementById('genre-select');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Выберите жанр</option>';
+    const genres = currentCategory === 'movie' ? MOVIE_GENRES : BOOK_GENRES;
+
+    genres.forEach(g => {
+        if (g === "Все") return;
+        const opt = document.createElement('option');
+        opt.value = g;
+        opt.textContent = g;
+        select.appendChild(opt);
+    });
+}
+
+// ============================================
+// Загрузка элементов с учётом жанра
+// ============================================
 async function loadItems() {
-    const items = currentCategory === 'movie' ? await fetchMovies() : await fetchBooks();
-    displayItems(items);
-}
-
-async function handleSearch() {
-    const query = document.getElementById('search').value.trim();
-    if (query) {
-        const items = currentCategory === 'movie'
-            ? await searchMovies(query)
-            : await searchBooks(query);
+    showLoading(true);
+    try {
+        let items;
+        if (currentGenre === "Все") {
+            items = currentCategory === 'movie' 
+                ? await fetchMovies() 
+                : await fetchBooks();
+        } else {
+            const allItems = currentCategory === 'movie' 
+                ? await fetchMovies() 
+                : await fetchBooks();
+            items = allItems.filter(item => 
+                item.genre && item.genre.toLowerCase().includes(currentGenre.toLowerCase())
+            );
+        }
         displayItems(items);
-    } else {
-        loadItems();
+    } catch (err) {
+        console.error(err);
+        showError('Ошибка загрузки списка');
+    } finally {
+        showLoading(false);
     }
 }
 
 function displayItems(items) {
     const grid = document.getElementById('items-grid');
-    grid.innerHTML = '';
+    grid.innerHTML = ''; // очищаем
 
     items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card';
 
-        let thumbnailUrl = '/static/book-placeholder.jpg';
-        if (currentCategory === 'movie') {
-            thumbnailUrl = item.thumbnail_path || '/static/movie-placeholder.jpg';
-        } else if (item.thumbnail_path) {
-            thumbnailUrl = '/' + item.thumbnail_path;
-        }
+        // Путь к изображению
+        const thumbnailUrl = item.thumbnail_path 
+            ? `/${item.thumbnail_path.replace(/\\/g, '/')}` 
+            : (currentCategory === 'movie' 
+                ? '/static/movie-placeholder.jpg' 
+                : '/static/book-placeholder.jpg');
 
-        const safeTitle = escapeHtml(item.title);
+        // Создаём изображение отдельно
+        const img = document.createElement('img');
+        img.src = thumbnailUrl;
+        img.alt = item.title || 'Без названия';
+        img.className = 'thumbnail';
+        img.style.cursor = 'pointer';
 
-        let onclickAction;
-        if (currentCategory === 'movie') {
-            onclickAction = `openVideoPlayer('${item.file_path}', '${safeTitle}')`;
-        } else {
-            onclickAction = `openBookReader(${item.id})`;
-        }
+        // Добавляем обработчик клика
+        img.addEventListener('click', () => {
+            if (currentCategory === 'movie') {
+                if (item.file_path) {
+                    // Экранирование уже не нужно — передаём напрямую
+                    openVideoPlayer(item.file_path, item.title || 'Без названия');
+                } else {
+                    alert('Видеофайл для этого фильма ещё не загружен');
+                }
+            } else {
+                // Для книг просто ID — он всегда число
+                openBookReader(item.id);
+            }
+        });
 
-        const mediaHtml = `
-            <img src="${thumbnailUrl}" 
-                 class="thumbnail" 
-                 alt="${safeTitle}"
-                 onclick="${onclickAction}" 
-                 style="cursor: pointer;">
+        // Создаём остальные элементы карточки
+        const titleEl = document.createElement('h3');
+        titleEl.textContent = item.title || 'Без названия';
+
+        const infoEl = document.createElement('p');
+        infoEl.innerHTML = `
+            <strong>${currentCategory === 'movie' ? 'Режиссёр' : 'Автор'}:</strong> 
+            ${escapeHtml(currentCategory === 'movie' ? item.director || '—' : item.author || '—')}
         `;
 
-        card.innerHTML = `
-            ${mediaHtml}
-            <h3>${safeTitle}</h3>
-            <p><strong>${currentCategory === 'movie' ? 'Режиссёр' : 'Автор'}:</strong> 
-               ${escapeHtml(currentCategory === 'movie' ? item.director || 'Не указан' : item.author || 'Не указан')}
-            </p>
-            <p>Год: ${item.year || '—'} | Жанр: ${escapeHtml(item.genre || '—')} | Рейтинг: ${item.rating || '—'}</p>
-            <p>${truncateDescription(escapeHtml(item.description || 'Нет описания'), 100)}</p>
-            <div style="margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="edit-btn" onclick="editItem(${item.id})">Редактировать</button>
-                <button class="delete-btn" onclick="deleteItem(${item.id})">Удалить</button>
-            </div>
-        `;
+        const metaEl = document.createElement('p');
+        metaEl.textContent = `Год: ${item.year || '—'} | Жанр: ${item.genre || '—'} | Рейтинг: ${item.rating || '—'}`;
+
+        const descEl = document.createElement('p');
+        descEl.textContent = truncateDescription(item.description || 'Нет описания', 100);
+
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = 'Редактировать';
+        editBtn.onclick = () => editItem(item.id);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.onclick = () => deleteItem(item.id);
+
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
+        // Собираем карточку
+        card.appendChild(img);
+        card.appendChild(titleEl);
+        card.appendChild(infoEl);
+        card.appendChild(metaEl);
+        card.appendChild(descEl);
+        card.appendChild(actions);
 
         grid.appendChild(card);
     });
 }
 
-function openBookReader(bookId) {
-    const width = Math.min(1200, window.screen.width - 100);
-    const height = Math.min(800, window.screen.height - 100);
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
+// ============================================
+// Форма — добавление / редактирование
+// ============================================
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('title').value.trim();
+    if (!title) {
+        showError('Название — обязательное поле');
+        return;
+    }
 
-    const readerWindow = window.open(
-        `/reader.html?bookId=${bookId}`,
-        `bookReader_${bookId}`,
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,location=no,directories=no,status=no,menubar=no,copyhistory=no`
-    );
+    showLoading(true);
+    showError('');
 
-    if (readerWindow) {
-        readerWindow.focus();
-    } else {
-        alert('Не удалось открыть читалку. Разрешите всплывающие окна для этого сайта.');
+    try {
+        let genreValue = document.getElementById('genre-select').value;
+        if (!genreValue) {
+            genreValue = document.getElementById('genre').value.trim();
+        }
+
+        const data = {
+            title,
+            year: parseInt(document.getElementById('year').value) || null,
+            genre: genreValue || null,
+            rating: parseFloat(document.getElementById('rating').value) || null,
+            description: document.getElementById('description').value.trim() || null
+        };
+
+        if (currentCategory === 'movie') {
+            data.director = document.getElementById('director-author').value.trim() || null;
+        } else {
+            data.author = document.getElementById('director-author').value.trim() || null;
+        }
+
+        let itemId;
+        if (editingItem) {
+            // Обновление
+            await (currentCategory === 'movie' 
+                ? updateMovie(editingItem.id, data) 
+                : updateBook(editingItem.id, data));
+            itemId = editingItem.id;
+        } else {
+            // Создание
+            const newItem = await (currentCategory === 'movie' 
+                ? createMovie(data) 
+                : createBook(data));
+            itemId = newItem.id;
+        }
+
+        // Загрузка файлов
+        const fileInput = document.getElementById('file');
+        const thumbInput = document.getElementById('thumbnail');
+
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const endpoint = currentCategory === 'movie'
+                ? `/movies/${itemId}/upload`
+                : `/books/${itemId}/upload`;
+            await uploadFile(endpoint, file, p => updateProgress(20 + p * 50 / 100));
+        }
+
+        if (thumbInput.files.length > 0) {
+            const file = thumbInput.files[0];
+            const endpoint = currentCategory === 'movie'
+                ? `/movies/${itemId}/upload_thumbnail`
+                : `/books/${itemId}/upload_thumbnail`;
+            await uploadFile(endpoint, file, p => updateProgress(70 + p * 30 / 100));
+        }
+
+        updateProgress(100);
+        setTimeout(() => {
+            loadItems();
+            showViewMode();
+            hideProgress();
+            showLoading(false);
+            document.getElementById('item-form').reset();
+            editingItem = null;
+            document.getElementById('form-title').textContent = 'Добавить новый элемент';
+            document.getElementById('submit-btn').textContent = 'Добавить';
+        }, 800);
+
+    } catch (err) {
+        console.error(err);
+        showError(err.message || 'Ошибка при сохранении');
+        hideProgress();
+        showLoading(false);
     }
 }
 
-function truncateDescription(description, maxWords = 100) {
-    const words = description.split(/\s+/);
-    if (words.length <= maxWords) return description;
-    return words.slice(0, maxWords).join(' ') + '...';
+async function editItem(id) {
+    showAddMode();
+
+    const item = currentCategory === 'movie' 
+        ? await fetchMovie(id) 
+        : await fetchBook(id);
+    
+    editingItem = item;
+
+    document.getElementById('title').value = item.title;
+    document.getElementById('year').value = item.year || '';
+    document.getElementById('director-author').value = 
+        currentCategory === 'movie' ? (item.director || '') : (item.author || '');
+    document.getElementById('rating').value = item.rating || '';
+    document.getElementById('description').value = item.description || '';
+
+    // Жанр
+    const genreSelect = document.getElementById('genre-select');
+    const genreInput = document.getElementById('genre');
+    if (item.genre) {
+        const option = [...genreSelect.options].find(o => o.value === item.genre);
+        if (option) {
+            option.selected = true;
+            genreInput.value = '';
+        } else {
+            genreSelect.value = '';
+            genreInput.value = item.genre;
+        }
+    }
+
+    document.getElementById('form-title').textContent = 'Редактировать элемент';
+    document.getElementById('submit-btn').textContent = 'Сохранить';
+
+    updateFormLabels();
+    updateFileInfo();
+    updateThumbnailInfo();
+}
+
+async function deleteItem(id) {
+    if (!confirm('Удалить этот элемент навсегда?')) return;
+
+    try {
+        currentCategory === 'movie' 
+            ? await deleteMovie(id) 
+            : await deleteBook(id);
+        loadItems();
+    } catch (err) {
+        alert('Ошибка при удалении');
+    }
+}
+
+// ============================================
+// Вспомогательные функции
+// ============================================
+function showAddMode() {
+    document.getElementById('add-form').style.display = 'block';
+    document.getElementById('items-grid').style.display = 'none';
+}
+
+function showViewMode() {
+    document.getElementById('add-form').style.display = 'none';
+    document.getElementById('items-grid').style.display = 'grid';
+    document.getElementById('item-form').reset();
+    editingItem = null;
+    document.getElementById('form-title').textContent = 'Добавить новый элемент';
+    document.getElementById('submit-btn').textContent = 'Добавить';
+}
+
+function updateFormLabels() {
+    const isMovie = currentCategory === 'movie';
+
+    document.getElementById('file-label-text').textContent = 
+        isMovie ? 'Файл видео' : 'Файл книги (PDF, DjVu, CBZ, EPUB)';
+
+    document.getElementById('director-author').placeholder = 
+        isMovie ? 'Режиссёр' : 'Автор';
+
+    document.getElementById('thumbnail-upload-container').style.display = 
+        isMovie ? 'block' : 'block'; // можно скрыть для книг, если хотите
+
+    document.getElementById('file').accept = isMovie 
+        ? 'video/*,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm'
+        : '.pdf,.djvu,.djv,.cbz,.zip,.epub';
+}
+
+function updateFileInfo() {
+    const file = document.getElementById('file').files[0];
+    document.getElementById('file-info').textContent = file ? `Выбран: ${file.name}` : '';
+}
+
+function updateThumbnailInfo() {
+    const file = document.getElementById('thumbnail').files[0];
+    document.getElementById('thumbnail-info').textContent = file ? `Выбрана: ${file.name}` : '';
+}
+
+function updateProgress(percent) {
+    const bar = document.getElementById('progress');
+    const text = document.getElementById('progress-text');
+    document.getElementById('progress-container').style.display = 'block';
+    bar.style.width = percent + '%';
+    text.textContent = percent + '%';
+}
+
+function hideProgress() {
+    document.getElementById('progress-container').style.display = 'none';
+}
+
+function showLoading(show = true) {
+    const el = document.getElementById('loading-message');
+    if (el) el.style.display = show ? 'block' : 'none';
+}
+
+function showError(message) {
+    const el = document.getElementById('error-message');
+    el.textContent = message;
+    el.style.display = message ? 'block' : 'none';
 }
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// === ВИДЕОПЛЕЕР ===
+function truncateDescription(text, maxLength = 100) {
+    return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+}
+
+async function uploadFile(endpoint, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', endpoint);
+
+        xhr.upload.onprogress = e => {
+            if (e.lengthComputable && onProgress) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                onProgress(percent);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+            } else {
+                reject(new Error('Ошибка загрузки файла'));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error('Сетевая ошибка'));
+        xhr.send(formData);
+    });
+}
+
+// =============================================
+// Функции открытия плеера и читалки
+// =============================================
+
+// Для фильмов — открытие видео-плеера
 function openVideoPlayer(filePath, title) {
     if (!filePath) {
         alert('Видео файл не загружен');
@@ -272,318 +585,34 @@ function getVideoType(filePath) {
     };
     return types[ext] || 'video/mp4';
 }
-
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ФОРМЫ ===
-function showLoading(show = true) {
-    const el = document.getElementById('loading-message');
-    if (el) el.style.display = show ? 'block' : 'none';
-}
-
-function hideLoading() {
-    showLoading(false);
-}
-
-function showError(message) {
-    const el = document.getElementById('error-message');
-    if (el) {
-        el.textContent = message;
-        el.style.display = 'block';
-        setTimeout(() => { el.style.display = 'none'; }, 6000);
-    } else {
-        alert(message);
-    }
-}
-
-function updateProgress(percent) {
-    const container = document.getElementById('progress-container');
-    const bar = document.getElementById('progress');
-    const text = document.getElementById('progress-text');
-    if (container && bar && text) {
-        container.style.display = 'block';
-        bar.style.width = percent + '%';
-        text.textContent = Math.round(percent) + '%';
-    }
-}
-
-function hideProgress() {
-    const container = document.getElementById('progress-container');
-    if (container) {
-        container.style.display = 'none';
-        document.getElementById('progress').style.width = '0%';
-        document.getElementById('progress-text').textContent = '0%';
-    }
-}
-
-function resetForm() {
-    document.getElementById('item-form').reset();
-    document.getElementById('file-info').textContent = '';
-    document.getElementById('thumbnail-info').textContent = '';
-    document.getElementById('form-title').textContent = 'Добавить новый элемент';
-    document.getElementById('submit-btn').textContent = 'Добавить';
-}
-
-function showViewMode() {
-    document.getElementById('add-form').style.display = 'none';
-    document.getElementById('items-grid').style.display = 'grid';
-    resetForm();
-    document.getElementById('file').removeAttribute('required');
-    editingItem = null;
-}
-
-function showAddMode() {
-    document.getElementById('add-form').style.display = 'block';
-    document.getElementById('items-grid').style.display = 'none';
-    updateFormLabels();
-    if (!editingItem) {
-        document.getElementById('file').setAttribute('required', '');
-    } else {
-        document.getElementById('file').removeAttribute('required');
-    }
-}
-
-function updateFileInfo() {
-    const file = document.getElementById('file').files[0];
-    const info = document.getElementById('file-info');
-    if (file) {
-        const size = (file.size / (1024 * 1024)).toFixed(2);
-        info.textContent = `Выбран: ${file.name} (${size} МБ)`;
-        info.style.color = '#aaa';
-    } else {
-        info.textContent = editingItem?.file_path ? 'Файл уже загружен' : '';
-    }
-}
-
-function updateThumbnailInfo() {
-    const file = document.getElementById('thumbnail').files[0];
-    const info = document.getElementById('thumbnail-info');
-    if (file) {
-        const size = (file.size / (1024 * 1024)).toFixed(2);
-        info.textContent = `Миниатюра: ${file.name} (${size} МБ)`;
-    } else {
-        info.textContent = '';
-    }
-}
-
-// === ОСНОВНАЯ ФУНКЦИЯ ОТПРАВКИ ФОРМЫ ===
-async function handleSubmit(e) {
-    e.preventDefault();
-
-    const category = document.getElementById('category').value;
-    let title = document.getElementById('title').value.trim() || 'Без названия';
-    let year = document.getElementById('year').value;
-    let authorDirector = document.getElementById('director-author').value.trim();
-    let genre = document.getElementById('genre').value.trim();
-    let rating = document.getElementById('rating').value;
-    const description = document.getElementById('description').value.trim();
-    const fileInput = document.getElementById('file');
-    const thumbnailInput = document.getElementById('thumbnail');
-
-    year = year ? parseInt(year) : null;
-    rating = rating ? parseFloat(rating) : null;
-
-    if (year !== null && isNaN(year)) {
-        showError('Год должен быть числом');
-        return;
-    }
-    if (rating !== null && (isNaN(rating) || rating < 0 || rating > 10)) {
-        showError('Рейтинг должен быть от 0 до 10');
+// Для книг — открытие читалки в новом окне
+function openBookReader(bookId) {
+    if (!bookId) {
+        alert("ID книги не определён");
         return;
     }
 
-    const data = {
-        title,
-        year,
-        genre: genre || null,
-        rating,
-        description: description || null
-    };
+    const width = Math.min(1200, window.screen.width * 0.9);
+    const height = Math.min(900, window.screen.height * 0.9);
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
 
-    if (category === 'movie') {
-        data.director = authorDirector || null;
-    } else {
-        data.author = authorDirector || null;
-    }
+    const readerWindow = window.open(
+        `/reader.html?bookId=${bookId}`,
+        `bookReader_${bookId}`,
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no`
+    );
 
-    try {
-        showLoading(true);
-        updateProgress(5);
-
-        let itemId;
-
-        if (editingItem) {
-            const updateFn = category === 'movie' ? updateMovie : updateBook;
-            await updateFn(editingItem.id, data);
-            itemId = editingItem.id;
-            console.log('Редактирование: ID =', itemId);
-        } else {
-            const createFn = category === 'movie' ? createMovie : createBook;
-            const response = await createFn(data);
-            console.log('Ответ от сервера после создания:', response); // ← ВАЖНО: посмотрите в консоль!
-
-            if (!response || !response.id) {
-                throw new Error('Сервер не вернул ID нового элемента. Ответ: ' + JSON.stringify(response));
-            }
-
-            itemId = response.id;
-            console.log('Создан новый элемент, ID =', itemId);
-        }
-
-        // Загрузка файла
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const endpoint = category === 'movie' 
-                ? `/movies/${itemId}/upload`
-                : `/books/${itemId}/upload`;
-
-            console.log('Загрузка файла на:', endpoint);
-
-            await uploadFile(endpoint, file, (p) => updateProgress(5 + p * 70 / 100));
-        }
-
-        // Загрузка миниатюры
-        if (thumbnailInput.files.length > 0) {
-            const file = thumbnailInput.files[0];
-            const endpoint = category === 'movie'
-                ? `/movies/${itemId}/upload_thumbnail`
-                : `/books/${itemId}/upload_thumbnail`;
-
-            await uploadFile(endpoint, file, (p) => updateProgress(75 + p * 25 / 100));
-        }
-
-        updateProgress(100);
-        setTimeout(() => {
-            loadItems();
-            showViewMode();
-            hideProgress();
-            showLoading(false);
-        }, 600);
-
-    } catch (err) {
-        console.error('Ошибка в handleSubmit:', err);
-        showError(err.message || 'Не удалось сохранить элемент');
-        hideLoading();
-        hideProgress();
-    }
-}
-async function uploadFile(endpoint, file, onProgress) {
-    return new Promise((resolve, reject) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable && onProgress) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                onProgress(percent);
-            }
-        };
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    resolve(JSON.parse(xhr.responseText));
-                } catch {
-                    resolve({ success: true });
-                }
-            } else {
-                let errorMsg = 'Ошибка загрузки файла';
-                try {
-                    const err = JSON.parse(xhr.responseText);
-                    errorMsg = err.detail || err.message || errorMsg;
-                } catch {}
-                reject(new Error(errorMsg));
-            }
-        };
-
-        xhr.onerror = () => reject(new Error('Сетевая ошибка при загрузке'));
-
-        xhr.open('POST', endpoint);
-        xhr.send(formData);
-    });
-}
-async function editItem(id) {
-    showAddMode();
-
-    const item = currentCategory === 'movie' ? await fetchMovie(id) : await fetchBook(id);
-    editingItem = item;
-
-    document.getElementById('category').value = currentCategory;
-    document.getElementById('title').value = item.title;
-    document.getElementById('year').value = item.year;
-    document.getElementById('director-author').value = currentCategory === 'movie' ? item.director : item.author;
-    document.getElementById('genre').value = item.genre;
-    document.getElementById('rating').value = item.rating;
-    document.getElementById('description').value = item.description || '';
-
-    document.getElementById('form-title').textContent = 'Редактировать элемент';
-    document.getElementById('submit-btn').textContent = 'Сохранить';
-
-    updateFormLabels();
-    updateFileInfo();
-    updateThumbnailInfo();
-
-    if (currentCategory === 'movie' && item.thumbnail_path) {
-        document.getElementById('thumbnail-info').textContent += ` (текущая: ${item.thumbnail_path.split('/').pop()})`;
+    if (!readerWindow) {
+        alert("Не удалось открыть окно читалки.\nПроверьте блокировку всплывающих окон в браузере.");
     }
 }
 
-async function deleteItem(id) {
-    if (!confirm('Удалить этот элемент навсегда?')) return;
-
-    try {
-        currentCategory === 'movie' ? await deleteMovie(id) : await deleteBook(id);
-        loadItems();
-    } catch (err) {
-        alert('Ошибка при удалении');
-    }
-}
-
-document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    currentCategory = btn.dataset.view;
-    document.getElementById('category').value = currentCategory;
-    loadItems();
-    updateFormLabels();
-  });
-});
-document.getElementById('show-add').addEventListener('click', showAddMode);
-document.getElementById('show-view').addEventListener('click', showViewMode);
-// Выпадающее меню
-const menuToggle = document.getElementById('menu-toggle');
-const dropdownMenu = document.getElementById('dropdown-menu');
-
-if (menuToggle && dropdownMenu) {
-  menuToggle.addEventListener('click', () => {
-    menuToggle.classList.toggle('active');
-    dropdownMenu.classList.toggle('active');
-  });
-
-  // Закрытие при клике вне меню
-  document.addEventListener('click', (e) => {
-    if (!menuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-      menuToggle.classList.remove('active');
-      dropdownMenu.classList.remove('active');
-    }
-  });
-}
-
-// Обработчики пунктов меню (замени старые show-movies/show-books)
-document.querySelectorAll('.nav-item[data-category]').forEach(item => {
-  item.addEventListener('click', () => {
-    document.querySelectorAll('.nav-item[data-category]').forEach(i => i.classList.remove('active'));
-    item.classList.add('active');
-
-    currentCategory = item.dataset.category;
-    document.getElementById('category').value = currentCategory;
-    loadItems();
-    updateFormLabels();
-
-    // Закрываем меню на мобильных
-    menuToggle?.classList.remove('active');
-    dropdownMenu?.classList.remove('active');
-  });
-});
+// Делаем select более "дружелюбным" к touch
+document.getElementById('genre-filter').addEventListener('touchend', function(e) {
+    // даём браузеру шанс обработать выбор
+    setTimeout(() => {
+        this.focus();
+        this.click();      // принудительно открываем список
+    }, 50);
+}, { passive: false });

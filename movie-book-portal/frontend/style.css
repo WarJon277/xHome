@@ -174,6 +174,28 @@ header {
   .header-container {
     padding: 0 12px;
   }
+  .genre-select {
+        -webkit-appearance: menulist-button !important;  /* ← важно для iOS */
+        appearance: menulist-button !important;
+        min-height: 48px;                 /* больше тач-зона */
+        padding: 12px 40px 12px 16px;
+        font-size: 17px;                  /* комфортный размер текста */
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><polygon points='6,9 1,4 11,4'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        background-size: 12px;
+    }
+
+    .genre-filter-container {
+        pointer-events: auto !important;
+        z-index: 1000 !important;
+        position: relative;
+    }
+
+    /* Если меню перекрывает */
+    #dropdown-menu.active {
+        z-index: 9999;
+    }
 }
 
 
@@ -522,4 +544,26 @@ main {
     main { padding: 0.5rem; }
     #add-form { padding: 0.75rem; }
     .card video, .card .thumbnail { max-height: 120px; }
+}
+.genre-filter-container {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    padding: 0 12px;
+}
+
+.genre-select {
+    background: #2a2a2a;
+    color: white;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    min-width: 160px;
+}
+
+.genre-select:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 2px rgba(0,102,204,0.3);
 }

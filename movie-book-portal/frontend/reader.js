@@ -30,8 +30,8 @@ class BookReader {
     bindEvents() {
         this.prevPageBtn.addEventListener('click', () => this.goToPrevPage());
         this.nextPageBtn.addEventListener('click', () => this.goToNextPage());
-        this.fontSmallerBtn.addEventListener('click', () => this.changeFontSize(-2));
-        this.fontLargerBtn.addEventListener('click', () => this.changeFontSize(2));
+        this.fontSmallerBtn.addEventListener('click', () => this.changeFontSize(-1));
+        this.fontLargerBtn.addEventListener('click', () => this.changeFontSize(1));
         this.themeSelector.addEventListener('change', () => this.changeTheme());
         this.exitReaderBtn.addEventListener('click', () => this.exitReader());
 

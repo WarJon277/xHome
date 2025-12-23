@@ -7,7 +7,7 @@ cd backend
 pip install -r requirements.txt
 
 # Start the server
-python -m uvicorn main:app --host 0.0.0.0 --port 5050 &
+python -m uvicorn ./backend/main:app --host 0.0.0.0 --port 5050 &
 
 # Wait a bit for server to start
 sleep 2

@@ -6,7 +6,8 @@ import fitz  # PyMuPDF
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
+from pydantic import BaseModel
+from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -68,21 +69,29 @@ async def reader():
 
 class MovieCreate(BaseModel):
     title: str
-    year: int
-    director: str
-    genre: str
-    rating: float
-    description: str | None = None
+    year: Optional[int] = None
+    director: Optional[str] = None  # Разрешаем None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
 
+    model_config = {
+        "extra": "ignore",              # Игнорируем лишние поля
+        "populate_by_name": True,
+    }
 
 class BookCreate(BaseModel):
     title: str
-    author: str
-    year: int
-    genre: str
-    rating: float
-    description: str | None = None
+    year: Optional[int] = None
+    author: Optional[str] = None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
 
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
 
 # ==================== ФИЛЬМЫ ====================
 

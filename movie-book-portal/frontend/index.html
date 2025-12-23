@@ -8,24 +8,32 @@
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 </head>
 <body>
-    <header>
-        <h1>Портал фильмов и книг</h1>
-        <nav>
-            <button id="show-movies">Фильмы</button>
-            <button id="show-books">Книги</button>
-            <input type="text" id="search" placeholder="Поиск по названию">
-        </nav>
-    </header>
+<header>
+  <div class="header-container">
+    <h1>Портал</h1>
+
+    <!-- Кнопка-меню (гамбургер) -->
+    <button class="menu-toggle" id="menu-toggle" aria-label="Открыть меню">
+      <span class="hamburger"></span>
+    </button>
+
+    <!-- Выпадающее меню -->
+    <nav class="dropdown-menu" id="dropdown-menu">
+      <button class="nav-item active" data-category="movie">Фильмы</button>
+      <button class="nav-item" data-category="book">Книги</button>
+
+      <button class="nav-item add-btn" id="show-add">+ Добавить</button>
+    </nav>
+  </div>
+</header>
 
     <main>
-        <nav id="main-nav">
-            <button id="show-view">Просмотр</button>
-            <button id="show-add">Добавление</button>
-        </nav>
 
         <!-- Форма добавления/редактирования -->
+         
         <section id="add-form" style="display: none;">
             <h2 id="form-title">Добавить новый элемент</h2>
+            <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
             <form id="item-form">
                 <select id="category">
                     <option value="movie">Фильм</option>

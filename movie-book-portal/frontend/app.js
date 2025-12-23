@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFormLabels();
     });
 
-    document.getElementById('search').addEventListener('input', handleSearch);
+
 
     document.getElementById('category').addEventListener('change', () => {
         currentCategory = document.getElementById('category').value;
@@ -39,17 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateFormLabels() {
     const isMovie = currentCategory === 'movie';
 
-    // Меняем текст лейблов
     document.getElementById('file-label-text').textContent =
         isMovie ? 'Файл видео' : 'Файл книги (PDF, DjVu, CBZ, EPUB)';
 
     document.getElementById('director-author').placeholder =
         isMovie ? 'Режиссёр' : 'Автор';
 
-    // ВАЖНО: теперь поле миниатюры ВСЕГДА видно
     document.getElementById('thumbnail-upload-container').style.display = 'block';
 
-    // Меняем текст лейбла миниатюры
     const thumbLabel = document.querySelector('#thumbnail-upload-container label');
     if (thumbLabel) {
         thumbLabel.textContent = isMovie
@@ -57,10 +54,8 @@ function updateFormLabels() {
             : 'Миниатюра (обложка книги, опционально):';
     }
 
-    // Поле файла всегда видно
     document.getElementById('file-upload-container').style.display = 'block';
-    
-    // Динамически обновляем атрибут accept для файла в зависимости от категории
+
     const fileInput = document.getElementById('file');
     if (isMovie) {
         fileInput.accept = 'video/*,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm,.m4v,.3gp,.3g2,.ogv,.qt';
@@ -94,27 +89,22 @@ function displayItems(items) {
         const card = document.createElement('div');
         card.className = 'card';
 
-        // Определяем путь к миниатюре
-        let thumbnailUrl = '/static/book-placeholder.jpg'; // дефолт для книг
+        let thumbnailUrl = '/static/book-placeholder.jpg';
         if (currentCategory === 'movie') {
             thumbnailUrl = item.thumbnail_path || '/static/movie-placeholder.jpg';
         } else if (item.thumbnail_path) {
-            thumbnailUrl = '/' + item.thumbnail_path; // добавляем слеш, если путь относительный
+            thumbnailUrl = '/' + item.thumbnail_path;
         }
 
-        // Экранируем HTML для безопасности
         const safeTitle = escapeHtml(item.title);
 
-        // Разное поведение при клике: фильмы — плеер, книги — новая читалка в отдельном окне
         let onclickAction;
         if (currentCategory === 'movie') {
             onclickAction = `openVideoPlayer('${item.file_path}', '${safeTitle}')`;
         } else {
-            // Открываем читалку в новом окне — красиво, без панелей браузера
             onclickAction = `openBookReader(${item.id})`;
         }
 
-        // HTML миниатюры с кликом
         const mediaHtml = `
             <img src="${thumbnailUrl}" 
                  class="thumbnail" 
@@ -123,7 +113,6 @@ function displayItems(items) {
                  style="cursor: pointer;">
         `;
 
-        // Формируем карточку
         card.innerHTML = `
             ${mediaHtml}
             <h3>${safeTitle}</h3>
@@ -142,10 +131,9 @@ function displayItems(items) {
     });
 }
 
-// Новая функция для открытия читалки книг в отдельном окне
 function openBookReader(bookId) {
-    const width = window.screen.width > 1200 ? 1200 : window.screen.width - 100;
-    const height = window.screen.height > 800 ? 800 : window.screen.height - 100;
+    const width = Math.min(1200, window.screen.width - 100);
+    const height = Math.min(800, window.screen.height - 100);
     const left = (window.screen.width - width) / 2;
     const top = (window.screen.height - height) / 2;
 
@@ -162,12 +150,10 @@ function openBookReader(bookId) {
     }
 }
 
-function truncateDescription(description, maxLength) {
+function truncateDescription(description, maxWords = 100) {
     const words = description.split(/\s+/);
-    if (words.length <= maxLength) {
-        return description;
-    }
-    return words.slice(0, maxLength).join(' ') + '...';
+    if (words.length <= maxWords) return description;
+    return words.slice(0, maxWords).join(' ') + '...';
 }
 
 function escapeHtml(text) {
@@ -176,7 +162,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// === ПОЛНОЦЕННЫЙ ВИДЕОПЛЕЕР PLYR ===
+// === ВИДЕОПЛЕЕР ===
 function openVideoPlayer(filePath, title) {
     if (!filePath) {
         alert('Видео файл не загружен');
@@ -185,14 +171,43 @@ function openVideoPlayer(filePath, title) {
 
     const modal = document.createElement('div');
     modal.id = 'video-modal';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.background = 'rgba(0,0,0,0.95)';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '9999';
+    modal.style.padding = '20px';
+
+    // Кнопка закрытия (крестик в углу)
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '✕';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '20px';
+    closeBtn.style.right = '20px';
+    closeBtn.style.width = '40px';
+    closeBtn.style.height = '40px';
+    closeBtn.style.background = 'rgba(0,0,0,0.6)';
+    closeBtn.style.color = 'white';
+    closeBtn.style.border = 'none';
+    closeBtn.style.borderRadius = '50%';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.zIndex = '10000';
+    closeBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.5)';
+    closeBtn.title = 'Закрыть (Esc)';
 
     const videoContainer = document.createElement('div');
     videoContainer.className = 'plyr-container';
+    videoContainer.style.maxWidth = '95vw';
+    videoContainer.style.maxHeight = '85vh';
+    videoContainer.style.position = 'relative';
 
     const videoElement = document.createElement('video');
     videoElement.className = 'plyr';
     videoElement.controls = true;
-    videoElement.preload = 'metadata';
     videoElement.playsInline = true;
 
     const source = document.createElement('source');
@@ -202,71 +217,130 @@ function openVideoPlayer(filePath, title) {
 
     videoContainer.appendChild(videoElement);
 
-    const titleElement = document.createElement('h3');
-    titleElement.textContent = title;
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = title;
+    titleEl.style.color = 'white';
+    titleEl.style.margin = '15px 0 5px';
+    titleEl.style.textAlign = 'center';
+    titleEl.style.maxWidth = '90%';
+    titleEl.style.overflow = 'hidden';
+    titleEl.style.textOverflow = 'ellipsis';
+    titleEl.style.whiteSpace = 'nowrap';
 
+    modal.appendChild(closeBtn);
     modal.appendChild(videoContainer);
-    modal.appendChild(titleElement);
+    modal.appendChild(titleEl);
     document.body.appendChild(modal);
 
     const player = new Plyr(videoElement, {
         controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
-        volume: 0.7,
-        clickToPlay: true,
-        keyboard: { focused: true, global: true },
         hideControls: true,
-        controlsTimeout: 3000
+        keyboard: { focused: true, global: true }
     });
 
-    player.on('ready', () => {
-        const closeControl = document.createElement('button');
-        closeControl.type = 'button';
-        closeControl.className = 'plyr__control plyr__control--close';
-        closeControl.innerHTML = `
-            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>
-            <span class="plyr__tooltip">Закрыть</span>
-        `;
-        closeControl.onclick = closeModal;
-        player.elements.controls.appendChild(closeControl);
-    });
-
-    player.on('error', () => {
-        modal.innerHTML = `
-            <div style="padding: 30px; text-align: center; color: white;">
-                <h3>Ошибка воспроизведения</h3>
-                <p>Формат видео не поддерживается браузером.</p>
-                <a href="/${filePath}" download="${title}" style="display: inline-block; margin: 20px; padding: 12px 24px; background: #4caf50; color: white; text-decoration: none; border-radius: 6px;">Скачать видео</a>
-                <p>Рекомендуем плеер VLC или MPC-HC</p>
-                <button onclick="this.closest('#video-modal').remove()" style="margin-top: 20px; padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px;">Закрыть</button>
-            </div>
-        `;
-    });
-
-    function closeModal() {
+    // Функция закрытия
+    const closeModal = () => {
         player.destroy();
         modal.remove();
-        document.removeEventListener('keydown', handleEsc);
-    }
+        document.removeEventListener('keydown', escHandler);
+    };
 
-    const handleEsc = (e) => { if (e.key === 'Escape') closeModal(); };
-    document.addEventListener('keydown', handleEsc);
+    // Обработчики закрытия
+    closeBtn.onclick = closeModal;
 
+    const escHandler = (e) => {
+        if (e.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', escHandler);
+
+    // Клик по фону
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
+    });
+
+    // Автофокус на плеере
+    player.on('ready', () => {
+        player.play();
     });
 }
 
 function getVideoType(filePath) {
     const ext = filePath.split('.').pop().toLowerCase();
-    const map = {
+    const types = {
         mp4: 'video/mp4', webm: 'video/webm', ogg: 'video/ogg', ogv: 'video/ogg',
-        mov: 'video/quicktime', avi: 'video/x-msvideo', wmv: 'video/x-ms-wmv',
-        flv: 'video/x-flv', mkv: 'video/x-matroska', m4v: 'video/mp4'
+        mov: 'video/quicktime', avi: 'video/x-msvideo', mkv: 'video/x-matroska'
     };
-    return map[ext] || 'video/mp4';
+    return types[ext] || 'video/mp4';
 }
 
-// === РАБОТА С ФОРМОЙ ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ФОРМЫ ===
+function showLoading(show = true) {
+    const el = document.getElementById('loading-message');
+    if (el) el.style.display = show ? 'block' : 'none';
+}
+
+function hideLoading() {
+    showLoading(false);
+}
+
+function showError(message) {
+    const el = document.getElementById('error-message');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 6000);
+    } else {
+        alert(message);
+    }
+}
+
+function updateProgress(percent) {
+    const container = document.getElementById('progress-container');
+    const bar = document.getElementById('progress');
+    const text = document.getElementById('progress-text');
+    if (container && bar && text) {
+        container.style.display = 'block';
+        bar.style.width = percent + '%';
+        text.textContent = Math.round(percent) + '%';
+    }
+}
+
+function hideProgress() {
+    const container = document.getElementById('progress-container');
+    if (container) {
+        container.style.display = 'none';
+        document.getElementById('progress').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0%';
+    }
+}
+
+function resetForm() {
+    document.getElementById('item-form').reset();
+    document.getElementById('file-info').textContent = '';
+    document.getElementById('thumbnail-info').textContent = '';
+    document.getElementById('form-title').textContent = 'Добавить новый элемент';
+    document.getElementById('submit-btn').textContent = 'Добавить';
+}
+
+function showViewMode() {
+    document.getElementById('add-form').style.display = 'none';
+    document.getElementById('items-grid').style.display = 'grid';
+    resetForm();
+    document.getElementById('file').removeAttribute('required');
+    editingItem = null;
+}
+
+function showAddMode() {
+    document.getElementById('add-form').style.display = 'block';
+    document.getElementById('items-grid').style.display = 'none';
+    updateFormLabels();
+    if (!editingItem) {
+        document.getElementById('file').setAttribute('required', '');
+    } else {
+        document.getElementById('file').removeAttribute('required');
+    }
+}
+
 function updateFileInfo() {
     const file = document.getElementById('file').files[0];
     const info = document.getElementById('file-info');
@@ -275,7 +349,7 @@ function updateFileInfo() {
         info.textContent = `Выбран: ${file.name} (${size} МБ)`;
         info.style.color = '#aaa';
     } else {
-        info.textContent = '';
+        info.textContent = editingItem?.file_path ? 'Файл уже загружен' : '';
     }
 }
 
@@ -290,110 +364,107 @@ function updateThumbnailInfo() {
     }
 }
 
-function showViewMode() {
-    document.getElementById('add-form').style.display = 'none';
-    document.getElementById('items-grid').style.display = 'grid';
-    document.getElementById('item-form').reset();
-    document.getElementById('file-info').textContent = '';
-    document.getElementById('thumbnail-info').textContent = '';
-    document.getElementById('submit-btn').textContent = 'Добавить';
-    document.getElementById('form-title').textContent = 'Добавить новый элемент';
-    // Убираем required при возврате к просмотру
-    document.getElementById('file').removeAttribute('required');
-    editingItem = null;
-}
-
-function showAddMode() {
-    document.getElementById('add-form').style.display = 'block';
-    document.getElementById('items-grid').style.display = 'none';
-    updateFormLabels();
-    // Устанавливаем required атрибут только если мы создаем новый элемент, а не редактируем
-    const fileInput = document.getElementById('file');
-    if (!editingItem) {
-        fileInput.setAttribute('required', '');
-    } else {
-        fileInput.removeAttribute('required');
-    }
-}
-
+// === ОСНОВНАЯ ФУНКЦИЯ ОТПРАВКИ ФОРМЫ ===
 async function handleSubmit(e) {
     e.preventDefault();
 
-    const loading = document.getElementById('loading-message');
-    const error = document.getElementById('error-message');
-    const progressContainer = document.getElementById('progress-container');
+    const category = document.getElementById('category').value;
+    let title = document.getElementById('title').value.trim() || 'Без названия';
+    let year = document.getElementById('year').value;
+    let authorDirector = document.getElementById('director-author').value.trim();
+    let genre = document.getElementById('genre').value.trim();
+    let rating = document.getElementById('rating').value;
+    const description = document.getElementById('description').value.trim();
+    const fileInput = document.getElementById('file');
+    const thumbnailInput = document.getElementById('thumbnail');
 
-    loading.style.display = 'block';
-    error.style.display = 'none';
-    progressContainer.style.display = 'none';
+    year = year ? parseInt(year) : null;
+    rating = rating ? parseFloat(rating) : null;
+
+    if (year !== null && isNaN(year)) {
+        showError('Год должен быть числом');
+        return;
+    }
+    if (rating !== null && (isNaN(rating) || rating < 0 || rating > 10)) {
+        showError('Рейтинг должен быть от 0 до 10');
+        return;
+    }
+
+    const data = {
+        title,
+        year,
+        genre: genre || null,
+        rating,
+        description: description || null
+    };
+
+    if (category === 'movie') {
+        data.director = authorDirector || null;
+    } else {
+        data.author = authorDirector || null;
+    }
 
     try {
-        const title = document.getElementById('title').value.trim();
-        const year = parseInt(document.getElementById('year').value);
-        const directorAuthor = document.getElementById('director-author').value.trim();
-        const genre = document.getElementById('genre').value.trim();
-        let ratingValue = document.getElementById('rating').value;
-        ratingValue = ratingValue.replace(',', '.');
-        const rating = parseFloat(ratingValue);
-        const description = document.getElementById('description').value.trim();
+        showLoading(true);
+        updateProgress(5);
 
-        const file = document.getElementById('file').files[0];
-        const thumbnail = document.getElementById('thumbnail').files[0];
+        let itemId;
 
-        const data = currentCategory === 'movie'
-            ? { title, year, director: directorAuthor, genre, rating, description }
-            : { title, year, author: directorAuthor, genre, rating, description };
-
-        let item;
         if (editingItem) {
-            item = currentCategory === 'movie'
-                ? await updateMovie(editingItem.id, data)
-                : await updateBook(editingItem.id, data);
+            const updateFn = category === 'movie' ? updateMovie : updateBook;
+            await updateFn(editingItem.id, data);
+            itemId = editingItem.id;
+            console.log('Редактирование: ID =', itemId);
         } else {
-            item = currentCategory === 'movie'
-                ? await createMovie(data)
-                : await createBook(data);
+            const createFn = category === 'movie' ? createMovie : createBook;
+            const response = await createFn(data);
+            console.log('Ответ от сервера после создания:', response); // ← ВАЖНО: посмотрите в консоль!
+
+            if (!response || !response.id) {
+                throw new Error('Сервер не вернул ID нового элемента. Ответ: ' + JSON.stringify(response));
+            }
+
+            itemId = response.id;
+            console.log('Создан новый элемент, ID =', itemId);
         }
 
-        // Для новых элементов файл обязателен, для редактирования - опционально
-        if (file) {
-            progressContainer.style.display = 'block';
-            document.getElementById('progress').style.width = '0%';
-            document.getElementById('progress-text').textContent = '0%';
+        // Загрузка файла
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const endpoint = category === 'movie' 
+                ? `/movies/${itemId}/upload`
+                : `/books/${itemId}/upload`;
 
-            const endpoint = currentCategory === 'movie'
-                ? `/movies/${item.id}/upload`
-                : `/books/${item.id}/upload`;
+            console.log('Загрузка файла на:', endpoint);
 
-            await uploadFile(endpoint, file, (percent) => {
-                document.getElementById('progress').style.width = `${percent}%`;
-                document.getElementById('progress-text').textContent = `${percent}%`;
-            });
-        } else if (!editingItem) {
-            // Если это создание нового элемента и файл не выбран - показываем ошибку
-            throw new Error('Файл обязателен при создании нового элемента');
+            await uploadFile(endpoint, file, (p) => updateProgress(5 + p * 70 / 100));
         }
 
-        // Загрузка миниатюры — теперь и для книг тоже
-        if (thumbnail) {
-            const thumbEndpoint = currentCategory === 'movie'
-                ? `/movies/${item.id}/upload_thumbnail`
-                : `/books/${item.id}/upload_thumbnail`;
+        // Загрузка миниатюры
+        if (thumbnailInput.files.length > 0) {
+            const file = thumbnailInput.files[0];
+            const endpoint = category === 'movie'
+                ? `/movies/${itemId}/upload_thumbnail`
+                : `/books/${itemId}/upload_thumbnail`;
 
-            await uploadFile(thumbEndpoint, thumbnail);
+            await uploadFile(endpoint, file, (p) => updateProgress(75 + p * 25 / 100));
         }
 
-        loadItems();
-        showViewMode();
+        updateProgress(100);
+        setTimeout(() => {
+            loadItems();
+            showViewMode();
+            hideProgress();
+            showLoading(false);
+        }, 600);
+
     } catch (err) {
-        console.error(err);
-        error.textContent = err.message || 'Произошла ошибка';
-        error.style.display = 'block';
-    } finally {
-        loading.style.display = 'none';
+        console.error('Ошибка в handleSubmit:', err);
+        showError(err.message || 'Не удалось сохранить элемент');
+        hideLoading();
+        hideProgress();
     }
 }
-
 async function uploadFile(endpoint, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
@@ -410,19 +481,27 @@ async function uploadFile(endpoint, file, onProgress) {
 
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve(JSON.parse(xhr.responseText));
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch {
+                    resolve({ success: true });
+                }
             } else {
-                reject(new Error('Ошибка загрузки'));
+                let errorMsg = 'Ошибка загрузки файла';
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    errorMsg = err.detail || err.message || errorMsg;
+                } catch {}
+                reject(new Error(errorMsg));
             }
         };
 
-        xhr.onerror = () => reject(new Error('Сетевая ошибка'));
+        xhr.onerror = () => reject(new Error('Сетевая ошибка при загрузке'));
 
         xhr.open('POST', endpoint);
         xhr.send(formData);
     });
 }
-
 async function editItem(id) {
     showAddMode();
 
@@ -441,15 +520,12 @@ async function editItem(id) {
     document.getElementById('submit-btn').textContent = 'Сохранить';
 
     updateFormLabels();
+    updateFileInfo();
+    updateThumbnailInfo();
 
     if (currentCategory === 'movie' && item.thumbnail_path) {
-        document.getElementById('thumbnail-info').textContent = `Текущая: ${item.thumbnail_path.split('/').pop()}`;
+        document.getElementById('thumbnail-info').textContent += ` (текущая: ${item.thumbnail_path.split('/').pop()})`;
     }
-
-    document.getElementById('file-info').textContent = item.file_path ? 'Файл уже загружен' : '';
-    
-    // При редактировании убираем required атрибут с поля файла
-    document.getElementById('file').removeAttribute('required');
 }
 
 async function deleteItem(id) {
@@ -462,3 +538,52 @@ async function deleteItem(id) {
         alert('Ошибка при удалении');
     }
 }
+
+document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    currentCategory = btn.dataset.view;
+    document.getElementById('category').value = currentCategory;
+    loadItems();
+    updateFormLabels();
+  });
+});
+document.getElementById('show-add').addEventListener('click', showAddMode);
+document.getElementById('show-view').addEventListener('click', showViewMode);
+// Выпадающее меню
+const menuToggle = document.getElementById('menu-toggle');
+const dropdownMenu = document.getElementById('dropdown-menu');
+
+if (menuToggle && dropdownMenu) {
+  menuToggle.addEventListener('click', () => {
+    menuToggle.classList.toggle('active');
+    dropdownMenu.classList.toggle('active');
+  });
+
+  // Закрытие при клике вне меню
+  document.addEventListener('click', (e) => {
+    if (!menuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      menuToggle.classList.remove('active');
+      dropdownMenu.classList.remove('active');
+    }
+  });
+}
+
+// Обработчики пунктов меню (замени старые show-movies/show-books)
+document.querySelectorAll('.nav-item[data-category]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item[data-category]').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    currentCategory = item.dataset.category;
+    document.getElementById('category').value = currentCategory;
+    loadItems();
+    updateFormLabels();
+
+    // Закрываем меню на мобильных
+    menuToggle?.classList.remove('active');
+    dropdownMenu?.classList.remove('active');
+  });
+});

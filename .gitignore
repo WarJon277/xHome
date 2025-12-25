@@ -23,7 +23,7 @@ cat > .gitignore << 'EOF'
 *.epub
 *.out
 *.webp
-
+*.jpg
 
 
 

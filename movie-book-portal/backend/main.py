@@ -194,7 +194,7 @@ def get_db_books_simple():
 
 
 @app.get("/books")
-def get_books(genre: str = None, db: Session = Depends(get_db)):
+def get_books(genre: str = None, db: Session = Depends(get_db_books_simple)):
     query = db.query(Book)
     if genre and genre != "Все":
         query = query.filter(Book.genre.ilike(f"%{genre}%"))

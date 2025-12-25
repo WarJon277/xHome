@@ -476,9 +476,10 @@ async function uploadFile(endpoint, file, onProgress) {
 // =============================================
 
 // Для фильмов — открытие видео-плеера
+// Открытие видеоплеера в модальном окне
 function openVideoPlayer(filePath, title) {
     if (!filePath) {
-        alert('Видео файл не загружен');
+        alert("Путь к файлу не указан");
         return;
     }
 
@@ -486,7 +487,7 @@ function openVideoPlayer(filePath, title) {
     modal.id = 'video-modal';
     modal.style.position = 'fixed';
     modal.style.inset = '0';
-    modal.style.background = 'rgba(0,0,0,0.95)';
+    modal.style.background = 'rgba(0, 0, 0, 0.95)';
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
     modal.style.alignItems = 'center';
@@ -494,9 +495,8 @@ function openVideoPlayer(filePath, title) {
     modal.style.zIndex = '9999';
     modal.style.padding = '20px';
 
-    // Кнопка закрытия (крестик в углу)
     const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '✕';
+    closeBtn.innerHTML = '&times;';
     closeBtn.style.position = 'absolute';
     closeBtn.style.top = '20px';
     closeBtn.style.right = '20px';
@@ -510,7 +510,7 @@ function openVideoPlayer(filePath, title) {
     closeBtn.style.cursor = 'pointer';
     closeBtn.style.zIndex = '10000';
     closeBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.5)';
-    closeBtn.title = 'Закрыть (Esc)';
+    closeBtn.title = 'Esc';
 
     const videoContainer = document.createElement('div');
     videoContainer.className = 'plyr-container';
@@ -522,16 +522,18 @@ function openVideoPlayer(filePath, title) {
     videoElement.className = 'plyr';
     videoElement.controls = true;
     videoElement.playsInline = true;
+    videoElement.setAttribute('playsinline', '');
+    videoElement.preload = 'auto';
 
     const source = document.createElement('source');
-    source.src = '/' + filePath;
-    source.type = getVideoType(filePath);
+    source.src = filePath;
+    source.type = getVideoType(filePath); // уже есть в файле [file:1]
     videoElement.appendChild(source);
 
     videoContainer.appendChild(videoElement);
 
     const titleEl = document.createElement('h3');
-    titleEl.textContent = title;
+    titleEl.textContent = title || '';
     titleEl.style.color = 'white';
     titleEl.style.margin = '15px 0 5px';
     titleEl.style.textAlign = 'center';
@@ -546,36 +548,120 @@ function openVideoPlayer(filePath, title) {
     document.body.appendChild(modal);
 
     const player = new Plyr(videoElement, {
-        controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
+        controls: [
+            'play-large',
+            'play',
+            'progress',
+            'current-time',
+            'duration',
+            'mute',
+            'volume',
+            'settings',
+            'pip',
+            'airplay',
+            'fullscreen'
+        ],
         hideControls: true,
-        keyboard: { focused: true, global: true }
+        keyboard: {
+            focused: true,
+            global: true
+        }
     });
 
-    // Функция закрытия
+    // Автоплей при открытии
+    player.on('ready', () => {
+        player.play().catch(e => {
+            console.warn('Autoplay failed:', e);
+        });
+    });
+
+    // Флаг, что мы уже перезагружали видео после паузы,
+    // чтобы не спамить load() каждый раз
+    let needReloadOnResume = false;
+
+    // Если долго стояли на паузе, браузер может «усыпить» декодер.
+    // Помечаем, что при следующем play нужно перезагрузить.
+    player.on('pause', () => {
+        console.log('Plyr pause at', videoElement.currentTime);
+        needReloadOnResume = true;
+    });
+
+    // При нажатии play после паузы — делаем мягкую перезагрузку:
+    // 1) сохраняем currentTime
+    // 2) вызываем load()
+    // 3) восстанавливаем позицию
+    // 4) снова play()
+    player.on('play', async () => {
+        console.log('Plyr play at', videoElement.currentTime);
+
+        if (!needReloadOnResume) {
+            return;
+        }
+
+        needReloadOnResume = false;
+
+        const t = videoElement.currentTime || 0;
+        try {
+            console.log('Reloading video element, time =', t);
+            videoElement.pause();
+            videoElement.load();
+
+            // ждём, пока метаданные/буфер подтянутся
+            await new Promise(resolve => {
+                const onCanPlay = () => {
+                    videoElement.removeEventListener('canplay', onCanPlay);
+                    resolve();
+                };
+                videoElement.addEventListener('canplay', onCanPlay);
+            });
+
+            videoElement.currentTime = t;
+            await videoElement.play();
+        } catch (e) {
+            console.warn('Resume with reload failed:', e);
+        }
+    });
+
+    // Диагностика зависаний буфера
+    videoElement.addEventListener('stalled', () => {
+        console.warn('Video stalled');
+        needReloadOnResume = true;
+    });
+
+    videoElement.addEventListener('waiting', () => {
+        console.warn('Video waiting for data');
+    });
+
+    videoElement.addEventListener('error', (e) => {
+        console.error('Video error', e);
+    });
+
     const closeModal = () => {
-        player.destroy();
-        modal.remove();
+        try { player.pause(); } catch (e) {}
+        try { player.destroy(); } catch (e) {}
+        if (modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+        }
         document.removeEventListener('keydown', escHandler);
     };
 
-    // Обработчики закрытия
     closeBtn.onclick = closeModal;
 
     const escHandler = (e) => {
-        if (e.key === 'Escape') closeModal();
+        if (e.key === 'Escape') {
+            closeModal();
+        }
     };
     document.addEventListener('keydown', escHandler);
 
-    // Клик по фону
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    // Автофокус на плеере
-    player.on('ready', () => {
-        player.play();
+        if (e.target === modal) {
+            closeModal();
+        }
     });
 }
+
+
 
 function getVideoType(filePath) {
     const ext = filePath.split('.').pop().toLowerCase();

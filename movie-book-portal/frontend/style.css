@@ -575,7 +575,7 @@ main {
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/assets/fonts/EBGaramond.woff2') format('woff2');
+  src: url('assets/fonts/EBGaramond.woff2') format('woff2');
 }
 
 /* Open Sans 400 */
@@ -584,7 +584,7 @@ main {
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/assets/fonts/OpenSans-Regular.woff2') format('woff2');
+  src: url('assets/fonts/OpenSans-Regular.woff2') format('woff2');
 }
 
 /* Open Sans 600 */
@@ -593,5 +593,5 @@ main {
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/assets/fonts/OpenSans-Semibold.woff2') format('woff2');
+  src: url('assets/fonts/OpenSans-Semibold.woff2') format('woff2');
 }

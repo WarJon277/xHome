@@ -10,8 +10,18 @@ async function fetchBooks() {
     return response.json();
 }
 
+async function fetchTvshows() {
+    const response = await fetch(`${API_BASE}/tvshows`);
+    return response.json();
+}
+
 async function fetchMovie(id) {
     const response = await fetch(`${API_BASE}/movies/${id}`);
+    return response.json();
+}
+
+async function fetchTvshow(id) {
+    const response = await fetch(`${API_BASE}/tvshows/${id}`);
     return response.json();
 }
 
@@ -22,6 +32,15 @@ async function fetchBook(id) {
 
 async function createMovie(data) {
     const response = await fetch(`${API_BASE}/movies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+async function createTvshow(data) {
+    const response = await fetch(`${API_BASE}/tvshows`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -50,6 +69,31 @@ async function uploadMovieThumbnail(movieId, file) {
         });
         
         xhr.open('POST', `${API_BASE}/movies/${movieId}/upload_thumbnail`);
+        xhr.send(formData);
+    });
+}
+
+async function uploadTvshowThumbnail(tvshowId, file) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(JSON.parse(xhr.responseText));
+            } else {
+                const errorData = JSON.parse(xhr.responseText);
+                reject(new Error(errorData.detail || 'Ошибка при загрузке миниатюры'));
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке миниатюры'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/tvshows/${tvshowId}/upload_thumbnail`);
         xhr.send(formData);
     });
 }
@@ -86,6 +130,38 @@ async function uploadMovieFile(movieId, file, onProgress) {
     });
 }
 
+async function uploadTvshowFile(tvshowId, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percentComplete = Math.round((e.loaded / e.total) * 10);
+                onProgress(percentComplete);
+            }
+        });
+        
+        xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        const errorData = JSON.parse(xhr.responseText);
+                        reject(new Error(errorData.detail || 'Ошибка при загрузке файла'));
+                    }
+                });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке файла'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/tvshows/${tvshowId}/upload`);
+        xhr.send(formData);
+    });
+}
+
 async function createBook(data) {
     const response = await fetch(`${API_BASE}/books`, {
         method: 'POST',
@@ -93,6 +169,10 @@ async function createBook(data) {
         body: JSON.stringify(data)
     });
     return response.json();
+}
+
+async function deleteTvshow(id) {
+    await fetch(`${API_BASE}/tvshows/${id}`, { method: 'DELETE' });
 }
 
 async function deleteMovie(id) {
@@ -103,8 +183,69 @@ async function deleteBook(id) {
     await fetch(`${API_BASE}/books/${id}`, { method: 'DELETE' });
 }
 
+async function searchTvshows(query) {
+    const response = await fetch(`${API_BASE}/tvshows/search?query=${encodeURIComponent(query)}`);
+    return response.json();
+}
+
 async function searchMovies(query) {
     const response = await fetch(`${API_BASE}/movies/search?query=${encodeURIComponent(query)}`);
+    return response.json();
+}
+
+async function createEpisode(data) {
+    const response = await fetch(`${API_BASE}/episodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+async function uploadEpisodeFile(episodeId, file) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch (e) {
+                    reject(new Error('Ошибка при обработке ответа сервера'));
+                }
+            } else {
+                try {
+                    const errorData = JSON.parse(xhr.responseText);
+                    reject(new Error(errorData.detail || `Ошибка при загрузке файла эпизода: ${xhr.status}`));
+                } catch (e) {
+                    reject(new Error(`Ошибка при загрузке файла эпизода: ${xhr.status}`));
+                }
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке файла эпизода'));
+        });
+        
+        xhr.addEventListener('timeout', () => {
+            reject(new Error('Таймаут при загрузке файла эпизода'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/episodes/${episodeId}/upload`);
+        xhr.send(formData);
+    });
+}
+
+async function updateTvshow(id, data) {
+    const response = await fetch(`${API_BASE}/tvshows/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
     return response.json();
 }
 
@@ -129,4 +270,79 @@ async function updateBook(id, data) {
 async function searchBooks(query) {
     const response = await fetch(`${API_BASE}/books/search?query=${encodeURIComponent(query)}`);
     return response.json();
+}
+
+async function fetchEpisodes(tvshowId, season = null) {
+    let url = `${API_BASE}/episodes?tvshow_id=${tvshowId}`;
+    if (season) {
+        url += `&season=${season}`;
+    }
+    const response = await fetch(url);
+    return response.json();
+}
+
+async function updateEpisode(id, data) {
+    const response = await fetch(`${API_BASE}/episodes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+async function deleteEpisode(id) {
+    const response = await fetch(`${API_BASE}/episodes/${id}`, { method: 'DELETE' });
+    return response.json();
+}
+
+// Удаляем дублирующуюся функцию
+
+async function uploadEpisodeFile(episodeId, file) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch (e) {
+                    reject(new Error('Ошибка при обработке ответа сервера'));
+                }
+            } else {
+                try {
+                    const errorData = JSON.parse(xhr.responseText);
+                    reject(new Error(errorData.detail || `Ошибка при загрузке файла эпизода: ${xhr.status}`));
+                } catch (e) {
+                    reject(new Error(`Ошибка при загрузке файла эпизода: ${xhr.status}`));
+                }
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке файла эпизода'));
+        });
+        
+        xhr.addEventListener('timeout', () => {
+            reject(new Error('Таймаут при загрузке файла эпизода'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/episodes/${episodeId}/upload`);
+        xhr.send(formData);
+    });
+}
+
+// Функция для получения ID сериала по названию
+async function getTvshowIdByName(name) {
+    try {
+        const tvshows = await fetchTvshows();
+        const tvshow = tvshows.find(show => show.title === name);
+        return tvshow ? tvshow.id : null;
+    } catch (error) {
+        console.error('Ошибка при получении ID сериала по названию:', error);
+        throw error;
+    }
 }

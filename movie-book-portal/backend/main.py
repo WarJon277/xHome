@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from database import get_db, create_tables, add_sample_data as add_sample_data_movies, Movie
 from database_books import get_db_books, create_books_tables, Book  # ← обязательно импортируем модель Book
+from database_tvshows import get_db_tvshows, create_tvshows_tables, Tvshow, Episode
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -47,6 +48,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
 # Создание таблиц и тестовых данных
 create_tables()
 create_books_tables()          # ← это создаст books со ВСЕМИ колонками из модели
+create_tvshows_tables()        # ← создание таблиц для сериалов
 
 
 @app.get("/")
@@ -67,6 +69,33 @@ class MovieCreate(BaseModel):
     director: Optional[str] = None  # Разрешаем None
     genre: Optional[str] = None
     rating: Optional[float] = None
+    description: Optional[str] = None
+
+    model_config = {
+        "extra": "ignore",              # Игнорируем лишние поля
+        "populate_by_name": True,
+    }
+
+class TvshowCreate(BaseModel):
+    title: str
+    year: Optional[int] = None
+    director: Optional[str] = None  # Разрешаем None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+    episodes_count: Optional[int] = None
+    season_count: Optional[int] = None
+
+    model_config = {
+        "extra": "ignore",              # Игнорируем лишние поля
+        "populate_by_name": True,
+    }
+
+class EpisodeCreate(BaseModel):
+    tvshow_id: int
+    season_number: int
+    episode_number: int
+    title: Optional[str] = None
     description: Optional[str] = None
 
     model_config = {
@@ -434,6 +463,226 @@ def get_book_file_resource(book_id: int, file_path: str, db: Session = Depends(g
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error accessing resource: {str(e)}")
+
+
+def get_db_tvshows_simple():
+    db = next(get_db_tvshows())
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.get("/tvshows")
+def get_tvshows(genre: str = None, db: Session = Depends(get_db_tvshows_simple)):
+    query = db.query(Tvshow)
+    if genre and genre != "Все":
+        query = query.filter(Tvshow.genre.ilike(f"%{genre}%"))
+    return query.all()
+
+
+@app.post("/tvshows")
+def create_tvshow(tvshow: TvshowCreate, db: Session = Depends(get_db_tvshows_simple)):
+    db_tvshow = Tvshow(**tvshow.dict())
+    db.add(db_tvshow)
+    db.commit()
+    db.refresh(db_tvshow)
+    return db_tvshow
+
+
+@app.get("/tvshows/{tvshow_id}")
+def get_tvshow(tvshow_id: int, db: Session = Depends(get_db_tvshows_simple)):
+    tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
+    if not tvshow:
+        raise HTTPException(status_code=404, detail="Tvshow not found")
+    return tvshow
+
+
+@app.put("/tvshows/{tvshow_id}")
+def update_tvshow(tvshow_id: int, tvshow: TvshowCreate, db: Session = Depends(get_db_tvshows_simple)):
+    db_tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
+    if not db_tvshow:
+        raise HTTPException(status_code=404, detail="Tvshow not found")
+    for key, value in tvshow.dict().items():
+        setattr(db_tvshow, key, value)
+    db.commit()
+    db.refresh(db_tvshow)
+    return db_tvshow
+
+
+@app.delete("/tvshows/{tvshow_id}")
+def delete_tvshow(tvshow_id: int, db: Session = Depends(get_db_tvshows_simple)):
+    tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
+    if not tvshow:
+        raise HTTPException(status_code=404, detail="Tvshow not found")
+    db.delete(tvshow)
+    db.commit()
+    return {"message": "Tvshow deleted successfully"}
+
+
+@app.post("/tvshows/{tvshow_id}/upload")
+async def upload_tvshow_file(tvshow_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_tvshows_simple)):
+    tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
+    if not tvshow:
+        raise HTTPException(status_code=404, detail="Tvshow not found")
+
+    allowed_ext = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".3g2", ".ogv", ".qt"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат видео.")
+
+    file_path = f"uploads/tvshows/{tvshow_id}_{file.filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    tvshow.file_path = file_path
+    db.commit()
+    return tvshow
+
+
+@app.post("/tvshows/{tvshow_id}/upload_thumbnail")
+async def upload_tvshow_thumbnail(tvshow_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_tvshows_simple)):
+    tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
+    if not tvshow:
+        raise HTTPException(status_code=404, detail="Tvshow not found")
+
+    allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
+
+    thumb_path = f"uploads/tvshows/{tvshow_id}_thumb{ext}"
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+    with open(thumb_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    tvshow.thumbnail_path = thumb_path
+    db.commit()
+    return tvshow
+
+
+@app.get("/tvshows/search")
+def search_tvshows(query: str, db: Session = Depends(get_db_tvshows_simple)):
+    return db.query(Tvshow).filter(Tvshow.title.ilike(f"%{query}%")).all()
+
+
+# ==================== ЭПИЗОДЫ ====================
+
+@app.get("/episodes")
+def get_episodes(tvshow_id: Optional[int] = None, season: Optional[int] = None, db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        query = db.query(Episode)
+        if tvshow_id:
+            query = query.filter(Episode.tvshow_id == tvshow_id)
+        if season:
+            query = query.filter(Episode.season_number == season)
+        return query.all()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении эпизодов: {str(e)}")
+
+
+@app.get("/episodes/{episode_id}")
+def get_episode(episode_id: int, db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        episode = db.query(Episode).filter(Episode.id == episode_id).first()
+        if not episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+        return episode
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении эпизода: {str(e)}")
+
+
+@app.post("/episodes")
+def create_episode(episode: EpisodeCreate, db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        # Проверяем, существует ли сериал
+        tvshow = db.query(Tvshow).filter(Tvshow.id == episode.tvshow_id).first()
+        if not tvshow:
+            raise HTTPException(status_code=404, detail="Tvshow not found")
+        
+        # Создаем новый эпизод
+        db_episode = Episode(**episode.dict())
+        db.add(db_episode)
+        db.commit()
+        db.refresh(db_episode)
+        return db_episode
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при создании эпизода: {str(e)}")
+
+
+@app.put("/episodes/{episode_id}")
+def update_episode(episode_id: int, episode: EpisodeCreate, db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        db_episode = db.query(Episode).filter(Episode.id == episode_id).first()
+        if not db_episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+        for key, value in episode.dict().items():
+            setattr(db_episode, key, value)
+        db.commit()
+        db.refresh(db_episode)
+        return db_episode
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при обновлении эпизода: {str(e)}")
+
+
+@app.delete("/episodes/{episode_id}")
+def delete_episode(episode_id: int, db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        episode = db.query(Episode).filter(Episode.id == episode_id).first()
+        if not episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+        db.delete(episode)
+        db.commit()
+        return {"message": "Episode deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при удалении эпизода: {str(e)}")
+
+
+@app.post("/episodes/{episode_id}/upload")
+async def upload_episode_file(episode_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_tvshows_simple)):
+    try:
+        episode = db.query(Episode).filter(Episode.id == episode_id).first()
+        if not episode:
+            raise HTTPException(status_code=404, detail="Episode not found")
+
+        allowed_ext = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", ".3gp", ".3g2", ".ogv", ".qt"}
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in allowed_ext:
+            raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат видео.")
+
+        file_path = f"uploads/tvshows/{episode.tvshow_id}/S{episode.season_number:02d}E{episode.episode_number:02d}_{file.filename}"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        episode.file_path = file_path
+        db.commit()
+        return episode
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла эпизода: {str(e)}")
 
 
 @app.get("/books/search")

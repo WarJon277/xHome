@@ -21,6 +21,7 @@
     <nav class="dropdown-menu" id="dropdown-menu">
       <button class="nav-item active" data-category="movie">Фильмы</button>
       <button class="nav-item" data-category="book">Книги</button>
+      <button class="nav-item" data-category="tvshow">Сериалы</button>
 
       <div class="genre-filter-container">
         <label for="genre-filter">Жанр:</label>
@@ -44,6 +45,7 @@
             <select id="category">
                 <option value="movie">Фильм</option>
                 <option value="book">Книга</option>
+                <option value="tvshow">Сериал</option>
             </select>
 
             <input type="text" id="title" placeholder="Название" required>
@@ -61,13 +63,30 @@
             <textarea id="description" placeholder="Описание" rows="4"></textarea>
 
             <!-- Загрузка основного файла -->
-            <div id="file-upload-container">
-                <label for="file">
-                    <span id="file-label-text">Файл видео / книги (PDF, DjVu, CBZ, EPUB)</span>:
-                </label>
-                <input type="file" id="file" accept="video/*,.pdf,.djvu,.djv,.cbz,.zip,.epub">
-                <div id="file-info"></div>
-            </div>
+                        <div id="file-upload-container">
+                            <label for="file">
+                                <span id="file-label-text">Файл видео / книги (PDF, DjVu, CBZ, EPUB)</span>:
+                            </label>
+                            <input type="file" id="file" accept="video/*,.pdf,.djvu,.djv,.cbz,.zip,.epub">
+                            <div id="file-info"></div>
+                        </div>
+                        
+                        <!-- Загрузка нескольких эпизодов (для сериалов) -->
+                        <div id="episodes-upload-container" style="display: none;">
+                                        <label for="episodes">Загрузить эпизоды:</label>
+                                        <div class="file-upload-wrapper">
+                                            <input type="file" id="episodes" accept="video/*" multiple style="display: none;">
+                                            <button type="button" class="file-upload-btn" onclick="document.getElementById('episodes').click()">Выбрать видео-файлы эпизодов</button>
+                                            <div id="episodes-info"></div>
+                                            <div class="help-text">Нажмите кнопку, чтобы выбрать несколько видео-файлов. Удерживайте Ctrl/Cmd при выборе файлов для выбора нескольких.</div>
+                                        </div>
+                                        <div class="season-episode-inputs">
+                                            <input type="number" id="season-number" placeholder="Номер сезона" min="1" value="1">
+                                            <input type="number" id="start-episode-number" placeholder="Начальный номер эпизода" min="1" value="1">
+                                        </div>
+                                        <div class="help-text"><strong>Инструкция:</strong> 1) Нажмите кнопку "Выбрать видео-файлы эпизодов" 2) Выберите несколько видео-файлов (удерживайте Ctrl/Cmd для множественного выбора) 3) Укажите номер сезона 4) Укажите начальный номер эпизода 5) Нажмите "Добавить"</div>
+                            </div>
+                        </div>
 
             <!-- Загрузка миниатюры -->
             <div id="thumbnail-upload-container">
@@ -99,7 +118,7 @@
 </main>
 
 <!-- Plyr для видео -->
-<script src="/assets/js/plyr.polyfilled.js"></script>
+<script src="/static/assets/js/plyr.polyfilled.js"></script>
 <script src="/static/api.js"></script>
 <script src="/static/app.js"></script>
 </body>

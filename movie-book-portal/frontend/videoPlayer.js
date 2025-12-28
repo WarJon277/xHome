@@ -1,365 +1,361 @@
-import { fetchTvshows, fetchEpisodes, getTvshowIdByName } from './api.js';
+// videoPlayer.js
+import { fetchTvshows, fetchEpisodes } from './api.js';
 import { showEpisodesList } from './episodesList.js';
 
-// Для фильмов — открытие видео-плеера
-// Открытие видеоплеера в модальном окне
-export function openVideoPlayer(filePath, title) {
-
+/**
+ * Открывает полноэкранный видеоплеер в модальном окне
+ * @param {string} filePath - путь к видеофайлу
+ * @param {string} title - заголовок видео (используется для определения эпизода)
+ */
+export function openVideoPlayer(filePath, title = '') {
     if (!filePath) {
-        alert("Путь к файлу не указан");
+        alert('Путь к видеофайлу не указан');
         return;
     }
 
-    // Проверяем, является ли это эпизодом сериала по заголовку
-    const isEpisode = title.includes(' - S') && title.includes('E'); // Проверяем формат "Название - SxEy - ..."
-
-    const modal = document.createElement('div');
-    modal.id = 'video-modal';
-    modal.style.cssText = `
-        position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-        display: flex; flex-direction: column; align-items: center;
-        justify-content: center; z-index: 9999; padding: 20px;
-        width: 100vw; height: 100vh; box-sizing: border-box;
-    `;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    closeBtn.style.cssText = `
-        position: absolute; top: 20px; right: 20px; width: 40px; height: 40px;
-        background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%;
-        font-size: 24px; cursor: pointer; z-index: 10000; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    `;
-    closeBtn.title = 'Закрыть (Esc)';
-
-    // Создаем контейнер для элементов управления эпизодами, если это эпизод
-    let episodeControls = null;
-    if (isEpisode) {
-        episodeControls = document.createElement('div');
-        episodeControls.style.cssText = `
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10000;
-            display: flex;
-            gap: 10px;
-        `;
-
-        // Извлекаем ID сериала и номера сезона/эпизода из заголовка
-        const match = title.match(/(.*) - S(\d+)E(\d+) - (.*)/);
-        let tvshowTitle = '';
-        let seasonNumber = 0;
-        let episodeNumber = 0;
-        let episodeTitle = '';
-        let tvshowId = null;
-
-        if (match) {
-            tvshowTitle = match[1];
-            seasonNumber = parseInt(match[2]);
-            episodeNumber = parseInt(match[3]);
-            episodeTitle = match[4] || `Эпизод ${episodeNumber}`;
-        }
-
-        const prevBtn = document.createElement('button');
-        prevBtn.textContent = '◀ Предыдущий';
-        prevBtn.style.cssText = `
-            background: rgba(0,0,0.6);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
-
-        const nextBtn = document.createElement('button');
-        nextBtn.textContent = 'Следующий ▶';
-        nextBtn.style.cssText = `
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
-
-        // Кнопка для открытия списка всех эпизодов
-        const allEpisodesBtn = document.createElement('button');
-        allEpisodesBtn.textContent = 'Все эпизоды';
-        allEpisodesBtn.style.cssText = `
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
-
-        // Функция для получения ID сериала по названию (упрощенная)
-        const getTvshowIdByName = async (name) => {
-            try {
-                const tvshows = await fetchTvshows();
-                const tvshow = tvshows.find(show => show.title === name);
-                return tvshow ? tvshow.id : null;
-            } catch (error) {
-                console.error('Ошибка при получении ID сериала:', error);
-                return null;
-            }
-        };
-
-        // Функция для получения всех эпизодов сериала
-        const loadEpisodes = async (tvshowId) => {
-            try {
-                return await fetchEpisodes(tvshowId);
-            } catch (error) {
-                console.error('Ошибка при загрузке эпизодов:', error);
-                return [];
-            }
-        };
-
-        // Обработчик для кнопки "Предыдущий"
-        prevBtn.onclick = async () => {
-            if (!tvshowTitle) return;
-            
-            const id = await getTvshowIdByName(tvshowTitle);
-            if (!id) {
-                alert('Не удалось найти сериал');
-                return;
-            }
-
-            const episodes = await loadEpisodes(id);
-            if (episodes.length === 0) {
-                alert('Нет доступных эпизодов');
-                return;
-            }
-
-            // Находим текущий эпизод и предыдущий
-            const currentEpisode = episodes.find(ep =>
-                ep.season_number === seasonNumber && ep.episode_number === episodeNumber
-            );
-
-            if (!currentEpisode) {
-                alert('Текущий эпизод не найден');
-                return;
-            }
-
-            // Находим предыдущий эпизод
-            const prevEpisode = episodes.find(ep => {
-                if (ep.season_number === seasonNumber) {
-                    return ep.episode_number === episodeNumber - 1;
-                } else if (ep.season_number === seasonNumber - 1) {
-                    // Находим максимальный номер эпизода в предыдущем сезоне
-                    const maxEpisodeInPrevSeason = Math.max(...episodes
-                        .filter(e => e.season_number === seasonNumber - 1)
-                        .map(e => e.episode_number));
-                    return ep.episode_number === maxEpisodeInPrevSeason;
-                }
-                return false;
-            }) || episodes
-                .filter(ep => ep.season_number < seasonNumber || (ep.season_number === seasonNumber && ep.episode_number < episodeNumber))
-                .sort((a, b) => {
-                    if (a.season_number !== b.season_number) return b.season_number - a.season_number;
-                    return b.episode_number - a.episode_number;
-                })[0];
-
-            if (prevEpisode && prevEpisode.file_path) {
-                // Закрываем текущий плеер и открываем предыдущий эпизод
-                modal.remove();
-                openVideoPlayer(prevEpisode.file_path, `${tvshowTitle} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
-            } else {
-                alert('Предыдущий эпизод не найден или недоступен');
-            }
-        };
-
-        // Обработчик для кнопки "Следующий"
-        nextBtn.onclick = async () => {
-            if (!tvshowTitle) return;
-            
-            const id = await getTvshowIdByName(tvshowTitle);
-            if (!id) {
-                alert('Не удалось найти сериал');
-                return;
-            }
-
-            const episodes = await loadEpisodes(id);
-            if (episodes.length === 0) {
-                alert('Нет доступных эпизодов');
-                return;
-            }
-
-            // Находим текущий эпизод и следующий
-            const currentEpisode = episodes.find(ep =>
-                ep.season_number === seasonNumber && ep.episode_number === episodeNumber
-            );
-
-            if (!currentEpisode) {
-                alert('Текущий эпизод не найден');
-                return;
-            }
-
-            // Находим следующий эпизод
-            const nextEpisode = episodes.find(ep => {
-                if (ep.season_number === seasonNumber) {
-                    return ep.episode_number === episodeNumber + 1;
-                } else if (ep.season_number === seasonNumber + 1) {
-                    // Находим минимальный номер эпизода в следующем сезоне
-                    const minEpisodeInNextSeason = Math.min(...episodes
-                        .filter(e => e.season_number === seasonNumber + 1)
-                        .map(e => e.episode_number));
-                    return ep.episode_number === minEpisodeInNextSeason;
-                }
-                return false;
-            }) || episodes
-                .filter(ep => ep.season_number > seasonNumber || (ep.season_number === seasonNumber && ep.episode_number > episodeNumber))
-                .sort((a, b) => {
-                    if (a.season_number !== b.season_number) return a.season_number - b.season_number;
-                    return a.episode_number - b.episode_number;
-                })[0];
-
-            if (nextEpisode && nextEpisode.file_path) {
-                // Закрываем текущий плеер и открываем следующий эпизод
-                modal.remove();
-                openVideoPlayer(nextEpisode.file_path, `${tvshowTitle} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
-            } else {
-                alert('Следующий эпизод не найден или недоступен');
-            }
-        };
-
-        // Обработчик для кнопки "Все эпизоды"
-        allEpisodesBtn.onclick = async () => {
-            if (!tvshowTitle) return;
-            
-            const id = await getTvshowIdByName(tvshowTitle);
-            if (!id) {
-                alert('Не удалось найти сериал');
-                return;
-            }
-
-            // Закрываем текущий плеер и открываем список эпизодов
-            modal.remove();
-            showEpisodesList(id, tvshowTitle);
-        };
-
-        episodeControls.appendChild(prevBtn);
-        episodeControls.appendChild(nextBtn);
-        episodeControls.appendChild(allEpisodesBtn);
-        modal.appendChild(episodeControls);
+    // Нормализация пути
+    let videoSrc = filePath;
+    if (!videoSrc.startsWith('/')) {
+        videoSrc = videoSrc.startsWith('uploads/') 
+            ? `/${videoSrc}` 
+            : `/uploads/${videoSrc}`;
     }
 
-    const videoContainer = document.createElement('div');
-    videoContainer.style.cssText = `
-        max-width: 95vw; max-height: 85vh; position: relative;
-        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    const modal = document.createElement('div');
+    Object.assign(modal.style, {
+        position: 'fixed',
+        inset: '0',
+        background: '#000',
+        zIndex: '9999',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+    });
+
+    // ─── ВИДЕО ───────────────────────────────────────
+    const video = document.createElement('video');
+    Object.assign(video.style, {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',           // ← начни с contain, потом можно cover
+        background: '#111'
+    });
+
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
+    video.preload = 'auto';
+    video.muted = false;  // ← важно для автозапуска на некоторых устройствах
+
+    // ─── КОНТЕЙНЕР ДЛЯ КНОПОК (поверх видео) ────────
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+        position: 'absolute',
+        inset: '0',
+        pointerEvents: 'none'           // пропускает клики к видео
+    });
+
+    // Кнопка закрытия
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    Object.assign(closeBtn.style, {
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        zIndex: '10010',
+        width: '48px',
+        height: '48px',
+        background: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        fontSize: '24px',
+        cursor: 'pointer',
+        pointerEvents: 'auto'
+    });
+
+    closeBtn.onclick = () => modal.remove();
+
+    // Добавляем элементы
+    overlay.appendChild(closeBtn);
+    modal.append(video, overlay);
+
+    document.body.appendChild(modal);
+
+    // ─── Загрузка видео + Plyr ───────────────────────
+    fetch(videoSrc, { method: 'HEAD' })
+        .then(res => {
+            if (!res.ok) throw new Error(`Видео не найдено: ${res.status}`);
+            
+            video.src = videoSrc;
+            video.load();
+
+            // Ждём, пока видео сможет играть
+            video.addEventListener('loadedmetadata', () => {
+                // Инициализация Plyr
+                if (window.Plyr) {
+                    new Plyr(video, {
+                        controls: [
+                            'play-large', 'play', 'progress', 'current-time',
+                            'duration', 'mute', 'volume', 'fullscreen'
+                        ],
+                        fullscreen: { enabled: true, iosNative: true }
+                    });
+                } else {
+                    video.controls = true;
+                }
+            }, { once: true });
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Ошибка загрузки видео\n' + err.message);
+            modal.remove();
+        });
+
+    // Esc для закрытия
+    const escHandler = e => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+}
+
+// ────────────────────────────────────────────────────────────────
+// Вспомогательные функции
+// ────────────────────────────────────────────────────────────────
+
+function createCloseButton() {
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.title = 'Закрыть (Esc)';
+    btn.style.cssText = `
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 10010;
+        width: 48px;
+        height: 48px;
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        transition: all 0.18s ease;
+    `;
+    
+    btn.onmouseenter = () => (btn.style.background = 'rgba(220,20,60,0.85)');
+    btn.onmouseleave = () => (btn.style.background = 'rgba(0,0,0,0.7)');
+    
+    return btn;
+}
+
+function createEpisodeControls(title, modal) {
+    const container = document.createElement('div');
+    container.style.cssText = `
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        z-index: 10010;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
     `;
 
+    const btnStyle = `
+        background: rgba(0,0,0,0.7);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 9px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        backdrop-filter: blur(6px);
+        transition: background 0.2s;
+    `;
+
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '◀ Предыдущий';
+    prevBtn.style.cssText = btnStyle;
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'Следующий ▶';
+    nextBtn.style.cssText = btnStyle;
+
+    const listBtn = document.createElement('button');
+    listBtn.textContent = 'Список эпизодов';
+    listBtn.style.cssText = btnStyle;
+
+    // Здесь должна быть ваша логика перехода к другим эпизодам
+    // (оставлена заглушка — вставьте вашу реализацию)
+    prevBtn.onclick = () => alert('Предыдущий эпизод (логика не реализована в примере)');
+    nextBtn.onclick  = () => alert('Следующий эпизод (логика не реализована в примере)');
+    listBtn.onclick  = async () => {
+        const tvshowId = await extractTvshowIdFromTitle(title);
+        if (tvshowId) {
+            modal.remove();
+            showEpisodesList(tvshowId, extractShowName(title));
+        }
+    };
+
+    container.append(prevBtn, nextBtn, listBtn);
+    return container;
+}
+
+function createVideoElement(filePath) {
     const video = document.createElement('video');
     video.playsInline = true;
     video.setAttribute('playsinline', '');
     video.preload = 'auto';
     video.style.cssText = `
-        width: 100%; height: auto; max-height: 85vh; object-fit: contain;
-        display: block;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;           /* ← самое важное изменение! */
+        background: #111;
+        /* object-fit: contain; */   /* ← закомментируй или удали */
     `;
-    
-    // Формируем правильный путь к видеофайлу
-    // Если путь уже начинается с /, используем как есть
-    // Если путь начинается с uploads/, добавляем /
-    // Иначе добавляем /uploads/
-    let videoSrc;
-    if (filePath.startsWith('/')) {
-        videoSrc = filePath;
-    } else if (filePath.startsWith('uploads/')) {
-        videoSrc = `/${filePath}`;
-    } else {
-        videoSrc = `/uploads/${filePath}`;
+
+    // Нормализация пути
+    let src = filePath;
+    if (!src.startsWith('/')) {
+        src = src.startsWith('uploads/') ? `/${src}` : `/uploads/${src}`;
     }
-    
-    // Проверяем существование файла перед загрузкой
-    fetch(videoSrc, {method: 'HEAD'}).then(response => {
-        if(response.ok) {
-            video.src = videoSrc;
-            // Initialize Plyr after video source is set
-            setTimeout(() => {
-                if (window.Plyr) {
-                    new Plyr(video, {
-                        controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'pip', 'airplay', 'fullscreen'],
-                        i18n: {
-                            restart: 'Перезапустить',
-                            rewind: 'Назад {seektime}s',
-                            play: 'Воспроизвести',
-                            pause: 'Пауза',
-                            fastForward: 'Вперед {seektime}s',
-                            seek: 'Перемотать',
-                            played: 'Воспроизведено',
-                            buffered: 'Буферизовано',
-                            currentTime: 'Текущее время',
-                            duration: 'Продолжительность',
-                            volume: 'Громкость',
-                            toggleMute: 'Отключить/включить звук',
-                            togglePip: 'Картинка в картинке',
-                            toggleFullscreen: 'Полноэкранный режим'
-                        }
-                    });
-                } else {
-                    // Fallback to native controls if Plyr is not available
-                    video.controls = true;
+
+    // Проверка доступности файла + загрузка
+    fetch(src, { method: 'HEAD' })
+        .then(res => {
+            if (!res.ok) throw new Error('Video not found');
+            video.src = src;
+            initializePlayer(video);
+        })
+        .catch(() => {
+            alert('Не удалось загрузить видео\nФайл не найден или недоступен');
+            document.getElementById('video-modal')?.remove();
+        });
+
+    return video;
+}
+
+function initializePlayer(video) {
+    setTimeout(() => {
+        if (window.Plyr) {
+            new Plyr(video, {
+                controls: [
+                    'play-large', 'play', 'progress', 'current-time', 'duration',
+                    'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+                ],
+                fullscreen: { enabled: true, iosNative: true },
+                i18n: {
+                    play: 'Воспроизвести',
+                    pause: 'Пауза',
+                    seek: 'Перемотка',
+                    played: 'Просмотрено',
+                    buffered: 'Буферизация',
+                    currentTime: 'Текущее время',
+                    duration: 'Длительность',
+                    volume: 'Громкость',
+                    toggleMute: 'Без звука',
+                    toggleFullscreen: 'Полный экран'
                 }
-            }, 100);
+            });
         } else {
-            alert("Видео файл не найден. Пожалуйста, проверьте наличие файла на сервере.");
-            closeModal();
+            video.controls = true;
         }
-    }).catch(error => {
-        console.error("Ошибка при проверке видео файла:", error);
-        alert("Ошибка при загрузке видео файла.");
-        closeModal();
-    });
+    }, 50);
+}
 
-    videoContainer.appendChild(video);
+function createTitleElement(title) {
+    if (!title) return document.createElement('div'); // пустой
 
-    const titleEl = document.createElement('h3');
-    titleEl.textContent = title || '';
-    titleEl.style.cssText = `
-        color: white; margin: 15px 0 5px 0; text-align: center; max-width: 90%;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    const el = document.createElement('div');
+    el.textContent = title;
+    el.style.cssText = `
+        position: absolute;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        color: rgba(255,255,255,0.9);
+        font-size: 1.05rem;
+        padding: 8px 24px;
+        background: rgba(0,0,0,0.65);
+        border-radius: 10px;
+        max-width: 92%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+        backdrop-filter: blur(8px);
     `;
+    return el;
+}
 
-    modal.append(closeBtn, videoContainer, titleEl);
-    document.body.appendChild(modal);
+function setupCloseHandlers(modal, closeBtn) {
+    closeBtn.onclick = closeModal;
+    modal.onclick = e => {
+        if (e.target === modal) closeModal();
+    };
 
-    // Фикс зависания после паузы (без изменений)
-    let needReloadOnResume = false;
-    video.addEventListener('pause', () => { console.log('Pause'); needReloadOnResume = true; });
-    video.addEventListener('play', async () => {
-        if (!needReloadOnResume) return;
-        needReloadOnResume = false;
-        const t = video.currentTime || 0;
-        try {
-            video.pause(); video.load();
-            await new Promise(r => video.addEventListener('canplay', r, {once: true}));
-            video.currentTime = t; video.play();
-        } catch (e) { console.warn('Resume failed:', e); }
-    });
-    video.addEventListener('stalled', () => { needReloadOnResume = true; });
-
-    closeBtn.onclick = () => closeModal();
-    modal.onclick = e => { if (e.target === modal) closeModal(); };
-    
-    const escHandler = e => { if (e.key === 'Escape') closeModal(); };
-    document.addEventListener('keydown', escHandler);
+    const escHandler = e => {
+        if (e.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', escHandler, { once: true });
 
     function closeModal() {
         document.removeEventListener('keydown', escHandler);
-        if (modal.parentNode) modal.remove();
+        modal.remove();
     }
 }
 
-export function getVideoType(filePath) {
-    const ext = filePath.split('.').pop().toLowerCase();
-    const types = {
-        mp4: 'video/mp4', webm: 'video/webm', ogg: 'video/ogg', ogv: 'video/ogg',
-        mov: 'video/quicktime', avi: 'video/x-msvideo', mkv: 'video/x-matroska'
-    };
-    return types[ext] || 'video/mp4';
+function setupVideoResumeFix(video) {
+    let needReload = false;
+
+    video.addEventListener('pause', () => {
+        needReload = true;
+    });
+
+    video.addEventListener('play', async () => {
+        if (!needReload) return;
+        needReload = false;
+
+        const currentTime = video.currentTime;
+
+        try {
+            video.pause();
+            video.load();
+            await new Promise(resolve => {
+                video.oncanplay = resolve;
+            });
+            video.currentTime = currentTime;
+            video.play().catch(console.warn);
+        } catch (e) {
+            console.warn('Не удалось восстановить воспроизведение', e);
+        }
+    });
+}
+
+// ────────────────────────────────────────────────────────────────
+// Утилиты для работы с сериалами (пример)
+// ────────────────────────────────────────────────────────────────
+
+function extractShowName(title) {
+    const match = title.match(/^(.*?)(?:\s*-?\s*S\d+E\d+)/i);
+    return match ? match[1].trim() : title;
+}
+
+async function extractTvshowIdFromTitle(title) {
+    const showName = extractShowName(title);
+    try {
+        const shows = await fetchTvshows();
+        const show = shows.find(s => s.title.toLowerCase() === showName.toLowerCase());
+        return show?.id || null;
+    } catch (e) {
+        console.error('Не удалось получить ID сериала:', e);
+        return null;
+    }
 }

@@ -45,6 +45,16 @@ os.makedirs(BOOKS_UPLOADS, exist_ok=True)
 app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
 
+# Добавляем маршрут для favicon.ico
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = os.path.join(FRONTEND_PATH, "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/x-icon")
+    else:
+        # Возвращаем пустой ответ, если favicon не найден
+        raise HTTPException(status_code=404, detail="Favicon not found")
+
 # Создание таблиц и тестовых данных
 create_tables()
 create_books_tables()          # ← это создаст books со ВСЕМИ колонками из модели
@@ -176,12 +186,15 @@ async def upload_movie_file(movie_id: int, file: UploadFile = File(...), db: Ses
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат видео.")
 
-    file_path = f"uploads/movies/{movie_id}_{file.filename}"
+    file_path = os.path.abspath(f"uploads/movies/{movie_id}_{file.filename}")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    movie.file_path = file_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(file_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    movie.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     db.commit()
     return movie
 
@@ -197,12 +210,15 @@ async def upload_movie_thumbnail(movie_id: int, file: UploadFile = File(...), db
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
-    thumb_path = f"uploads/movies/{movie_id}_thumb{ext}"
+    thumb_path = os.path.abspath(f"uploads/movies/{movie_id}_thumb{ext}")
     os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
     with open(thumb_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    movie.thumbnail_path = thumb_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(thumb_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    movie.thumbnail_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     db.commit()
     return movie
 
@@ -280,11 +296,15 @@ async def upload_book_file(book_id: int, file: UploadFile = File(...), db: Sessi
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат книги")
 
-    file_path = f"uploads/books/{book_id}_{file.filename}"
+    file_path = os.path.abspath(f"uploads/books/{book_id}_{file.filename}")
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    book.file_path = file_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(file_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    book.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     book.total_pages = 1  # будет обновлено при первом открытии
     db.commit()
     return book
@@ -301,11 +321,15 @@ async def upload_book_thumbnail(book_id: int, file: UploadFile = File(...), db: 
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
-    thumb_path = f"uploads/books/{book_id}_thumb{ext}"
+    thumb_path = os.path.abspath(f"uploads/books/{book_id}_thumb{ext}")
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
     with open(thumb_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    book.thumbnail_path = thumb_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(thumb_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    book.thumbnail_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     db.commit()
     return book
 
@@ -531,12 +555,15 @@ async def upload_tvshow_file(tvshow_id: int, file: UploadFile = File(...), db: S
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат видео.")
 
-    file_path = f"uploads/tvshows/{tvshow_id}_{file.filename}"
+    file_path = os.path.abspath(f"uploads/tvshows/{tvshow_id}_{file.filename}")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    tvshow.file_path = file_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(file_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    tvshow.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     db.commit()
     return tvshow
 
@@ -552,12 +579,15 @@ async def upload_tvshow_thumbnail(tvshow_id: int, file: UploadFile = File(...), 
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
-    thumb_path = f"uploads/tvshows/{tvshow_id}_thumb{ext}"
+    thumb_path = os.path.abspath(f"uploads/tvshows/{tvshow_id}_thumb{ext}")
     os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
     with open(thumb_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    tvshow.thumbnail_path = thumb_path
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(thumb_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    tvshow.thumbnail_path = relative_path.replace(os.sep, '/').replace('\\', '/')
     db.commit()
     return tvshow
 
@@ -669,12 +699,15 @@ async def upload_episode_file(episode_id: int, file: UploadFile = File(...), db:
         if ext not in allowed_ext:
             raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат видео.")
 
-        file_path = f"uploads/tvshows/{episode.tvshow_id}/S{episode.season_number:02d}E{episode.episode_number:02d}_{file.filename}"
+        file_path = os.path.abspath(f"uploads/tvshows/{episode.tvshow_id}/S{episode.season_number:02d}E{episode.episode_number:02d}_{file.filename}")
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        episode.file_path = file_path
+        # Сохраняем относительный путь для корректной отдачи через статический маршрут
+        relative_path = os.path.relpath(file_path, BASE_DIR)
+        # Приводим к стандартным слэшам для URL
+        episode.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
         db.commit()
         return episode
     except HTTPException:

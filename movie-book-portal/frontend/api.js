@@ -1,36 +1,36 @@
 const API_BASE = window.location.origin;
 
-async function fetchMovies() {
+export async function fetchMovies() {
     const response = await fetch(`${API_BASE}/movies`);
     return response.json();
 }
 
-async function fetchBooks() {
+export async function fetchBooks() {
     const response = await fetch(`${API_BASE}/books`);
     return response.json();
 }
 
-async function fetchTvshows() {
+export async function fetchTvshows() {
     const response = await fetch(`${API_BASE}/tvshows`);
     return response.json();
 }
 
-async function fetchMovie(id) {
+export async function fetchMovie(id) {
     const response = await fetch(`${API_BASE}/movies/${id}`);
     return response.json();
 }
 
-async function fetchTvshow(id) {
+export async function fetchTvshow(id) {
     const response = await fetch(`${API_BASE}/tvshows/${id}`);
     return response.json();
 }
 
-async function fetchBook(id) {
+export async function fetchBook(id) {
     const response = await fetch(`${API_BASE}/books/${id}`);
     return response.json();
 }
 
-async function createMovie(data) {
+export async function createMovie(data) {
     const response = await fetch(`${API_BASE}/movies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +39,7 @@ async function createMovie(data) {
     return response.json();
 }
 
-async function createTvshow(data) {
+export async function createTvshow(data) {
     const response = await fetch(`${API_BASE}/tvshows`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,7 +48,7 @@ async function createTvshow(data) {
     return response.json();
 }
 
-async function uploadMovieThumbnail(movieId, file) {
+export async function uploadMovieThumbnail(movieId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -73,7 +73,7 @@ async function uploadMovieThumbnail(movieId, file) {
     });
 }
 
-async function uploadTvshowThumbnail(tvshowId, file) {
+export async function uploadTvshowThumbnail(tvshowId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -98,7 +98,7 @@ async function uploadTvshowThumbnail(tvshowId, file) {
     });
 }
 
-async function uploadMovieFile(movieId, file, onProgress) {
+export async function uploadMovieFile(movieId, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -130,7 +130,7 @@ async function uploadMovieFile(movieId, file, onProgress) {
     });
 }
 
-async function uploadTvshowFile(tvshowId, file, onProgress) {
+export async function uploadTvshowFile(tvshowId, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -162,7 +162,7 @@ async function uploadTvshowFile(tvshowId, file, onProgress) {
     });
 }
 
-async function createBook(data) {
+export async function createBook(data) {
     const response = await fetch(`${API_BASE}/books`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,29 +171,29 @@ async function createBook(data) {
     return response.json();
 }
 
-async function deleteTvshow(id) {
+export async function deleteTvshow(id) {
     await fetch(`${API_BASE}/tvshows/${id}`, { method: 'DELETE' });
 }
 
-async function deleteMovie(id) {
+export async function deleteMovie(id) {
     await fetch(`${API_BASE}/movies/${id}`, { method: 'DELETE' });
 }
 
-async function deleteBook(id) {
+export async function deleteBook(id) {
     await fetch(`${API_BASE}/books/${id}`, { method: 'DELETE' });
 }
 
-async function searchTvshows(query) {
+export async function searchTvshows(query) {
     const response = await fetch(`${API_BASE}/tvshows/search?query=${encodeURIComponent(query)}`);
     return response.json();
 }
 
-async function searchMovies(query) {
+export async function searchMovies(query) {
     const response = await fetch(`${API_BASE}/movies/search?query=${encodeURIComponent(query)}`);
     return response.json();
 }
 
-async function createEpisode(data) {
+export async function createEpisode(data) {
     const response = await fetch(`${API_BASE}/episodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,7 +202,7 @@ async function createEpisode(data) {
     return response.json();
 }
 
-async function uploadEpisodeFile(episodeId, file) {
+export async function uploadEpisodeFile(episodeId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -240,7 +240,7 @@ async function uploadEpisodeFile(episodeId, file) {
     });
 }
 
-async function updateTvshow(id, data) {
+export async function updateTvshow(id, data) {
     const response = await fetch(`${API_BASE}/tvshows/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -249,7 +249,7 @@ async function updateTvshow(id, data) {
     return response.json();
 }
 
-async function updateMovie(id, data) {
+export async function updateMovie(id, data) {
     const response = await fetch(`${API_BASE}/movies/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -258,7 +258,7 @@ async function updateMovie(id, data) {
     return response.json();
 }
 
-async function updateBook(id, data) {
+export async function updateBook(id, data) {
     const response = await fetch(`${API_BASE}/books/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -267,12 +267,12 @@ async function updateBook(id, data) {
     return response.json();
 }
 
-async function searchBooks(query) {
+export async function searchBooks(query) {
     const response = await fetch(`${API_BASE}/books/search?query=${encodeURIComponent(query)}`);
     return response.json();
 }
 
-async function fetchEpisodes(tvshowId, season = null) {
+export async function fetchEpisodes(tvshowId, season = null) {
     let url = `${API_BASE}/episodes?tvshow_id=${tvshowId}`;
     if (season) {
         url += `&season=${season}`;
@@ -281,7 +281,7 @@ async function fetchEpisodes(tvshowId, season = null) {
     return response.json();
 }
 
-async function updateEpisode(id, data) {
+export async function updateEpisode(id, data) {
     const response = await fetch(`${API_BASE}/episodes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -290,53 +290,13 @@ async function updateEpisode(id, data) {
     return response.json();
 }
 
-async function deleteEpisode(id) {
+export async function deleteEpisode(id) {
     const response = await fetch(`${API_BASE}/episodes/${id}`, { method: 'DELETE' });
     return response.json();
 }
 
-// Удаляем дублирующуюся функцию
-
-async function uploadEpisodeFile(episodeId, file) {
-    return new Promise((resolve, reject) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const xhr = new XMLHttpRequest();
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    resolve(response);
-                } catch (e) {
-                    reject(new Error('Ошибка при обработке ответа сервера'));
-                }
-            } else {
-                try {
-                    const errorData = JSON.parse(xhr.responseText);
-                    reject(new Error(errorData.detail || `Ошибка при загрузке файла эпизода: ${xhr.status}`));
-                } catch (e) {
-                    reject(new Error(`Ошибка при загрузке файла эпизода: ${xhr.status}`));
-                }
-            }
-        });
-        
-        xhr.addEventListener('error', () => {
-            reject(new Error('Ошибка сети при загрузке файла эпизода'));
-        });
-        
-        xhr.addEventListener('timeout', () => {
-            reject(new Error('Таймаут при загрузке файла эпизода'));
-        });
-        
-        xhr.open('POST', `${API_BASE}/episodes/${episodeId}/upload`);
-        xhr.send(formData);
-    });
-}
-
 // Функция для получения ID сериала по названию
-async function getTvshowIdByName(name) {
+export async function getTvshowIdByName(name) {
     try {
         const tvshows = await fetchTvshows();
         const tvshow = tvshows.find(show => show.title === name);

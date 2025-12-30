@@ -32,13 +32,15 @@ export function openVideoPlayer(filePath, title = '') {
         overflow: 'hidden'
     });
 
-    // ─── ВИДЕО ───────────────────────────────────────
+    // ─── ВИДЕО ───────────────────────────────
     const video = document.createElement('video');
     Object.assign(video.style, {
         width: '100%',
         height: '100%',
-        objectFit: 'contain',           // ← начни с contain, потом можно cover
-        background: '#111'
+        objectFit: 'contain',
+        background: '#111',
+        maxWidth: '100vw',
+        maxHeight: '100vh'
     });
 
     video.playsInline = true;
@@ -98,12 +100,59 @@ export function openVideoPlayer(filePath, title = '') {
             video.addEventListener('loadedmetadata', () => {
                 // Инициализация Plyr
                 if (window.Plyr) {
-                    new Plyr(video, {
+                    const player = new Plyr(video, {
                         controls: [
                             'play-large', 'play', 'progress', 'current-time',
                             'duration', 'mute', 'volume', 'fullscreen'
                         ],
                         fullscreen: { enabled: true, iosNative: true }
+                    });
+                    
+                    // Добавляем обработчики событий для показа/скрытия элементов управления эпизодами
+                    video.addEventListener('play', () => {
+                        episodeControls.style.opacity = '0';
+                        episodeControls.style.pointerEvents = 'none';
+                    });
+                    
+                    video.addEventListener('pause', () => {
+                        episodeControls.style.opacity = '1';
+                        episodeControls.style.pointerEvents = 'auto';
+                    });
+                    
+                    // Также скрываем элементы управления при перемотке
+                    video.addEventListener('seeking', () => {
+                        episodeControls.style.opacity = '0';
+                        episodeControls.style.pointerEvents = 'none';
+                    });
+                    
+                    video.addEventListener('seeked', () => {
+                        // Возвращаем элементы управления через небольшую задержку после перемотки
+                        setTimeout(() => {
+                            if (!video.paused) {
+                                episodeControls.style.opacity = '0';
+                                episodeControls.style.pointerEvents = 'none';
+                            } else {
+                                episodeControls.style.opacity = '1';
+                                episodeControls.style.pointerEvents = 'auto';
+                            }
+                        }, 30);
+                    });
+                    
+                    // Добавляем обработчик для автоповорота на мобильных устройствах
+                    video.addEventListener('play', () => {
+                        // Проверяем, является ли устройство мобильным
+                        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                            // Пытаемся запросить полноэкранный режим при воспроизведении
+                            if (video.requestFullscreen) {
+                                video.requestFullscreen();
+                            } else if (video.mozRequestFullScreen) { /* Firefox */
+                                video.mozRequestFullScreen();
+                            } else if (video.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                                video.webkitRequestFullscreen();
+                            } else if (video.msRequestFullscreen) { /* IE/Edge */
+                                video.msRequestFullscreen();
+                            }
+                        }
                     });
                 } else {
                     video.controls = true;

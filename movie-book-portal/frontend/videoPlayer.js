@@ -138,8 +138,8 @@ export function openVideoPlayer(filePath, title = '') {
                         }, 30);
                     });
                     
-                    // Добавляем обработчик для автоповорота на мобильных устройствах
-                    // Убираем автоматическое воспроизведение на мобильных устройствах, чтобы избежать проблем с постоянной загрузкой
+                    // Обработчики событий для показа/скрытия элементов управления эпизодами
+                }
                 } else {
                     video.controls = true;
                 }
@@ -329,15 +329,7 @@ function createEpisodeControls(title, modal, video) {
             modal.remove();
             // Открываем следующий эпизод
             setTimeout(() => {
-                // Проверяем, является ли устройство мобильным
-                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                    // Для мобильных устройств используем немного другую задержку
-                    setTimeout(() => {
-                        openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
-                    }, 300);
-                } else {
-                    openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
-                }
+                openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
             }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
         } else {
             alert('Следующий эпизод не найден');
@@ -385,15 +377,7 @@ function createEpisodeControls(title, modal, video) {
             modal.remove();
             // Открываем предыдущий эпизод
             setTimeout(() => {
-                // Проверяем, является ли устройство мобильным
-                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                    // Для мобильных устройств используем немного другую задержку
-                    setTimeout(() => {
-                        openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
-                    }, 300);
-                } else {
-                    openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
-                }
+                openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
             }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
         } else {
             alert('Предыдущий эпизод не найден');

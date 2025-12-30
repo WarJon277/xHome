@@ -126,9 +126,22 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 await deletePhoto(photoId);
                 closeHandler();
                 
-                // Перезагружаем список фото, если функция доступна
-                if (typeof window.loadItems === 'function') {
-                    await window.loadItems();
+                // Обновляем галерею на главной странице и на странице галереи
+                try {
+                    // Пробуем вызвать глобальную функцию loadItems
+                    if (window.loadItems) {
+                        await window.loadItems();
+                    } else {
+                        // Если глобальная функция недоступна, импортируем и вызываем напрямую
+                        const { loadItems } = await import('./itemDisplay.js');
+                        await loadItems();
+                    }
+                } catch (loadError) {
+                    console.error('Ошибка при обновлении галереи:', loadError);
+                    // В крайнем случае обновляем страницу, если мы на странице галереи
+                    if (window.location.pathname.includes('gallery.html')) {
+                        window.location.reload();
+                    }
                 }
             } catch (error) {
                 console.error('Ошибка при удалении фото:', error);

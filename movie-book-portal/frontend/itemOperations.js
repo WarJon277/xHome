@@ -15,7 +15,10 @@ export async function deleteItem(id) {
         } else {
             await deleteBook(id);
         }
-        loadItems();
+        // Wait a moment for the deletion to complete before reloading
+        setTimeout(() => {
+            loadItems();
+        }, 100);
     } catch (err) {
         alert('Ошибка при удалении');
     }

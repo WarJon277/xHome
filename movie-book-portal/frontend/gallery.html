@@ -70,22 +70,8 @@
                     <div id="photo-info" class="photo-info"></div>
                 </div>
                 
-                <!-- Кнопка для захвата фото с камеры -->
-                <div style="margin-top: 15px; text-align: center;">
-                    <button type="button" id="capture-photo-btn" class="file-upload-btn">Сделать фото с камеры</button>
-                </div>
             </div>
             
-            <!-- Контейнер для видеопотока с камеры -->
-            <div id="camera-container" style="display: none; margin-top: 15px;">
-                <video id="camera-preview" autoplay playsinline style="width: 100%; max-width: 400px; height: auto; border-radius: 8px;"></video>
-                <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
-                    <button type="button" id="capture-from-camera" class="file-upload-btn">Сделать снимок</button>
-                    <button type="button" id="cancel-camera" class="file-upload-btn" style="background-color: #e74c3c;">Отмена</button>
-                </div>
-                <!-- Скрытое поле для хранения захваченного изображения -->
-                <canvas id="photo-canvas" style="display: none;"></canvas>
-            </div>
 
             <div id="progress-container" class="progress-container" style="display: none; margin-top: 15px;">
                 <div class="progress-bar-container">
@@ -149,110 +135,25 @@
             updateGenreSelect();
             updateGenreSelectInForm();
             updateFormLabels();
-            loadItems(); // загружаем фото
+            await loadItems(); // загружаем фото с ожиданием
         } catch (error) {
             console.error('Ошибка при инициализации галереи:', error);
         }
     });
     
-    // Добавляем функциональность захвата фото с камеры
-    document.addEventListener('DOMContentLoaded', () => {
-        const captureBtn = document.getElementById('capture-photo-btn');
-        const cameraContainer = document.getElementById('camera-container');
-        const cameraPreview = document.getElementById('camera-preview');
-        const captureFromCameraBtn = document.getElementById('capture-from-camera');
-        const cancelCameraBtn = document.getElementById('cancel-camera');
-        const photoInput = document.getElementById('photo');
-        const uploadArea = document.getElementById('upload-area');
-        
-        if (captureBtn && cameraContainer && cameraPreview && captureFromCameraBtn && cancelCameraBtn) {
-            let stream = null;
-            
-            // Функция для включения камеры
-            const startCamera = async () => {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'environment' }  // Сначала пробуем использовать внешнюю камеру (на мобильных устройствах это основная камера)
-                    });
-                    
-                    cameraPreview.srcObject = stream;
-                    cameraContainer.style.display = 'block';
-                    uploadArea.style.display = 'none'; // Скрываем обычную область загрузки
-                } catch (err) {
-                    console.error('Ошибка доступа камере:', err);
-                    alert('Не удалось получить доступ к камере. Пожалуйста, проверьте разрешения.');
-                    
-                    // Пробуем использовать переднюю камеру
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: 'user' }  // Передняя камера
-                        });
-                        
-                        cameraPreview.srcObject = stream;
-                        cameraContainer.style.display = 'block';
-                        uploadArea.style.display = 'none';
-                    } catch (err2) {
-                        console.error('Ошибка доступа к передней камере:', err2);
-                        alert('Не удалось получить доступ к камере. Пожалуйста, проверьте разрешения.');
-                    }
-                }
-            };
-            
-            // Функция для остановки камеры
-            const stopCamera = () => {
-                if (stream) {
-                    const tracks = stream.getTracks();
-                    tracks.forEach(track => track.stop());
-                    stream = null;
-                }
-                cameraContainer.style.display = 'none';
-                uploadArea.style.display = 'block'; // Показываем обычную область загрузки
-            };
-            
-            // Функция для захвата фото с камеры
-            const capturePhoto = () => {
-                if (!stream) return;
-                
-                const canvas = document.getElementById('photo-canvas');
-                const video = cameraPreview;
-                
-                // Устанавливаем размеры canvas в соответствии с видео
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Рисуем текущий кадр видео на canvas
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Преобразуем изображение в Blob
-                canvas.toBlob(async (blob) => {
-                    // Создаем File из Blob
-                    const file = new File([blob], `camera-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
-                    
-                    // Создаем DataTransfer объект для добавления файла к input
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    
-                    // Устанавливаем файлы в input
-                    photoInput.files = dataTransfer.files;
-                    
-                    // Обновляем информацию о файле
-                    const photoInfo = document.getElementById('photo-info');
-                    if (photoInfo) {
-                        photoInfo.textContent = `Выбрано фото с камеры: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-                    }
-                    
-                    // Останавливаем камеру и возвращаемся к обычному режиму
-                    stopCamera();
-                }, 'image/jpeg', 0.8); // JPEG с 80% качеством
-            };
-            
-            // Обработчики событий
-            captureBtn.addEventListener('click', startCamera);
-            captureFromCameraBtn.addEventListener('click', capturePhoto);
-            cancelCameraBtn.addEventListener('click', stopCamera);
+    // Обновляем галерею при каждом входе на страницу (включая навигацию)
+    window.addEventListener('pageshow', async () => {
+        if (window.location.pathname.includes('gallery.html')) {
+            try {
+                // Импортируем и вызываем loadItems если находимся на странице галереи
+                const { loadItems } = await import('/static/itemDisplay.js');
+                await loadItems();
+            } catch (error) {
+                console.error('Ошибка при обновлении галереи:', error);
+            }
         }
     });
+    
 </script>
 </body>
 </html>

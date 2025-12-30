@@ -891,3 +891,64 @@ main {
         padding: 0.8rem;
     }
 }
+
+/* Floating Action Button for adding photos */
+.fab-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    color: white;
+    border: none;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    overflow: hidden;
+}
+
+.fab-button:hover {
+    background: linear-gradient(135deg, #45a049, #1b5e20);
+    transform: scale(1.15) rotate(90deg);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+
+.fab-button:active {
+    transform: scale(0.95);
+}
+
+.fab-icon {
+    pointer-events: none;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease;
+}
+
+.fab-button:hover .fab-icon {
+    transform: scale(1.2);
+}
+
+/* Pulse animation effect */
+@keyframes pulse {
+    0% { box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+    50% { box-shadow: 0 8px 24px rgba(76, 175, 80, 0.6); }
+    100% { box-shadow: 0 6px 16px rgba(0,0,0.4); }
+}
+
+.fab-button {
+    animation: pulse 2s infinite;
+}
+
+/* Show FAB on all devices for gallery page */
+.fab-button {
+    display: flex;
+}

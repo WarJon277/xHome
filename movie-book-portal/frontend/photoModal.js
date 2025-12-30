@@ -273,14 +273,29 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 // Получаем данные изображения с фильтром в формате blob
                 canvas.toBlob(async (blob) => {
                     try {
-                        // Создаем файл из blob
-                        const file = new File([blob], `filtered_${photoId}.jpg`, { type: 'image/jpeg' });
+                        // Получаем оригинальное имя файла или генерируем новое
+                        let originalFilename = 'photo.jpg';
+                        if (originalSrc) {
+                            const url = new URL(originalSrc, window.location.origin);
+                            const pathname = url.pathname;
+                            const filename = pathname.split('/').pop();
+                            if (filename && filename !== '') {
+                                originalFilename = filename;
+                            }
+                        }
                         
-                        // Импортируем функцию обновления фото
-                        const { uploadPhotoFile } = await import('./api.js');
+                        // Создаем файл из blob с сохранением оригинального расширения
+                        const fileExtension = originalFilename.split('.').pop() || 'jpg';
+                        const file = new File([blob], `${photoId}_filtered.${fileExtension}`, { type: 'image/jpeg' });
+                        
+                        // Импортируем функции обновления фото и получения данных фото
+                        const { uploadPhotoFile, fetchPhoto } = await import('./api.js');
                         
                         // Загружаем отфильтрованное изображение на сервер
                         await uploadPhotoFile(photoId, file);
+                        
+                        // Получаем обновленные данные фото с сервера
+                        const updatedPhoto = await fetchPhoto(photoId);
                         
                         // Обновляем src изображения на оригинальный путь, чтобы избежать проблем с CORS
                         modalImg.src = originalSrc;
@@ -288,13 +303,43 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                         currentFilter = 'none';
                         
                         // Обновляем миниатюру на странице, если она существует
-                        updateThumbnail(photoId, modalImg.src);
+                        // Используем обновленный путь к миниатюре с временным параметром для обновления кэша
+                        if (updatedPhoto.thumbnail_path) {
+                            updateThumbnail(photoId, updatedPhoto.thumbnail_path + '?t=' + new Date().getTime());
+                        } else if (updatedPhoto.file_path) {
+                            updateThumbnail(photoId, updatedPhoto.file_path + '?t=' + new Date().getTime());
+                        } else {
+                            updateThumbnail(photoId, originalSrc + '?t=' + new Date().getTime());
+                        }
+                        
+                        // Обновляем галерею на главной странице и на странице галереи
+                        try {
+                            // Пробуем вызвать глобальную функцию loadItems
+                            if (window.loadItems) {
+                                await window.loadItems();
+                            } else {
+                                // Если глобальная функция недоступна, импортируем и вызываем напрямую
+                                const { loadItems } = await import('./itemDisplay.js');
+                                await loadItems();
+                            }
+                        } catch (loadError) {
+                            console.error('Ошибка при обновлении галереи:', loadError);
+                            // В крайнем случае обновляем страницу, если мы на странице галереи
+                            if (window.location.pathname.includes('gallery.html')) {
+                                window.location.reload();
+                            }
+                        }
                     } catch (error) {
                         console.error('Ошибка при сохранении отфильтрованного фото:', error);
                     }
                 }, 'image/jpeg', 0.9);
             } catch (error) {
                 console.error('Ошибка при обработке фильтра:', error);
+            }
+        } else {
+            // Если фильтр не применялся, просто обновляем миниатюру, чтобы сбросить возможный фильтр
+            if (photoId) {
+                updateThumbnail(photoId, photoSrc);
             }
         }
         
@@ -369,13 +414,18 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
 // Функция для обновления миниатюры на странице
 async function updateThumbnail(photoId, newSrc) {
     // Обновляем изображение на странице галереи, если оно существует
-    const galleryImages = document.querySelectorAll(`img[data-photo-id="${photoId}"], img[src*="${photoId}"], .photo-item img`);
+    const galleryImages = document.querySelectorAll(`img[data-photo-id="${photoId}"], img[src*="${photoId}"], .photo-item img, img.thumbnail`);
     
     for (const img of galleryImages) {
         // Проверяем, является ли это изображение миниатюрой для того же фото
-        if (img.src.includes(photoId.toString()) || img.dataset.photoId === photoId.toString()) {
+        if (img.src.includes(photoId.toString()) ||
+            img.dataset.photoId === photoId.toString() ||
+            img.alt.includes(photoId.toString())) {
             // Обновляем src изображения
-            img.src = newSrc + '?t=' + new Date().getTime(); // Добавляем временный параметр для обхода кэширования
+            img.src = newSrc; // Используем новый путь с фильтрами
+            // Сбрасываем фильтр, так как изображение уже содержит фильтр
+            img.style.filter = 'none';
+            img.style.webkitFilter = 'none';
             break;
         }
     }
@@ -385,7 +435,10 @@ async function updateThumbnail(photoId, newSrc) {
     for (const item of photoItems) {
         const img = item.querySelector('img');
         if (img) {
-            img.src = newSrc + '?t=' + new Date().getTime(); // Добавляем временный параметр для обхода кэширования
+            img.src = newSrc; // Используем новый путь с фильтрами
+            // Сбрасываем фильтр, так как изображение уже содержит фильтр
+            img.style.filter = 'none';
+            img.style.webkitFilter = 'none';
             break;
         }
     }

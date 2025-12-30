@@ -890,6 +890,10 @@ async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Ses
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
+    # Сохраняем путь к старому файлу, чтобы удалить его позже
+    old_file_path = photo.file_path
+    print(f"Старый путь к файлу: {old_file_path}")  # Отладочное сообщение
+
     file_path = os.path.abspath(f"uploads/gallery/{photo_id}_{file.filename}")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, "wb") as buffer:
@@ -899,7 +903,8 @@ async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Ses
     relative_path = os.path.relpath(file_path, BASE_DIR)
     # Приводим к стандартным слэшам для URL
     photo.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
-    
+    print(f"Новый путь к файлу: {photo.file_path}")  # Отладочное сообщение
+
     # Создаем миниатюру
     try:
         with Image.open(file_path) as img:
@@ -923,6 +928,16 @@ async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Ses
         print(f"Ошибка при создании миниатюры: {e}")
         # Если не удалось создать миниатюру, используем оригинальное изображение как миниатюру
         photo.thumbnail_path = photo.file_path
+
+    # Удаляем старый файл фото, если он существует и отличается от нового
+    if old_file_path:
+        try:
+            old_full_path = os.path.join(BASE_DIR, old_file_path)
+            if os.path.exists(old_full_path) and old_full_path != file_path:
+                os.remove(old_full_path)
+                print(f"Удален старый файл фото: {old_full_path}")
+        except Exception as e:
+            print(f"Ошибка при удалении старого файла фото: {e}")
 
     db.commit()
     return photo

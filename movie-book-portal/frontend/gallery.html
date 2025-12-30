@@ -155,5 +155,24 @@
     });
     
 </script>
+
+<!-- Floating Action Button for adding photos on mobile -->
+<button id="fab-add-photo" class="fab-button" title="Добавить фото">
+    <span class="fab-icon">+</span>
+</button>
+
+<script type="module">
+    // Add event listener for the floating action button
+    document.addEventListener('DOMContentLoaded', () => {
+        const fabButton = document.getElementById('fab-add-photo');
+        const showAddButton = document.getElementById('show-add');
+        
+        if (fabButton && showAddButton) {
+            fabButton.addEventListener('click', () => {
+                showAddButton.click(); // Trigger the existing "Добавить фото" button functionality
+            });
+        }
+    });
+</script>
 </body>
 </html>

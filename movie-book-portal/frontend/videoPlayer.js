@@ -329,7 +329,15 @@ function createEpisodeControls(title, modal, video) {
             modal.remove();
             // Открываем следующий эпизод
             setTimeout(() => {
-                openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
+                // Проверяем, является ли устройство мобильным
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    // Для мобильных устройств используем немного другую задержку
+                    setTimeout(() => {
+                        openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
+                    }, 300);
+                } else {
+                    openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
+                }
             }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
         } else {
             alert('Следующий эпизод не найден');
@@ -377,7 +385,15 @@ function createEpisodeControls(title, modal, video) {
             modal.remove();
             // Открываем предыдущий эпизод
             setTimeout(() => {
-                openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
+                // Проверяем, является ли устройство мобильным
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    // Для мобильных устройств используем немного другую задержку
+                    setTimeout(() => {
+                        openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
+                    }, 300);
+                } else {
+                    openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
+                }
             }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
         } else {
             alert('Предыдущий эпизод не найден');

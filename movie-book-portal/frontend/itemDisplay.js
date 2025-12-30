@@ -268,10 +268,15 @@ export function displayItems(items) {
         if (state.currentCategory === 'photo') {
             // Для фото добавляем только изображение
             card.appendChild(img);
+        } else {
+            // Для других категорий добавляем остальные элементы
+            // (они уже добавлены выше в условии if (state.currentCategory !== 'photo'))
         }
-        // Для других категорий элементы уже добавлены
         
-        card.appendChild(actions);
+        // Добавляем контейнер действий только если он не пустой
+        if (actions.children.length > 0) {
+            card.appendChild(actions);
+        }
 
         grid.appendChild(card);
     });

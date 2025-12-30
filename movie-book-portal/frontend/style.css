@@ -301,7 +301,7 @@ main {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 0.25rem; /* Consistent thin spacing */
-    margin-top: 0.5rem; /* Reduced top margin */
+    margin-top: 0.25rem; /* Minimal top margin */
 }
 
 /* Адаптивная сетка для мобильных устройств */
@@ -321,7 +321,7 @@ main {
 
 .card {
     background-color: #1e1e1e;
-    padding: 0.1rem; /* Minimal padding for consistent thin spacing */
+    padding: 0; /* Remove padding for consistent spacing */
     border-radius: 0; /* Square corners for gallery */
     box-shadow: 0 2px 4px rgba(0,0,0.5);
     display: flex;
@@ -332,6 +332,19 @@ main {
 /* Квадратные плитки без скругления для галереи */
 #photos-grid .card {
     border-radius: 0;
+    padding: 0; /* Ensure no padding for photo cards */
+}
+
+/* Убираем отступы у изображений в фото-карточках */
+#photos-grid .card img.thumbnail {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block; /* Убираем возможные inline отступы */
 }
 
 .card h3 {
@@ -368,6 +381,12 @@ main {
     border-radius: 0; /* Без скругления */
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+/* Специфические стили для фото-карточек */
+#photos-grid .card img.thumbnail {
+    height: 100%;
+    max-height: none;
 }
 
 /* Адаптивные стили для миниатюр фото на мобильных устройствах */
@@ -437,6 +456,29 @@ main {
         flex: none;
         width: 100%;
     }
+}
+
+/* Стили для фото-карточек без текста */
+#photos-grid .card > div[style*="display: flex"] {
+    padding: 3px 3px;             /* Even thinner padding for photo cards */
+}
+
+/* Убираем отступы у фото-карточек */
+#photos-grid .card {
+    margin: 0;
+    padding: 0;
+}
+
+/* Убираем отступы у изображений в фото-карточках */
+#photos-grid .card img.thumbnail {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: cover;
+    margin: 0;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: block; /* Убираем возможные inline отступы */
 }
 
 /* ============================= */

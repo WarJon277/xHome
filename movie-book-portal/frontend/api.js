@@ -306,3 +306,117 @@ export async function getTvshowIdByName(name) {
         throw error;
     }
 }
+
+// === ГАЛЕРЕЯ ФОТО ===
+
+export async function fetchPhotos(category = null) {
+    let url = `${API_BASE}/gallery`;
+    if (category && category !== "Все") {
+        url += `?category=${encodeURIComponent(category)}`;
+    }
+    const response = await fetch(url);
+    return response.json();
+}
+
+export async function fetchPhoto(id) {
+    const response = await fetch(`${API_BASE}/gallery/${id}`);
+    return response.json();
+}
+
+export async function createPhoto(data) {
+    const response = await fetch(`${API_BASE}/gallery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+export async function updatePhoto(id, data) {
+    const response = await fetch(`${API_BASE}/gallery/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    return response.json();
+}
+
+export async function deletePhoto(id) {
+    const response = await fetch(`${API_BASE}/gallery/${id}`, { method: 'DELETE' });
+    return response.json();
+}
+
+export async function uploadPhotoFile(photoId, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                onProgress(percentComplete);
+            }
+        });
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch (e) {
+                    reject(new Error('Ошибка при обработке ответа сервера'));
+                }
+            } else {
+                try {
+                    const errorData = JSON.parse(xhr.responseText);
+                    reject(new Error(errorData.detail || `Ошибка при загрузке файла фото: ${xhr.status}`));
+                } catch (e) {
+                    reject(new Error(`Ошибка при загрузке файла фото: ${xhr.status}`));
+                }
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке файла фото'));
+        });
+        
+        xhr.addEventListener('timeout', () => {
+            reject(new Error('Таймаут при загрузке файла фото'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/gallery/${photoId}/upload`);
+        xhr.send(formData);
+    });
+}
+
+export async function uploadPhotoThumbnail(photoId, file) {
+    return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(JSON.parse(xhr.responseText));
+            } else {
+                const errorData = JSON.parse(xhr.responseText);
+                reject(new Error(errorData.detail || 'Ошибка при загрузке миниатюры'));
+            }
+        });
+        
+        xhr.addEventListener('error', () => {
+            reject(new Error('Ошибка сети при загрузке миниатюры'));
+        });
+        
+        xhr.open('POST', `${API_BASE}/gallery/${photoId}/upload_thumbnail`);
+        xhr.send(formData);
+    });
+}
+
+export async function searchPhotos(query) {
+    const response = await fetch(`${API_BASE}/gallery/search?query=${encodeURIComponent(query)}`);
+    return response.json();
+}

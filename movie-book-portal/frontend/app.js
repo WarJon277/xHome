@@ -1,5 +1,5 @@
 // Импорт всех модулей
-import { MOVIE_GENRES, BOOK_GENRES, TVSHOW_GENRES } from './genres.js';
+import { MOVIE_GENRES, BOOK_GENRES, TVSHOW_GENRES, PHOTO_CATEGORIES } from './genres.js';
 import { state, setCurrentCategory, setCurrentGenre, setEditingItem } from './state.js';
 
 // Создаем глобальные переменные для совместимости

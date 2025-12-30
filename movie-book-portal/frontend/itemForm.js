@@ -5,7 +5,7 @@ import { loadItems } from './itemDisplay.js';
 import { updateFileInfo, updateThumbnailInfo, updateEpisodesInfo } from './utils.js';
 import { showLoading, showError, escapeHtml } from './utils.js';
 import { uploadFile, uploadEpisodes } from './utils.js';
-import { fetchMovie, fetchTvshow, fetchBook, createMovie, createTvshow, createBook, updateMovie, updateTvshow, updateBook } from './api.js';
+import { fetchMovie, fetchTvshow, fetchBook, fetchPhoto, fetchEpisodes, createMovie, createTvshow, createBook, createPhoto, updateMovie, updateTvshow, updateBook, updatePhoto } from './api.js';
 
 // ============================================
 // Форма — добавление / редактирование
@@ -13,8 +13,23 @@ import { fetchMovie, fetchTvshow, fetchBook, createMovie, createTvshow, createBo
 export async function handleSubmit(e) {
     e.preventDefault();
     
-    const title = document.getElementById('title').value.trim();
-    if (!title) {
+    // Проверяем, на какой странице мы находимся - на главной или на галерее
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    const titleElement = document.getElementById('title');
+    const genreSelectElement = document.getElementById('genre-select');
+    const genreInputElement = document.getElementById('genre');
+    const yearElement = document.getElementById('year');
+    const directorAuthorElement = document.getElementById('director-author');
+    const ratingElement = document.getElementById('rating');
+    const descriptionElement = document.getElementById('description');
+    
+    if (!titleElement) {
+        showError('Не найден элемент заголовка');
+        return;
+    }
+    
+    const title = titleElement.value.trim();
+    if (state.currentCategory !== 'photo' && !title) {
         showError('Название — обязательное поле');
         return;
     }
@@ -23,23 +38,32 @@ export async function handleSubmit(e) {
     showError('');
 
     try {
-        let genreValue = document.getElementById('genre-select').value;
-        if (!genreValue) {
-            genreValue = document.getElementById('genre').value.trim();
+        let genreValue = '';
+        if (genreSelectElement) {
+            genreValue = genreSelectElement.value;
+        }
+        if (!genreValue && genreInputElement) {
+            genreValue = genreInputElement.value.trim();
         }
 
-        const data = {
+        let data = {
             title,
-            year: parseInt(document.getElementById('year').value) || null,
-            genre: genreValue || null,
-            rating: parseFloat(document.getElementById('rating').value) || null,
-            description: document.getElementById('description').value.trim() || null
+            description: descriptionElement ? descriptionElement.value.trim() || null : null
         };
 
-        if (state.currentCategory === 'movie' || state.currentCategory === 'tvshow') {
-            data.director = document.getElementById('director-author').value.trim() || null;
+        if (state.currentCategory === 'photo') {
+            // Для фото используем категорию вместо жанра
+            data.category = genreValue || 'general';
         } else {
-            data.author = document.getElementById('director-author').value.trim() || null;
+            if (yearElement) data.year = parseInt(yearElement.value) || null;
+            data.genre = genreValue || null;
+            if (ratingElement) data.rating = parseFloat(ratingElement.value) || null;
+            
+            if (state.currentCategory === 'movie' || state.currentCategory === 'tvshow') {
+                if (directorAuthorElement) data.director = directorAuthorElement.value.trim() || null;
+            } else {
+                if (directorAuthorElement) data.author = directorAuthorElement.value.trim() || null;
+            }
         }
 
         let itemId;
@@ -49,47 +73,109 @@ export async function handleSubmit(e) {
                 ? updateMovie(state.editingItem.id, data)
                 : state.currentCategory === 'tvshow'
                     ? updateTvshow(state.editingItem.id, data)
-                    : updateBook(state.editingItem.id, data));
+                    : state.currentCategory === 'photo'
+                        ? updatePhoto(state.editingItem.id, data)
+                        : updateBook(state.editingItem.id, data));
             itemId = state.editingItem.id;
         } else {
             // Создание
-            const newItem = await (state.currentCategory === 'movie'
-                ? createMovie(data)
-                : state.currentCategory === 'tvshow'
-                    ? createTvshow(data)
-                    : createBook(data));
-            itemId = newItem.id;
+            if (state.currentCategory === 'photo' && !state.editingItem) {
+                // Для фото при добавлении новых элементов не создаем общую запись,
+                // а обрабатываем каждое фото индивидуально в следующем блоке
+                itemId = null;
+            } else {
+                const newItem = await (state.currentCategory === 'movie'
+                    ? createMovie(data)
+                    : state.currentCategory === 'tvshow'
+                        ? createTvshow(data)
+                        : state.currentCategory === 'photo'
+                            ? createPhoto(data)
+                            : createBook(data));
+                itemId = newItem.id;
+            }
         }
 
         // Загрузка файлов
         const thumbInput = document.getElementById('thumbnail');
         
-        // Загрузка основного файла (для фильмов и книг)
-        if (state.currentCategory !== 'tvshow') {
+        // Загрузка основного файла (для фильмов, книг и фото)
+        if (state.currentCategory === 'movie' || state.currentCategory === 'book') {
             const fileInput = document.getElementById('file');
-            if (fileInput.files.length > 0) {
+            if (fileInput && fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 const endpoint = state.currentCategory === 'movie'
                     ? `/movies/${itemId}/upload`
                     : `/books/${itemId}/upload`;
                 await uploadFile(endpoint, file, p => updateProgress(20 + p * 50 / 100));
             }
+        } else if (state.currentCategory === 'photo') {
+            // Для фото загружаем каждое изображение как отдельный элемент
+            const fileInput = document.getElementById('photo'); // используем другой ID для фото
+            if (fileInput && fileInput.files.length > 0) {
+                // Если редактируем существующее фото, загружаем файлы в существующий элемент
+                if (state.editingItem) {
+                    // Загружаем все выбранные фото в существующий элемент
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        const file = fileInput.files[i];
+                        const endpoint = `/gallery/${itemId}/upload`;
+                        await uploadFile(endpoint, file, p => updateProgress(20 + (i+1) * 50 / fileInput.files.length));
+                        
+                        // Если миниатюра не была загружена, используем основное фото как миниатюру
+                        const thumbInput = document.getElementById('thumbnail');
+                        if (!thumbInput || !thumbInput.files.length > 0) {
+                            // Копируем основное фото как миниатюру
+                            const thumbnailEndpoint = `/gallery/${itemId}/upload_thumbnail`;
+                            await uploadFile(thumbnailEndpoint, file, p => updateProgress(70 + (i+1) * 30 / fileInput.files.length));
+                        }
+                    }
+                } else {
+                    // При добавлении новых фото создаем отдельную запись для каждого файла
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        const file = fileInput.files[i];
+                        // Создаем отдельную запись для каждого фото
+                        const photoData = {
+                            ...data,
+                            title: file.name.replace(/\.[^/.]+$/, ""), // Используем имя файла без расширения как заголовок, если не задан
+                        };
+                        if (!title) {
+                            photoData.title = file.name.replace(/\.[^/.]+$/, "");
+                        }
+                        
+                        const newPhotoItem = await createPhoto(photoData);
+                        const newPhotoId = newPhotoItem.id;
+                        
+                        // Загружаем текущий файл в только что созданную запись
+                        const endpoint = `/gallery/${newPhotoId}/upload`;
+                        await uploadFile(endpoint, file, p => updateProgress(20 + (i+1) * 50 / fileInput.files.length));
+                        
+                        // Если миниатюра не была загружена, используем основное фото как миниатюру
+                        const thumbInput = document.getElementById('thumbnail');
+                        if (!thumbInput || !thumbInput.files.length > 0) {
+                            // Копируем основное фото как миниатюру
+                            const thumbnailEndpoint = `/gallery/${newPhotoId}/upload_thumbnail`;
+                            await uploadFile(thumbnailEndpoint, file, p => updateProgress(70 + (i+1) * 30 / fileInput.files.length));
+                        }
+                    }
+                }
+            }
         }
 
-        if (thumbInput.files.length > 0) {
+        if (thumbInput && thumbInput.files.length > 0 && itemId) {
             const file = thumbInput.files[0];
             const endpoint = state.currentCategory === 'movie'
                 ? `/movies/${itemId}/upload_thumbnail`
                 : state.currentCategory === 'tvshow'
                     ? `/tvshows/${itemId}/upload_thumbnail`
-                    : `/books/${itemId}/upload_thumbnail`;
+                    : state.currentCategory === 'photo'
+                        ? `/gallery/${itemId}/upload_thumbnail`
+                        : `/books/${itemId}/upload_thumbnail`;
             await uploadFile(endpoint, file, p => updateProgress(70 + p * 30 / 100));
         }
 
         // Загрузка эпизодов для сериалов
         if (state.currentCategory === 'tvshow') {
             const episodesInput = document.getElementById('episodes');
-            if (episodesInput.files.length > 0) {
+            if (episodesInput && episodesInput.files.length > 0) {
                 const seasonNumber = parseInt(document.getElementById('season-number').value) || 1;
                 // Если это редактирование, нам нужно определить правильный начальный номер эпизода
                 let startEpisodeNumber = parseInt(document.getElementById('start-episode-number').value) || 1;
@@ -127,14 +213,21 @@ export async function handleSubmit(e) {
             showViewMode();
             hideProgress();
             showLoading(false);
-            document.getElementById('item-form').reset();
+            // Проверяем, на какой странице мы находимся - на главной или на галерее
+            const isGalleryPage = window.location.pathname.includes('gallery.html');
+            const formElementId = isGalleryPage ? 'photo-form' : 'item-form';
+            const formElement = document.getElementById(formElementId);
+            const formTitle = document.getElementById('form-title');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            if (formElement) formElement.reset();
             updateFileInfo();
             updateThumbnailInfo();
             updateEpisodesInfo();
             setEditingItem(null);
             window.editingItem = null; // для совместимости
-            document.getElementById('form-title').textContent = 'Добавить новый элемент';
-            document.getElementById('submit-btn').textContent = 'Добавить';
+            if (formTitle) formTitle.textContent = 'Добавить новый элемент';
+            if (submitBtn) submitBtn.textContent = 'Добавить';
         }, 800);
 
     } catch (err) {
@@ -152,33 +245,60 @@ export async function editItem(id) {
         ? await fetchMovie(id)
         : state.currentCategory === 'tvshow'
             ? await fetchTvshow(id)
-            : await fetchBook(id);
+            : state.currentCategory === 'photo'
+                ? await fetchPhoto(id)
+                : await fetchBook(id);
     
     setEditingItem(item);
 
-    document.getElementById('title').value = item.title;
-    document.getElementById('year').value = item.year || '';
-    document.getElementById('director-author').value =
-        state.currentCategory === 'movie' || state.currentCategory === 'tvshow' ? (item.director || '') : (item.author || '');
-    document.getElementById('rating').value = item.rating || '';
-    document.getElementById('description').value = item.description || '';
+    // Убедимся, что элементы существуют перед тем как к ним обращаться
+    const titleElement = document.getElementById('title');
+    const descriptionElement = document.getElementById('description');
+    const yearElement = document.getElementById('year');
+    const directorAuthorElement = document.getElementById('director-author');
+    const ratingElement = document.getElementById('rating');
+    const genreSelectElement = document.getElementById('genre-select');
+    const genreInputElement = document.getElementById('genre');
+    const formTitleElement = document.getElementById('form-title');
+    const submitBtnElement = document.getElementById('submit-btn');
 
-    // Жанр
-    const genreSelect = document.getElementById('genre-select');
-    const genreInput = document.getElementById('genre');
-    if (item.genre) {
-        const option = [...genreSelect.options].find(o => o.value === item.genre);
-        if (option) {
-            option.selected = true;
-            genreInput.value = '';
-        } else {
-            genreSelect.value = '';
-            genreInput.value = item.genre;
+    if (titleElement) titleElement.value = item.title;
+    if (descriptionElement) descriptionElement.value = item.description || '';
+
+    if (state.currentCategory === 'photo') {
+        // Для фото устанавливаем категорию
+        if (genreSelectElement && item.category) {
+            const option = [...genreSelectElement.options].find(o => o.value === item.category);
+            if (option) {
+                option.selected = true;
+                if (genreInputElement) genreInputElement.value = '';
+            } else {
+                genreSelectElement.value = '';
+                if (genreInputElement) genreInputElement.value = item.category;
+            }
+        }
+    } else {
+        // Для других типов устанавливаем год, автора/режиссера, рейтинг и жанр
+        if (yearElement) yearElement.value = item.year || '';
+        if (directorAuthorElement) directorAuthorElement.value =
+            state.currentCategory === 'movie' || state.currentCategory === 'tvshow' ? (item.director || '') : (item.author || '');
+        if (ratingElement) ratingElement.value = item.rating || '';
+
+        // Жанр
+        if (genreSelectElement && item.genre) {
+            const option = [...genreSelectElement.options].find(o => o.value === item.genre);
+            if (option) {
+                option.selected = true;
+                if (genreInputElement) genreInputElement.value = '';
+            } else {
+                genreSelectElement.value = '';
+                if (genreInputElement) genreInputElement.value = item.genre;
+            }
         }
     }
 
-    document.getElementById('form-title').textContent = 'Редактировать элемент';
-    document.getElementById('submit-btn').textContent = 'Сохранить';
+    if (formTitleElement) formTitleElement.textContent = 'Редактировать элемент';
+    if (submitBtnElement) submitBtnElement.textContent = 'Сохранить';
 
     updateFormLabels();
     updateFileInfo();
@@ -190,19 +310,35 @@ export async function editItem(id) {
 // Вспомогательные функции для формы
 // ============================================
 export function showAddMode() {
-    document.getElementById('add-form').style.display = 'block';
-    document.getElementById('items-grid').style.display = 'none';
+    const addForm = document.getElementById('add-form');
+    // Проверяем, на какой странице мы находимся - на главной или на галерее
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    const gridElementId = isGalleryPage ? 'photos-grid' : 'items-grid';
+    const gridElement = document.getElementById(gridElementId);
+    
+    if (addForm) addForm.style.display = 'block';
+    if (gridElement) gridElement.style.display = 'none';
 }
 
 export function showViewMode() {
-    document.getElementById('add-form').style.display = 'none';
-    document.getElementById('items-grid').style.display = 'grid';
-    document.getElementById('item-form').reset();
+    const addForm = document.getElementById('add-form');
+    // Проверяем, на какой странице мы находимся - на главной или на галерее
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    const gridElementId = isGalleryPage ? 'photos-grid' : 'items-grid';
+    const gridElement = document.getElementById(gridElementId);
+    const formElementId = isGalleryPage ? 'photo-form' : 'item-form';
+    const formElement = document.getElementById(formElementId);
+    const formTitle = document.getElementById('form-title');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (addForm) addForm.style.display = 'none';
+    if (gridElement) gridElement.style.display = 'grid';
+    if (formElement) formElement.reset();
     updateFileInfo();
     updateThumbnailInfo();
     updateEpisodesInfo();
     setEditingItem(null);
     window.editingItem = null; // для совместимости
-    document.getElementById('form-title').textContent = 'Добавить новый элемент';
-    document.getElementById('submit-btn').textContent = 'Добавить';
+    if (formTitle) formTitle.textContent = 'Добавить новый элемент';
+    if (submitBtn) submitBtn.textContent = 'Добавить';
 }

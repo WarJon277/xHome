@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from database import get_db, create_tables, add_sample_data as add_sample_data_movies, Movie
 from database_books import get_db_books, create_books_tables, Book  # ← обязательно импортируем модель Book
 from database_tvshows import get_db_tvshows, create_tvshows_tables, Tvshow, Episode
+from database_gallery import get_db_gallery, create_gallery_tables, Photo
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -37,9 +38,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_PATH = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 UPLOADS_PATH = os.path.abspath(os.path.join(BASE_DIR, "uploads"))
 BOOKS_UPLOADS = os.path.join(UPLOADS_PATH, "books")
+GALLERY_UPLOADS = os.path.join(UPLOADS_PATH, "gallery")
 
 os.makedirs(UPLOADS_PATH, exist_ok=True)
 os.makedirs(BOOKS_UPLOADS, exist_ok=True)
+os.makedirs(GALLERY_UPLOADS, exist_ok=True)
 
 # Статические файлы
 app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
@@ -59,11 +62,16 @@ async def favicon():
 create_tables()
 create_books_tables()          # ← это создаст books со ВСЕМИ колонками из модели
 create_tvshows_tables()        # ← создание таблиц для сериалов
+create_gallery_tables()        # ← создание таблиц для галереи
 
 
 @app.get("/")
 async def root():
     return FileResponse(os.path.join(FRONTEND_PATH, "index.html"))
+
+@app.get("/gallery.html")
+async def gallery():
+    return FileResponse(os.path.join(FRONTEND_PATH, "gallery.html"))
 
 
 @app.get("/reader.html")
@@ -120,6 +128,16 @@ class BookCreate(BaseModel):
     genre: Optional[str] = None
     rating: Optional[float] = None
     description: Optional[str] = None
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class PhotoCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = "general"  # Категория фото
 
     model_config = {
         "extra": "ignore",
@@ -716,6 +734,116 @@ async def upload_episode_file(episode_id: int, file: UploadFile = File(...), db:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла эпизода: {str(e)}")
+
+
+# ==================== ГАЛЕРЕЯ ====================
+
+def get_db_gallery_simple():
+    db = next(get_db_gallery())
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@app.get("/gallery")
+def get_gallery(category: str = None, db: Session = Depends(get_db_gallery_simple)):
+    query = db.query(Photo)
+    if category and category != "Все":
+        query = query.filter(Photo.category.ilike(f"%{category}%"))
+    return query.all()
+
+
+@app.post("/gallery")
+def create_photo(photo: PhotoCreate, db: Session = Depends(get_db_gallery_simple)):
+    db_photo = Photo(**photo.dict())
+    db.add(db_photo)
+    db.commit()
+    db.refresh(db_photo)
+    return db_photo
+
+
+@app.get("/gallery/{photo_id}")
+def get_photo(photo_id: int, db: Session = Depends(get_db_gallery_simple)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return photo
+
+
+@app.put("/gallery/{photo_id}")
+def update_photo(photo_id: int, photo: PhotoCreate, db: Session = Depends(get_db_gallery_simple)):
+    db_photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not db_photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    for key, value in photo.dict().items():
+        setattr(db_photo, key, value)
+    db.commit()
+    db.refresh(db_photo)
+    return db_photo
+
+
+@app.delete("/gallery/{photo_id}")
+def delete_photo(photo_id: int, db: Session = Depends(get_db_gallery_simple)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    db.delete(photo)
+    db.commit()
+    return {"message": "Photo deleted successfully"}
+
+
+@app.post("/gallery/{photo_id}/upload")
+async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_gallery_simple)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
+
+    file_path = os.path.abspath(f"uploads/gallery/{photo_id}_{file.filename}")
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(file_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    photo.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
+    db.commit()
+    return photo
+
+
+@app.post("/gallery/{photo_id}/upload_thumbnail")
+async def upload_photo_thumbnail(photo_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_gallery_simple)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    allowed_ext = {".jpg", ".jpeg", ".png", ".webp"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
+
+    thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{ext}")
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+    with open(thumb_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Сохраняем относительный путь для корректной отдачи через статический маршрут
+    relative_path = os.path.relpath(thumb_path, BASE_DIR)
+    # Приводим к стандартным слэшам для URL
+    photo.thumbnail_path = relative_path.replace(os.sep, '/').replace('\\', '/')
+    db.commit()
+    return photo
+
+
+@app.get("/gallery/search")
+def search_photos(query: str, db: Session = Depends(get_db_gallery_simple)):
+    return db.query(Photo).filter(Photo.title.ilike(f"%{query}%")).all()
 
 
 @app.get("/books/search")

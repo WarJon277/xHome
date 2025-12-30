@@ -4,44 +4,121 @@ import { fetchEpisodes, createEpisode, uploadEpisodeFile } from './api.js';
 export function updateFormLabels() {
     const isMovie = state.currentCategory === 'movie';
     const isTvshow = state.currentCategory === 'tvshow';
+    const isPhoto = state.currentCategory === 'photo';
 
-    document.getElementById('file-label-text').textContent =
-        isMovie || isTvshow ? 'Файл видео' : 'Файл книги (PDF, DjVu, CBZ, EPUB)';
-
-    document.getElementById('director-author').placeholder =
-        isMovie || isTvshow ? 'Режиссёр' : 'Автор';
-
-    document.getElementById('thumbnail-upload-container').style.display =
-            isMovie ? 'block' : 'block'; // можно скрыть для книг, если хотите
+    // Проверяем, на какой странице мы находимся
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
     
+    // Выбираем правильный элемент в зависимости от страницы
+    const fileLabelTextElement = document.getElementById('file-label-text');
+    const directorAuthorElement = document.getElementById('director-author');
+    const fileUploadContainer = document.getElementById('file-upload-container');
+    const episodesUploadContainer = document.getElementById('episodes-upload-container');
+    const thumbnailUploadContainer = document.getElementById('thumbnail-upload-container');
+    const fileInput = document.getElementById('file');
+
+    if (isPhoto && isGalleryPage) {
+        // На странице галереи используем элементы для фото
+        const photoLabelElement = document.getElementById('file-label-text'); // на странице галереи используем тот же ID
+        const photoDescElement = document.getElementById('director-author'); // на странице галереи используем тот же ID
+        const photoUploadContainer = document.getElementById('photo-upload-container');
+        const photoInput = document.getElementById('photo');
+
+        if (photoLabelElement) photoLabelElement.textContent = 'Фото';
+        if (photoDescElement) photoDescElement.placeholder = 'Описание';
+        if (photoUploadContainer) photoUploadContainer.style.display = 'block'; // показываем контейнер фото
+        if (episodesUploadContainer) episodesUploadContainer.style.display = 'none';
+        if (thumbnailUploadContainer) thumbnailUploadContainer.style.display = 'block';
+        if (photoInput) photoInput.accept = 'image/*,.jpg,.jpeg,.png,.gif,.webp';
+    } else if (isPhoto && !isGalleryPage) {
+        // На главной странице при выборе фото категории
+        if (fileLabelTextElement) fileLabelTextElement.textContent = 'Фото';
+        if (directorAuthorElement) directorAuthorElement.placeholder = 'Описание';
+        if (fileUploadContainer) fileUploadContainer.style.display = 'none'; // скрываем, так как на главной используется другой элемент
+        if (episodesUploadContainer) episodesUploadContainer.style.display = 'none';
+        if (thumbnailUploadContainer) thumbnailUploadContainer.style.display = 'block';
+        if (fileInput) fileInput.accept = 'image/*,.jpg,.jpeg,.png,.gif,.webp';
+    } else {
+        if (fileLabelTextElement) fileLabelTextElement.textContent =
+            isMovie || isTvshow ? 'Файл видео' : 'Файл книги (PDF, DjVu, CBZ, EPUB)';
+
+        if (directorAuthorElement) directorAuthorElement.placeholder =
+            isMovie || isTvshow ? 'Режиссёр' : 'Автор';
+
+        if (thumbnailUploadContainer) thumbnailUploadContainer.style.display =
+                isMovie ? 'block' : 'block'; // можно скрыть для книг, если хотите
+        
         // Для сериалов скрываем основное поле загрузки файла и показываем загрузку эпизодов
-        document.getElementById('file-upload-container').style.display =
+        if (fileUploadContainer) fileUploadContainer.style.display =
             isTvshow ? 'none' : 'block';
-        document.getElementById('episodes-upload-container').style.display =
+        if (episodesUploadContainer) episodesUploadContainer.style.display =
             isTvshow ? 'block' : 'none';
 
-        document.getElementById('file').accept = isMovie || isTvshow
+        if (fileInput) fileInput.accept = isMovie || isTvshow
             ? 'video/*,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm'
             : '.pdf,.djvu,.djv,.cbz,.zip,.epub';
+    }
 }
 
 export function updateFileInfo() {
-    const file = document.getElementById('file').files[0];
-    document.getElementById('file-info').textContent = file ? `Выбран: ${file.name}` : '';
+    // Проверяем, находимся ли мы на странице галереи
+    const isPhotoCategory = state.currentCategory === 'photo';
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    
+    // Определяем правильный ID для файла и информации о файле в зависимости от страницы и категории
+    let fileInputId, fileInfoId;
+    if (isGalleryPage) {
+        fileInputId = 'photo';
+        fileInfoId = 'photo-info';
+    } else {
+        fileInputId = isPhotoCategory ? 'photo' : 'file'; // на главной странице при фото категории
+        fileInfoId = isPhotoCategory ? 'photo-info' : 'file-info';
+    }
+
+    const fileInput = document.getElementById(fileInputId);
+    if (!fileInput) return; // защита от ошибки если элемент не существует
+
+    const fileInfoElement = document.getElementById(fileInfoId);
+    if (fileInfoElement) {
+        if (fileInput.files.length > 0) {
+            if (fileInput.files.length === 1) {
+                // Если выбран только один файл, отображаем его имя
+                fileInfoElement.textContent = `Выбран: ${fileInput.files[0].name}`;
+            } else {
+                // Если выбрано несколько файлов, отображаем количество и список имен
+                const fileNames = Array.from(fileInput.files).map(file => file.name).join(', ');
+                fileInfoElement.textContent = `Выбрано: ${fileInput.files.length} файлов: ${fileNames}`;
+            }
+        } else {
+            // Если файлы не выбраны
+            fileInfoElement.textContent = '';
+        }
+    }
 }
 
 export function updateThumbnailInfo() {
-    const file = document.getElementById('thumbnail').files[0];
-    document.getElementById('thumbnail-info').textContent = file ? `Выбрана: ${file.name}` : '';
+    const thumbInput = document.getElementById('thumbnail');
+    if (!thumbInput) return; // защита от ошибки если элемент не существует
+    
+    const file = thumbInput.files[0];
+    const infoElement = document.getElementById('thumbnail-info');
+    if (infoElement) {
+        infoElement.textContent = file ? `Выбрана: ${file.name}` : '';
+    }
 }
 
 export function updateEpisodesInfo() {
-    const files = document.getElementById('episodes').files;
+    const episodesInput = document.getElementById('episodes');
+    if (!episodesInput) return; // защита от ошибки если элемент не существует
+    
+    const files = episodesInput.files;
     if (files.length > 0) {
         const fileNames = Array.from(files).map(f => f.name).join(', ');
-        document.getElementById('episodes-info').textContent = `Выбрано эпизодов: ${files.length} (${fileNames})`;
+        const infoElement = document.getElementById('episodes-info');
+        if (infoElement) infoElement.textContent = `Выбрано эпизодов: ${files.length} (${fileNames})`;
     } else {
-        document.getElementById('episodes-info').textContent = '';
+        const infoElement = document.getElementById('episodes-info');
+        if (infoElement) infoElement.textContent = '';
     }
 }
 

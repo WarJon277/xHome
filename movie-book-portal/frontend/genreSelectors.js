@@ -1,15 +1,27 @@
 import { state } from './state.js';
-import { MOVIE_GENRES, BOOK_GENRES, TVSHOW_GENRES } from './genres.js';
+import { MOVIE_GENRES, BOOK_GENRES, TVSHOW_GENRES, PHOTO_CATEGORIES } from './genres.js';
 
 // ============================================
 // Обновление выпадающего списка жанров в шапке
 // ============================================
 export function updateGenreSelect() {
-    const select = document.getElementById('genre-filter');
+    // Проверяем, на какой странице мы находимся - на главной или на галерее
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    const selectElementId = isGalleryPage ? 'category-filter' : 'genre-filter';
+    const select = document.getElementById(selectElementId);
     if (!select) return;
 
     select.innerHTML = '';
-    const genres = state.currentCategory === 'movie' ? MOVIE_GENRES : (state.currentCategory === 'tvshow' ? TVSHOW_GENRES : BOOK_GENRES);
+    let genres;
+    if (state.currentCategory === 'movie') {
+        genres = MOVIE_GENRES;
+    } else if (state.currentCategory === 'tvshow') {
+        genres = TVSHOW_GENRES;
+    } else if (state.currentCategory === 'photo') {
+        genres = PHOTO_CATEGORIES;
+    } else {
+        genres = BOOK_GENRES;
+    }
 
     genres.forEach(genre => {
         const option = document.createElement('option');
@@ -24,11 +36,23 @@ export function updateGenreSelect() {
 // Жанры в форме добавления/редактирования
 // ============================================
 export function updateGenreSelectInForm() {
-    const select = document.getElementById('genre-select');
+    // Проверяем, на какой странице мы находимся - на главной или на галерее
+    const isGalleryPage = window.location.pathname.includes('gallery.html');
+    const selectElementId = isGalleryPage ? 'category-select' : 'genre-select';
+    const select = document.getElementById(selectElementId);
     if (!select) return;
 
-    select.innerHTML = '<option value="">Выберите жанр</option>';
-    const genres = state.currentCategory === 'movie' ? MOVIE_GENRES : (state.currentCategory === 'tvshow' ? TVSHOW_GENRES : BOOK_GENRES);
+    select.innerHTML = '<option value="">Выберите категорию</option>';
+    let genres;
+    if (state.currentCategory === 'movie') {
+        genres = MOVIE_GENRES;
+    } else if (state.currentCategory === 'tvshow') {
+        genres = TVSHOW_GENRES;
+    } else if (state.currentCategory === 'photo') {
+        genres = PHOTO_CATEGORIES;
+    } else {
+        genres = BOOK_GENRES;
+    }
 
     genres.forEach(g => {
         if (g === "Все") return;

@@ -17,7 +17,7 @@ body {
 /* Шапка */
 header {
   background: #121212;
-  border-bottom: 1px solid #222;
+ border-bottom: 1px solid #222;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -30,7 +30,7 @@ header {
   padding: 0 16px;
   height: 56px;
   display: flex;
-  align-items: center;
+ align-items: center;
   justify-content: space-between;
 }
 
@@ -71,7 +71,7 @@ header {
 
 /* Анимация крестика при открытом меню */
 .menu-toggle.active .hamburger {
-  background: transparent;
+ background: transparent;
 }
 
 .menu-toggle.active .hamburger::before {
@@ -87,14 +87,14 @@ header {
 /* Выпадающее меню */
 .dropdown-menu {
   position: absolute;
-  top: 56px;
+ top: 56px;
   right: 16px;
   background: #1e1e1e;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 12px;
   display: none;
-  flex-direction: column;
+ flex-direction: column;
   gap: 8px;
   min-width: 180px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.5);
@@ -200,7 +200,6 @@ header {
 
 
 
-
 main {
     padding: 1rem;
 }
@@ -298,13 +297,40 @@ main {
     margin-top: 2rem;
 }
 
+#photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+
+/* Адаптивная сетка для мобильных устройств */
+@media (max-width: 768px) {
+    #photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.3rem;
+    }
+}
+
+@media (max-width: 480px) {
+    #photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.2rem;
+    }
+}
+
 .card {
     background-color: #1e1e1e;
-    padding: 1rem;
+    padding: 0.2rem; /* Уменьшенные отступы */
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 4px rgba(0,0,0.5);
     display: flex;
     flex-direction: column;
+}
+
+/* Квадратные плитки без скругления для галереи */
+#photos-grid .card {
+    border-radius: 0;
 }
 
 .card h3 {
@@ -324,13 +350,36 @@ main {
 
 .card video,
 .card .thumbnail {
-    width: 100%;
+    width: 10%;
     max-height: 200px;
     object-fit: cover;
     margin: 0.5rem 0;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+.card img.thumbnail {
+    width: 100%;
+    aspect-ratio: 1/1; /* Квадратные миниатюры */
+    object-fit: cover;
+    margin: 0.5rem 0;
+    border-radius: 0; /* Без скругления */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Адаптивные стили для миниатюр фото на мобильных устройствах */
+@media (max-width: 768px) {
+    .card img.thumbnail {
+        max-height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card img.thumbnail {
+        max-height: 100px;
+    }
 }
 
 .card video:hover,
@@ -372,7 +421,7 @@ main {
     display: flex !important;
     gap: 10px !important;
     margin-top: auto;
-    padding: 10px 12px 12px;          /* Отступ снизу карточки */
+    padding: 10px 12px;          /* Отступ снизу карточки */
     width: 100%;
 }
 
@@ -429,7 +478,7 @@ main {
 /* Красивые controls */
 .plyr--video .plyr__controls {
     background: linear-gradient(to top, rgba(0,0,0,0.9), transparent) !important;
-    padding: 30px 15px 15px 15px;
+    padding: 30px 15px 15px;
     border-radius: 0 0 8px 8px;
     backdrop-filter: blur(12px);
     opacity: 1;
@@ -440,7 +489,7 @@ main {
 }
 
 .plyr__control:hover {
-    background: rgba(255, 255, 255, 0.2) !important;
+    background: rgba(25, 255, 255, 0.2) !important;
     transform: scale(1.15);
 }
 
@@ -481,11 +530,11 @@ main {
 
 /* Название фильма под плеером */
 #video-modal h3 {
-    margin: 10px 0 0;
+    margin: 10px 0;
     font-size: 1.3rem;
     color: #fff;
     text-align: center;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    text-shadow: 0 1px 3px rgba(0,0,0.8);
     max-width: 95vw;
     word-wrap: break-word;
 }
@@ -583,7 +632,7 @@ main {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+ font-display: swap;
   src: url('assets/fonts/OpenSans-Regular.woff2') format('woff2');
 }
 
@@ -647,7 +696,7 @@ main {
 .episode-card:hover {
     background: #3d566e;
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0.2);
+    box-shadow: 0 4px 8px rgba(0,0.2);
 }
 
 .episode-card h4 {
@@ -660,4 +709,142 @@ main {
     margin: 0;
     color: #bdc3c7;
     font-size: 0.9em;
+}
+
+/* Стили для формы загрузки фото */
+.upload-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    border: 2px dashed #555;
+    text-align: center;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.upload-container:hover {
+    border-color: #4caf50;
+    background-color: #2e2e2e;
+}
+
+.upload-label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.upload-input {
+    display: none;
+}
+
+.upload-area {
+    padding: 20px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.upload-area:hover {
+    background-color: #333;
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.upload-text {
+    margin: 10px 0;
+    color: #aaa;
+}
+
+.photo-info {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #aaa;
+    text-align: center;
+}
+
+.progress-container {
+    margin-top: 15px;
+}
+
+.progress-bar-container {
+    width: 100%;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.progress-bar {
+    height: 24px;
+    background-color: #4caf50;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    text-align: center;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.submit-btn {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+}
+
+.submit-btn:hover {
+    background-color: #45a049;
+}
+
+.loading-message, .error-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+/* Адаптивные стили для формы загрузки */
+@media (max-width: 768px) {
+    .upload-container {
+        padding: 1rem;
+        margin: 0.8rem 0;
+    }
+    
+    .upload-icon {
+        font-size: 2.5rem;
+    }
+    
+    .upload-text {
+        font-size: 0.9rem;
+    }
+    
+    #add-form {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .upload-icon {
+        font-size: 2rem;
+    }
+    
+    .upload-text {
+        font-size: 0.8rem;
+    }
+    
+    #add-form {
+        padding: 0.8rem;
+    }
 }

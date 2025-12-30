@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Галерея фото</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="header-container">
+    <h1>Галерея фото</h1>
+
+    <!-- Кнопка-меню (гамбургер) -->
+    <button class="menu-toggle" id="menu-toggle" aria-label="Открыть меню">
+      <span class="hamburger"></span>
+    </button>
+
+    <!-- Выпадающее меню -->
+    <nav class="dropdown-menu" id="dropdown-menu">
+      <button class="nav-item" data-category="movie">Фильмы</button>
+      <button class="nav-item" data-category="tvshow">Сериалы</button>
+      <button class="nav-item" data-category="book">Книги</button>
+      <button class="nav-item active" data-category="photo">Фото</button>
+      
+      <div class="genre-filter-container">
+        <label for="genre-filter">Категория:</label>
+        <select id="category-filter" class="genre-select">
+          <option value="Все">Все</option>
+          <option value="general">Общее</option>
+          <option value="vacation">Отпуск</option>
+          <option value="family">Семья</option>
+          <option value="nature">Природа</option>
+        </select>
+      </div>
+
+      <button class="nav-item add-btn" id="show-add">Добавить фото</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+    <!-- Форма добавления/редактирования -->
+    <section id="add-form" style="display: none;">
+        <h2 id="form-title">Добавить новое фото</h2>
+        <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
+        
+        <form id="photo-form">
+            <input type="text" id="title" placeholder="Название фото">
+            <textarea id="description" placeholder="Описание" rows="2"></textarea>
+            
+            <div class="genre-row">
+                <select id="category-select" name="category-select">
+                    <option value="general">Общее</option>
+                    <option value="vacation">Отпуск</option>
+                    <option value="family">Семья</option>
+                    <option value="nature">Природа</option>
+                    <option value="other">Другое</option>
+                </select>
+            </div>
+            
+            <!-- Загрузка фото -->
+            <div id="photo-upload-container" class="upload-container">
+                <label for="photo" class="upload-label">Выберите фото для загрузки</label>
+                <input type="file" id="photo" accept="image/*" multiple required class="upload-input">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Перетащите сюда фото или нажмите для выбора</p>
+                    <div id="photo-info" class="photo-info"></div>
+                </div>
+                
+                <!-- Кнопка для захвата фото с камеры -->
+                <div style="margin-top: 15px; text-align: center;">
+                    <button type="button" id="capture-photo-btn" class="file-upload-btn">Сделать фото с камеры</button>
+                </div>
+            </div>
+            
+            <!-- Контейнер для видеопотока с камеры -->
+            <div id="camera-container" style="display: none; margin-top: 15px;">
+                <video id="camera-preview" autoplay playsinline style="width: 100%; max-width: 400px; height: auto; border-radius: 8px;"></video>
+                <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" id="capture-from-camera" class="file-upload-btn">Сделать снимок</button>
+                    <button type="button" id="cancel-camera" class="file-upload-btn" style="background-color: #e74c3c;">Отмена</button>
+                </div>
+                <!-- Скрытое поле для хранения захваченного изображения -->
+                <canvas id="photo-canvas" style="display: none;"></canvas>
+            </div>
+
+            <div id="progress-container" class="progress-container" style="display: none; margin-top: 15px;">
+                <div class="progress-bar-container">
+                    <div id="progress" class="progress-bar" style="width: 0%;"></div>
+                </div>
+                <div id="progress-text" class="progress-text">0%</div>
+            </div>
+
+            <button type="submit" id="submit-btn" class="submit-btn">Добавить фото</button>
+
+            <div id="loading-message" class="loading-message" style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
+                Загрузка...
+            </div>
+            <div id="error-message" class="error-message" style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;"></div>
+        </form>
+    </section>
+
+    <!-- Сетка фото -->
+    <section id="photos-grid">
+        <!-- Фото карточки будут вставляться сюда через JS -->
+    </section>
+</main>
+
+<script type="module" src="/static/api.js"></script>
+<script type="module" src="/static/state.js"></script>
+<script type="module" src="/static/utils.js"></script>
+<script type="module" src="/static/genres.js"></script>
+<script type="module" src="/static/genreSelectors.js"></script>
+<script type="module" src="/static/itemDisplay.js"></script>
+<script type="module" src="/static/itemForm.js"></script>
+<script type="module" src="/static/eventListeners.js"></script>
+<script type="module" src="/static/app.js"></script>
+<script type="module" src="/static/photoModal.js"></script>
+
+<!-- Scripts for functionality -->
+<script type="module">
+    // После полной загрузки страницы галереи устанавливаем правильную категорию
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Динамически импортируем необходимые модули
+            const [{ setCurrentCategory, setCurrentGenre }, { updateGenreSelect, updateGenreSelectInForm }, { updateFormLabels }, { loadItems }] = await Promise.all([
+                import('/static/state.js'),
+                import('/static/genreSelectors.js'),
+                import('/static/utils.js'),
+                import('/static/itemDisplay.js')
+            ]);
+            
+            // Устанавливаем категорию на 'photo' при загрузке страницы галереи
+            setCurrentCategory('photo');
+            setCurrentGenre('Все');
+            
+            // Обновляем глобальные переменные для совместимости
+            window.currentCategory = 'photo';
+            window.currentGenre = 'Все';
+            if (window.state) {
+                window.state.currentCategory = 'photo';
+                window.state.currentGenre = 'Все';
+            }
+            
+            // Обновляем интерфейс и загружаем фото
+            updateGenreSelect();
+            updateGenreSelectInForm();
+            updateFormLabels();
+            loadItems(); // загружаем фото
+        } catch (error) {
+            console.error('Ошибка при инициализации галереи:', error);
+        }
+    });
+    
+    // Добавляем функциональность захвата фото с камеры
+    document.addEventListener('DOMContentLoaded', () => {
+        const captureBtn = document.getElementById('capture-photo-btn');
+        const cameraContainer = document.getElementById('camera-container');
+        const cameraPreview = document.getElementById('camera-preview');
+        const captureFromCameraBtn = document.getElementById('capture-from-camera');
+        const cancelCameraBtn = document.getElementById('cancel-camera');
+        const photoInput = document.getElementById('photo');
+        const uploadArea = document.getElementById('upload-area');
+        
+        if (captureBtn && cameraContainer && cameraPreview && captureFromCameraBtn && cancelCameraBtn) {
+            let stream = null;
+            
+            // Функция для включения камеры
+            const startCamera = async () => {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }  // Сначала пробуем использовать внешнюю камеру (на мобильных устройствах это основная камера)
+                    });
+                    
+                    cameraPreview.srcObject = stream;
+                    cameraContainer.style.display = 'block';
+                    uploadArea.style.display = 'none'; // Скрываем обычную область загрузки
+                } catch (err) {
+                    console.error('Ошибка доступа камере:', err);
+                    alert('Не удалось получить доступ к камере. Пожалуйста, проверьте разрешения.');
+                    
+                    // Пробуем использовать переднюю камеру
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: 'user' }  // Передняя камера
+                        });
+                        
+                        cameraPreview.srcObject = stream;
+                        cameraContainer.style.display = 'block';
+                        uploadArea.style.display = 'none';
+                    } catch (err2) {
+                        console.error('Ошибка доступа к передней камере:', err2);
+                        alert('Не удалось получить доступ к камере. Пожалуйста, проверьте разрешения.');
+                    }
+                }
+            };
+            
+            // Функция для остановки камеры
+            const stopCamera = () => {
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    stream = null;
+                }
+                cameraContainer.style.display = 'none';
+                uploadArea.style.display = 'block'; // Показываем обычную область загрузки
+            };
+            
+            // Функция для захвата фото с камеры
+            const capturePhoto = () => {
+                if (!stream) return;
+                
+                const canvas = document.getElementById('photo-canvas');
+                const video = cameraPreview;
+                
+                // Устанавливаем размеры canvas в соответствии с видео
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Рисуем текущий кадр видео на canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Преобразуем изображение в Blob
+                canvas.toBlob(async (blob) => {
+                    // Создаем File из Blob
+                    const file = new File([blob], `camera-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                    
+                    // Создаем DataTransfer объект для добавления файла к input
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    
+                    // Устанавливаем файлы в input
+                    photoInput.files = dataTransfer.files;
+                    
+                    // Обновляем информацию о файле
+                    const photoInfo = document.getElementById('photo-info');
+                    if (photoInfo) {
+                        photoInfo.textContent = `Выбрано фото с камеры: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                    }
+                    
+                    // Останавливаем камеру и возвращаемся к обычному режиму
+                    stopCamera();
+                }, 'image/jpeg', 0.8); // JPEG с 80% качеством
+            };
+            
+            // Обработчики событий
+            captureBtn.addEventListener('click', startCamera);
+            captureFromCameraBtn.addEventListener('click', capturePhoto);
+            cancelCameraBtn.addEventListener('click', stopCamera);
+        }
+    });
+</script>
+</body>
+</html>

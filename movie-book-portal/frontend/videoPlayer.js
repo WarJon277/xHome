@@ -138,11 +138,7 @@ export function openVideoPlayer(filePath, title = '') {
                         }, 30);
                     });
                     
-                    // Обработчики событий для показа/скрытия элементов управления эпизодами
-                } else {
-                    video.controls = true;
                 }
-           }
             }, { once: true });
         })
         .catch(err => {

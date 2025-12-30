@@ -29,6 +29,8 @@ export function openVideoPlayer(filePath, title = '') {
         zIndex: '9999',
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         overflow: 'hidden'
     });
 
@@ -205,10 +207,12 @@ function createEpisodeControls(title, modal, video) {
         position: absolute;
         top: 16px;
         left: 16px;
+        right: 16px;
         z-index: 10010;
         display: flex;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
+        justify-content: center;
     `;
 
     const btnStyle = `
@@ -216,12 +220,23 @@ function createEpisodeControls(title, modal, video) {
         color: white;
         border: none;
         border-radius: 6px;
-        padding: 9px 16px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 12px;
         cursor: pointer;
         backdrop-filter: blur(6px);
         transition: background 0.2s;
+        flex: 1;
+        min-width: 100px;
+        max-width: 140px;
     `;
+    
+    // Дополнительные стили для мобильных устройств
+    if (window.innerWidth <= 768) {
+        container.style.top = '8px';
+        container.style.left = '8px';
+        container.style.right = '8px';
+        container.style.gap = '6px';
+    }
 
     const prevBtn = document.createElement('button');
     prevBtn.textContent = '◀ Предыдущий';
@@ -392,6 +407,11 @@ function createEpisodeControls(title, modal, video) {
         if (!currentEpisodeInfo) {
             currentEpisodeInfo = extractEpisodeInfo(title);
         }
+        // Добавляем небольшую задержку для предотвращения быстрых кликов
+        prevBtn.disabled = true;
+        setTimeout(() => {
+            prevBtn.disabled = false;
+        }, 500);
         goToPrevEpisode();
     };
     
@@ -406,8 +426,44 @@ function createEpisodeControls(title, modal, video) {
         if (!currentEpisodeInfo) {
             currentEpisodeInfo = extractEpisodeInfo(title);
         }
+        // Добавляем небольшую задержку для предотвращения быстрых кликов
+        nextBtn.disabled = true;
+        setTimeout(() => {
+            nextBtn.disabled = false;
+        }, 500);
         goToNextEpisode();
     };
+    
+    // Добавляем touch события для мобильных устройств
+    prevBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        prevBtn.classList.add('pressed');
+    });
+    
+    prevBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        prevBtn.classList.remove('pressed');
+    });
+    
+    nextBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        nextBtn.classList.add('pressed');
+    });
+    
+    nextBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        nextBtn.classList.remove('pressed');
+    });
+    
+    // Добавляем стили для состояния нажатия кнопок
+    const style = document.createElement('style');
+    style.textContent = `
+        button.pressed {
+            background: rgba(50, 50, 0.9) !important;
+            transform: scale(0.95);
+        }
+    `;
+    document.head.appendChild(style);
 
     listBtn.onclick = async () => {
         const tvshowId = await extractTvshowIdFromTitle(title);

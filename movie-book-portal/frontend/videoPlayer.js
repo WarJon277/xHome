@@ -139,19 +139,11 @@ export function openVideoPlayer(filePath, title = '') {
                     });
                     
                     // Добавляем обработчик для автоповорота на мобильных устройствах
-                    video.addEventListener('play', () => {
+                    video.addEventListener('canplay', () => {
                         // Проверяем, является ли устройство мобильным
                         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                            // Пытаемся запросить полноэкранный режим при воспроизведении
-                            if (video.requestFullscreen) {
-                                video.requestFullscreen();
-                            } else if (video.mozRequestFullScreen) { /* Firefox */
-                                video.mozRequestFullScreen();
-                            } else if (video.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
-                                video.webkitRequestFullscreen();
-                            } else if (video.msRequestFullscreen) { /* IE/Edge */
-                                video.msRequestFullscreen();
-                            }
+                            // Автоматически запускаем воспроизведение на мобильных устройствах
+                            video.play().catch(e => console.log("Autoplay failed:", e));
                         }
                     });
                 } else {

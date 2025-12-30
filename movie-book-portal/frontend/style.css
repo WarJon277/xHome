@@ -389,16 +389,28 @@ main {
     max-height: none;
 }
 
-/* Адаптивные стили для миниатюр фото на мобильных устройствах */
+/* Адаптивные стили для миниатюр на мобильных устройствах */
 @media (max-width: 768px) {
     .card img.thumbnail {
-        max-height: 120px;
+        max-height: 180px;
+        min-height: 150px;
+    }
+    
+    .card video {
+        max-height: 180px;
+        min-height: 150px;
     }
 }
 
 @media (max-width: 480px) {
     .card img.thumbnail {
-        max-height: 100px;
+        max-height: 150px;
+        min-height: 120px;
+    }
+    
+    .card video {
+        max-height: 150px;
+        min-height: 120px;
     }
 }
 
@@ -489,7 +501,7 @@ main {
     position: fixed;
     top: 0;
     left: 0;
-    width: 10%;
+    width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.95);
     display: flex;

@@ -220,14 +220,15 @@ function createEpisodeControls(title, modal, video) {
         color: white;
         border: none;
         border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12px;
+        padding: 12px 16px;
+        font-size: 14px;
         cursor: pointer;
         backdrop-filter: blur(6px);
         transition: background 0.2s;
         flex: 1;
-        min-width: 100px;
-        max-width: 140px;
+        min-width: 120px;
+        max-width: 160px;
+        margin: 5px;
     `;
     
     // Дополнительные стили для мобильных устройств
@@ -396,7 +397,8 @@ function createEpisodeControls(title, modal, video) {
     }
 
     // Обновляем обработчики после инициализации
-    prevBtn.onclick = async () => {
+    // Функция для обработки переключения эпизода с защитой от быстрых кликов
+    const handleEpisodeSwitch = async (switchFunction) => {
         // Убедимся, что данные инициализированы
         if (!currentTvshowId) {
             const tvshowId = await extractTvshowIdFromTitle(title);
@@ -407,32 +409,21 @@ function createEpisodeControls(title, modal, video) {
         if (!currentEpisodeInfo) {
             currentEpisodeInfo = extractEpisodeInfo(title);
         }
+        
         // Добавляем небольшую задержку для предотвращения быстрых кликов
         prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        
         setTimeout(() => {
             prevBtn.disabled = false;
-        }, 500);
-        goToPrevEpisode();
+            nextBtn.disabled = false;
+        }, 800);
+        
+        switchFunction();
     };
     
-    nextBtn.onclick = async () => {
-        // Убедимся, что данные инициализированы
-        if (!currentTvshowId) {
-            const tvshowId = await extractTvshowIdFromTitle(title);
-            if (tvshowId) {
-                currentTvshowId = tvshowId;
-            }
-        }
-        if (!currentEpisodeInfo) {
-            currentEpisodeInfo = extractEpisodeInfo(title);
-        }
-        // Добавляем небольшую задержку для предотвращения быстрых кликов
-        nextBtn.disabled = true;
-        setTimeout(() => {
-            nextBtn.disabled = false;
-        }, 500);
-        goToNextEpisode();
-    };
+    prevBtn.onclick = () => handleEpisodeSwitch(goToPrevEpisode);
+    nextBtn.onclick = () => handleEpisodeSwitch(goToNextEpisode);
     
     // Добавляем touch события для мобильных устройств
     prevBtn.addEventListener('touchstart', (e) => {
@@ -441,6 +432,13 @@ function createEpisodeControls(title, modal, video) {
     });
     
     prevBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        setTimeout(() => {
+            prevBtn.classList.remove('pressed');
+        }, 150);
+    });
+    
+    prevBtn.addEventListener('touchcancel', (e) => {
         e.preventDefault();
         prevBtn.classList.remove('pressed');
     });
@@ -451,6 +449,13 @@ function createEpisodeControls(title, modal, video) {
     });
     
     nextBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        setTimeout(() => {
+            nextBtn.classList.remove('pressed');
+        }, 150);
+    });
+    
+    nextBtn.addEventListener('touchcancel', (e) => {
         e.preventDefault();
         nextBtn.classList.remove('pressed');
     });

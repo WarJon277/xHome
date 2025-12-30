@@ -268,6 +268,10 @@ export function displayItems(items) {
         if (state.currentCategory === 'photo') {
             // Для фото добавляем только изображение
             card.appendChild(img);
+            
+            // Устанавливаем data-id для фото, чтобы можно было применить фильтры
+            card.setAttribute('data-id', item.id);
+            card.classList.add('photo-item');
         } else {
             // Для других категорий добавляем остальные элементы
             // (они уже добавлены выше в условии if (state.currentCategory !== 'photo'))
@@ -280,4 +284,9 @@ export function displayItems(items) {
 
         grid.appendChild(card);
     });
+    
+    // Применяем сохраненные фильтры к миниатюрам, если они есть
+    if (typeof window.applyAllSavedFilters === 'function') {
+        window.applyAllSavedFilters();
+    }
 }

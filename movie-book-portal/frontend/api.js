@@ -416,6 +416,14 @@ export async function uploadPhotoThumbnail(photoId, file) {
     });
 }
 
+export async function applyPhotoFilter(photoId, filterType) {
+    const response = await fetch(`${API_BASE}/gallery/${photoId}/apply_filter?filter_type=${encodeURIComponent(filterType)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    return response.json();
+}
+
 export async function searchPhotos(query) {
     const response = await fetch(`${API_BASE}/gallery/search?query=${encodeURIComponent(query)}`);
     return response.json();

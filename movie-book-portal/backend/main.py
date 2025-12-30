@@ -991,6 +991,106 @@ async def upload_photo_thumbnail(photo_id: int, file: UploadFile = File(...), db
     return photo
 
 
+@app.post("/gallery/{photo_id}/apply_filter")
+async def apply_filter_to_photo(photo_id: int,
+                                filter_type: str = None,
+                                db: Session = Depends(get_db_gallery_simple)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    if not photo.file_path:
+        raise HTTPException(status_code=400, detail="Photo file path not found")
+    
+    # Get the original file path
+    original_file_path = os.path.join(BASE_DIR, photo.file_path)
+    if not os.path.exists(original_file_path):
+        raise HTTPException(status_code=404, detail="Original photo file not found")
+    
+    try:
+        # Load the original image
+        with Image.open(original_file_path) as img:
+            # Apply the filter based on filter_type
+            filtered_img = apply_image_filter(img, filter_type)
+            
+            # Save the filtered image back to the same file path
+            filtered_img.save(original_file_path, quality=95, optimize=True)
+            
+            # Create a new thumbnail from the filtered original image
+            # This ensures the thumbnail and original both have the same filter
+            thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
+            filtered_thumb = filtered_img.copy()
+            filtered_thumb.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            filtered_thumb.save(thumb_path, "WEBP", quality=85)
+            
+            # Update thumbnail path in database
+            thumb_relative_path = os.path.relpath(thumb_path, BASE_DIR)
+            photo.thumbnail_path = thumb_relative_path.replace(os.sep, '/').replace('\\', '/')
+            db.commit()
+        
+        return {"message": "Filter applied successfully", "photo": photo}
+    
+    except Exception as e:
+        print(f"Error applying filter: {e}")
+        raise HTTPException(status_code=500, detail=f"Error applying filter: {str(e)}")
+
+
+def apply_image_filter(img, filter_type):
+    """Apply a filter to the image based on the filter type"""
+    import numpy as np
+    
+    # Convert to RGB if necessary
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    if filter_type == 'brightness':
+        # Increase brightness
+        np_img = np.array(img)
+        np_img = np.clip(np_img * 1.3, 0, 255).astype(np.uint8)
+        return Image.fromarray(np_img)
+    
+    elif filter_type == 'contrast':
+        # Increase contrast
+        from PIL import ImageEnhance
+        enhancer = ImageEnhance.Contrast(img)
+        return enhancer.enhance(1.3)
+    
+    elif filter_type == 'saturation':
+        # Increase saturation
+        from PIL import ImageEnhance
+        enhancer = ImageEnhance.Color(img)
+        return enhancer.enhance(1.5)
+    
+    elif filter_type == 'bw':
+        # Convert to grayscale
+        return img.convert('L').convert('RGB')
+    
+    elif filter_type == 'vintage':
+        # Apply vintage effect
+        np_img = np.array(img)
+        # Add sepia tone
+        sepia_filter = np.array([[0.393, 0.769, 0.189],
+                                [0.349, 0.686, 0.168],
+                                [0.272, 0.534, 0.131]])
+        sepia_img = np.dot(np_img, sepia_filter.T)
+        sepia_img = np.clip(sepia_img, 0, 255).astype(np.uint8)
+        
+        # Increase contrast and reduce saturation for vintage look
+        from PIL import ImageEnhance
+        img = Image.fromarray(sepia_img)
+        img = ImageEnhance.Contrast(img).enhance(1.2)
+        img = ImageEnhance.Color(img).enhance(0.8)
+        return img
+    
+    elif filter_type == 'none':
+        # Return original image
+        return img
+    
+    else:
+        # Return original image if no filter type specified
+        return img
+
+
 @app.get("/gallery/search")
 def search_photos(query: str, db: Session = Depends(get_db_gallery_simple)):
     return db.query(Photo).filter(Photo.title.ilike(f"%{query}%")).all()

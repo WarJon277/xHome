@@ -81,6 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
             loadItems();
         });
     }
+    
+    // Фильтр по категории на странице галереи
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', (e) => {
+            setCurrentGenre(e.target.value);
+            window.currentGenre = e.target.value; // для совместимости
+            if (window.state) window.state.currentGenre = e.target.value; // обновляем также в глобальном состоянии если существует
+            loadItems();
+        });
+    }
 
     // Переключение вида (список / форма)
     const showAddBtn = document.getElementById('show-add');

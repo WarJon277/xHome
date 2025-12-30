@@ -84,7 +84,28 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
     const closeModalBtn = document.getElementById('close-modal');
     const deleteBtn = document.getElementById('delete-photo-modal');
     
-    modalImg.src = photoSrc;
+    // Загружаем полноразмерное фото, если оно доступно, иначе используем миниатюру
+    if (photoId && window.currentCategory === 'photo') {
+        // Пытаемся получить полный путь к фото из API
+        try {
+            const { fetchPhoto } = await import('./api.js');
+            const photoData = await fetchPhoto(photoId);
+            if (photoData && photoData.file_path) {
+                // Используем полный путь к фото, если он доступен
+                modalImg.src = photoData.file_path;
+            } else {
+                // Если полный путь не доступен, используем переданный путь (который может быть миниатюрой)
+                modalImg.src = photoSrc;
+            }
+        } catch (error) {
+            // В случае ошибки используем переданный путь
+            modalImg.src = photoSrc;
+            console.error('Ошибка при получении данных фото:', error);
+        }
+    } else {
+        // Для других случаев используем переданный путь
+        modalImg.src = photoSrc;
+    }
     modalTitle.textContent = photoTitle || 'Без названия';
     
     // Обработчик закрытия модального окна

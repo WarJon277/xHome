@@ -12,7 +12,7 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
-
+from PIL import Image
 
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -188,6 +188,25 @@ def delete_movie(movie_id: int, db: Session = Depends(get_db)):
     movie = db.query(Movie).filter(Movie.id == movie_id).first()
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
+    
+    # Удаляем файл видео, если он существует
+    if movie.file_path:
+        try:
+            file_path = os.path.join(BASE_DIR, movie.file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Ошибка при удалении файла фильма: {e}")
+    
+    # Удаляем файл миниатюры, если он существует
+    if movie.thumbnail_path:
+        try:
+            thumb_path = os.path.join(BASE_DIR, movie.thumbnail_path)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+        except Exception as e:
+            print(f"Ошибка при удалении миниатюры фильма: {e}")
+    
     db.delete(movie)
     db.commit()
     return {"message": "Movie deleted successfully"}
@@ -298,6 +317,25 @@ def delete_book(book_id: int, db: Session = Depends(get_db_books_simple)):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    
+    # Удаляем файл книги, если он существует
+    if book.file_path:
+        try:
+            file_path = os.path.join(BASE_DIR, book.file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Ошибка при удалении файла книги: {e}")
+    
+    # Удаляем файл миниатюры, если он существует
+    if book.thumbnail_path:
+        try:
+            thumb_path = os.path.join(BASE_DIR, book.thumbnail_path)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+        except Exception as e:
+            print(f"Ошибка при удалении миниатюры книги: {e}")
+    
     db.delete(book)
     db.commit()
     return {"message": "Book deleted successfully"}
@@ -557,6 +595,25 @@ def delete_tvshow(tvshow_id: int, db: Session = Depends(get_db_tvshows_simple)):
     tvshow = db.query(Tvshow).filter(Tvshow.id == tvshow_id).first()
     if not tvshow:
         raise HTTPException(status_code=404, detail="Tvshow not found")
+    
+    # Удаляем файл видео, если он существует
+    if tvshow.file_path:
+        try:
+            file_path = os.path.join(BASE_DIR, tvshow.file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Ошибка при удалении файла сериала: {e}")
+    
+    # Удаляем файл миниатюры, если он существует
+    if tvshow.thumbnail_path:
+        try:
+            thumb_path = os.path.join(BASE_DIR, tvshow.thumbnail_path)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+        except Exception as e:
+            print(f"Ошибка при удалении миниатюры сериала: {e}")
+    
     db.delete(tvshow)
     db.commit()
     return {"message": "Tvshow deleted successfully"}
@@ -694,6 +751,16 @@ def delete_episode(episode_id: int, db: Session = Depends(get_db_tvshows_simple)
         episode = db.query(Episode).filter(Episode.id == episode_id).first()
         if not episode:
             raise HTTPException(status_code=404, detail="Episode not found")
+        
+        # Удаляем файл видео эпизода, если он существует
+        if episode.file_path:
+            try:
+                file_path = os.path.join(BASE_DIR, episode.file_path)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Ошибка при удалении файла эпизода: {e}")
+        
         db.delete(episode)
         db.commit()
         return {"message": "Episode deleted successfully"}
@@ -788,6 +855,25 @@ def delete_photo(photo_id: int, db: Session = Depends(get_db_gallery_simple)):
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Удаляем файлы изображения, если они существуют
+    if photo.file_path:
+        try:
+            file_path = os.path.join(BASE_DIR, photo.file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Ошибка при удалении файла фото: {e}")
+    
+    # Удаляем файл миниатюры, если он существует
+    if photo.thumbnail_path and photo.thumbnail_path != photo.file_path:
+        try:
+            thumb_path = os.path.join(BASE_DIR, photo.thumbnail_path)
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+        except Exception as e:
+            print(f"Ошибка при удалении миниатюры фото: {e}")
+    
     db.delete(photo)
     db.commit()
     return {"message": "Photo deleted successfully"}
@@ -813,6 +899,31 @@ async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Ses
     relative_path = os.path.relpath(file_path, BASE_DIR)
     # Приводим к стандартным слэшам для URL
     photo.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
+    
+    # Создаем миниатюру
+    try:
+        with Image.open(file_path) as img:
+            # Определяем размеры миниатюры (например, 300x300)
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            # Сохраняем миниатюру
+            thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
+            img.save(thumb_path, "WEBP", quality=85)
+            # Обновляем путь к миниатюре в базе данных
+            thumb_relative_path = os.path.relpath(thumb_path, BASE_DIR)
+            photo.thumbnail_path = thumb_relative_path.replace(os.sep, '/').replace('\\', '/')
+            print(f"Создана миниатюра: {photo.thumbnail_path}")  # Отладочное сообщение
+            
+            # Удаляем старую миниатюру с другим расширением, если она существует
+            for old_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                old_thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{old_ext}")
+                if os.path.exists(old_thumb_path) and old_thumb_path != thumb_path:
+                    os.remove(old_thumb_path)
+                    print(f"Удалена старая миниатюра: {old_thumb_path}")
+    except Exception as e:
+        print(f"Ошибка при создании миниатюры: {e}")
+        # Если не удалось создать миниатюру, используем оригинальное изображение как миниатюру
+        photo.thumbnail_path = photo.file_path
+
     db.commit()
     return photo
 
@@ -828,10 +939,34 @@ async def upload_photo_thumbnail(photo_id: int, file: UploadFile = File(...), db
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
-    thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{ext}")
-    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-    with open(thumb_path, "wb") as buffer:
+    # Сохраняем загруженный файл временно
+    temp_path = os.path.abspath(f"uploads/gallery/{photo_id}_temp{ext}")
+    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+    with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    # Конвертируем в WebP для миниатюры
+    thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
+    try:
+        with Image.open(temp_path) as img:
+            # Определяем размеры миниатюры (например, 300x300)
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            img.save(thumb_path, "WEBP", quality=85)
+    except Exception as e:
+        print(f"Ошибка при конвертации миниатюры в WebP: {e}")
+        # Если не удалось конвертировать, сохраняем как есть
+        shutil.copy2(temp_path, thumb_path)
+
+    # Удаляем временный файл
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    # Удаляем старую миниатюру с другим расширением, если она существует
+    for old_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        old_thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{old_ext}")
+        if os.path.exists(old_thumb_path) and old_thumb_path != thumb_path:
+            os.remove(old_thumb_path)
+            print(f"Удалена старая миниатюра: {old_thumb_path}")
 
     # Сохраняем относительный путь для корректной отдачи через статический маршрут
     relative_path = os.path.relpath(thumb_path, BASE_DIR)

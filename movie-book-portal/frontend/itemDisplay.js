@@ -73,52 +73,81 @@ export function displayItems(items) {
         const photoPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23666"/><text x="150" y="200" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Photo</text></svg>';
 
         // Устанавливаем путь к изображению с проверкой существования
-        if (item.thumbnail_path) {
-            // Проверяем, существует ли файл миниатюры
+        if (item.thumbnail_path && state.currentCategory === 'photo') {
+            // Для фото в галерее используем миниатюру, если она есть
             let thumbnailUrl;
-            if (state.currentCategory === 'photo') {
-                // Для фото всегда формируем путь к uploads/gallery/, независимо от того, что хранится в базе
-                if (item.thumbnail_path.startsWith('/')) {
-                    // Если путь начинается с /uploads/gallery/, используем как есть
-                    if (item.thumbnail_path.includes('/uploads/gallery/')) {
-                        thumbnailUrl = item.thumbnail_path;
-                    } else {
-                        // Извлекаем имя файла и формируем правильный путь
-                        const fileName = item.thumbnail_path.split('/').pop();
-                        thumbnailUrl = `/uploads/gallery/${fileName}`;
-                    }
-                } else if (item.thumbnail_path.startsWith('uploads/')) {
-                    // Если путь начинается с uploads/gallery/, используем как есть
-                    if (item.thumbnail_path.includes('gallery')) {
-                        thumbnailUrl = `/${item.thumbnail_path.replace(/\\/g, '/')}`;
-                    } else {
-                        // Извлекаем имя файла и формируем правильный путь
-                        const fileName = item.thumbnail_path.split('/').pop();
-                        thumbnailUrl = `/uploads/gallery/${fileName}`;
-                    }
+            // Для фото всегда формируем путь к uploads/gallery/, независимо от того, что хранится в базе
+            if (item.thumbnail_path.startsWith('/')) {
+                // Если путь начинается с /uploads/gallery/, используем как есть
+                if (item.thumbnail_path.includes('/uploads/gallery/')) {
+                    // Для всех фото в галерее используем единый формат миниатюры: baseName_thumb.webp
+                    const fileName = item.thumbnail_path.split('/').pop();
+                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
+                    // Убираем возможное дублирование "_thumb" в имени
+                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
+                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
                 } else {
-                    // Если путь не начинается с / или uploads/, добавляем правильный префикс
-                    const fileName = item.thumbnail_path.replace(/\\/g, '/').split('/').pop();
-                    thumbnailUrl = `/uploads/gallery/${fileName}`;
+                    // Извлекаем имя файла и формируем правильный путь
+                    const fileName = item.thumbnail_path.split('/').pop();
+                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
+                    // Убираем возможное дублирование "_thumb" в имени
+                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
+                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
+                }
+            } else if (item.thumbnail_path.startsWith('uploads/')) {
+                // Если путь начинается с uploads/gallery/, используем как есть
+                if (item.thumbnail_path.includes('gallery')) {
+                    const fileName = item.thumbnail_path.split('/').pop();
+                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
+                    // Убираем возможное дублирование "_thumb" в имени
+                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
+                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
+                } else {
+                    // Извлекаем имя файла и формируем правильный путь
+                    const fileName = item.thumbnail_path.split('/').pop();
+                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
+                    // Убираем возможное дублирование "_thumb" в имени
+                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
+                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
                 }
             } else {
-                // Для других категорий (фильмы, сериалы, книги)
-                if (item.thumbnail_path.startsWith('/')) {
-                    thumbnailUrl = item.thumbnail_path;
-                } else if (item.thumbnail_path.startsWith('uploads/')) {
-                    thumbnailUrl = `/${item.thumbnail_path.replace(/\\/g, '/')}`;
-                } else {
-                    thumbnailUrl = `/uploads/${item.thumbnail_path.replace(/\\/g, '/')}`;
-                }
+                // Если путь не начинается с / или uploads/, добавляем правильный префикс
+                const fileName = item.thumbnail_path.replace(/\\/g, '/').split('/').pop();
+                const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
+                // Убираем возможное дублирование "_thumb" в имени
+                const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
+                thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
+            }
+            // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
+            img.src = photoPlaceholder;
+            
+            // Затем пытаемся загрузить реальное изображение
+            // Используем Image для проверки загрузки изображения
+            const testImg = new Image();
+            testImg.onload = () => {
+                img.src = thumbnailUrl;
+            };
+            testImg.onerror = () => {
+                // Изображение не существует, оставляем placeholder
+                console.warn(`Миниатюра не найдена: ${thumbnailUrl}`);
+            };
+            testImg.src = thumbnailUrl;
+        } else if (item.thumbnail_path) {
+            // Для других категорий (фильмы, сериалы, книги) используем обычную логику
+            let thumbnailUrl;
+            if (item.thumbnail_path.startsWith('/')) {
+                thumbnailUrl = item.thumbnail_path;
+            } else if (item.thumbnail_path.startsWith('uploads/')) {
+                thumbnailUrl = `/${item.thumbnail_path.replace(/\\/g, '/')}`;
+            } else {
+                thumbnailUrl = `/uploads/${item.thumbnail_path.replace(/\\/g, '/')}`;
             }
             // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
             img.src = state.currentCategory === 'movie'
                 ? moviePlaceholder
                 : state.currentCategory === 'tvshow'
                     ? tvshowPlaceholder
-                    : state.currentCategory === 'photo'
-                        ? photoPlaceholder
-                        : bookPlaceholder;
+                    : bookPlaceholder;
             
             // Затем пытаемся загрузить реальное изображение
             // Используем Image для проверки загрузки изображения
@@ -159,32 +188,6 @@ export function displayItems(items) {
                 let photoPath;
                 if (item.file_path) {
                     photoPath = item.file_path;
-                } else if (item.thumbnail_path) {
-                    // Если основной файл не загружен, но есть миниатюра, используем миниатюру
-                    // Используем ту же логику формирования пути, что и для отображения миниатюры
-                    if (item.thumbnail_path.startsWith('/')) {
-                        // Если путь начинается с /uploads/gallery/, используем как есть
-                        if (item.thumbnail_path.includes('/uploads/gallery/')) {
-                            photoPath = item.thumbnail_path;
-                        } else {
-                            // Извлекаем имя файла и формируем правильный путь
-                            const fileName = item.thumbnail_path.split('/').pop();
-                            photoPath = `/uploads/gallery/${fileName}`;
-                        }
-                    } else if (item.thumbnail_path.startsWith('uploads/')) {
-                        // Если путь начинается с uploads/gallery/, используем как есть
-                        if (item.thumbnail_path.includes('gallery')) {
-                            photoPath = `/${item.thumbnail_path.replace(/\\/g, '/')}`;
-                        } else {
-                            // Извлекаем имя файла и формируем правильный путь
-                            const fileName = item.thumbnail_path.split('/').pop();
-                            photoPath = `/uploads/gallery/${fileName}`;
-                        }
-                    } else {
-                        // Если путь не начинается с / или uploads/, добавляем правильный префикс
-                        const fileName = item.thumbnail_path.replace(/\\/g, '/').split('/').pop();
-                        photoPath = `/uploads/gallery/${fileName}`;
-                    }
                 } else {
                     alert(`Файл фото ещё не загружен`);
                     return;

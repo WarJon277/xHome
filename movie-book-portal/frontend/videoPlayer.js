@@ -139,13 +139,7 @@ export function openVideoPlayer(filePath, title = '') {
                     });
                     
                     // Добавляем обработчик для автоповорота на мобильных устройствах
-                    video.addEventListener('canplay', () => {
-                        // Проверяем, является ли устройство мобильным
-                        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                            // Автоматически запускаем воспроизведение на мобильных устройствах
-                            video.play().catch(e => console.log("Autoplay failed:", e));
-                        }
-                    });
+                    // Убираем автоматическое воспроизведение на мобильных устройствах, чтобы избежать проблем с постоянной загрузкой
                 } else {
                     video.controls = true;
                 }

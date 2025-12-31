@@ -34,6 +34,22 @@ export function openVideoPlayer(filePath, title = '') {
         overflow: 'hidden'
     });
 
+    // ─── LOADER ───────────────────────────────
+    const loader = document.createElement('div');
+    loader.className = 'video-loader';
+    loader.innerHTML = `
+        <div class="video-loader-spinner"></div>
+        <div class="video-loader-text">Загрузка видео...</div>
+    `;
+    modal.appendChild(loader);
+    
+    // Ensure loader is visible initially
+    requestAnimationFrame(() => {
+        if (loader && loader.classList.contains('hidden')) {
+            loader.classList.remove('hidden');
+        }
+    });
+
     // ─── ВИДЕО ───────────────────────────────
     const video = document.createElement('video');
     Object.assign(video.style, {
@@ -91,6 +107,25 @@ export function openVideoPlayer(filePath, title = '') {
     document.body.appendChild(modal);
 
     // ─── Загрузка видео + Plyr ───────────────────────
+    // Ensure loader is visible immediately after modal is added to DOM
+    if (loader && loader.classList.contains('hidden')) {
+        loader.classList.remove('hidden');
+    }
+
+    // Set a minimum loader display time to ensure user sees the loading indicator
+    let minimumLoaderDisplay = true;
+    setTimeout(() => {
+        minimumLoaderDisplay = false;
+        // If all other conditions allow hiding the loader, hide it now
+        const canHideLoader =
+            video.readyState >= video.HAVE_CURRENT_DATA &&
+            !video.seeking &&
+            !video.waiting;
+        if (canHideLoader) {
+            loader.classList.add('hidden');
+        }
+    }, 500); // Show loader for at least 500ms
+
     fetch(videoSrc, { method: 'HEAD' })
         .then(res => {
             if (!res.ok) throw new Error(`Видео не найдено: ${res.status}`);
@@ -100,6 +135,12 @@ export function openVideoPlayer(filePath, title = '') {
 
             // Ждём, пока видео сможет играть
             video.addEventListener('loadedmetadata', () => {
+                // Скрываем лоадер при успешной загрузке метаданных
+                // Only hide if minimum display time has passed
+                if (!minimumLoaderDisplay) {
+                    loader.classList.add('hidden');
+                }
+                
                 // Инициализация Plyr
                 if (window.Plyr) {
                     const player = new Plyr(video, {
@@ -142,6 +183,34 @@ export function openVideoPlayer(filePath, title = '') {
                     
                 }
             }, { once: true });
+            
+            // Показываем лоадер при начале загрузки
+            video.addEventListener('loadstart', () => {
+                if (!minimumLoaderDisplay) {
+                    loader.classList.remove('hidden');
+                }
+            });
+            
+            // Скрываем лоадер при начале воспроизведения
+            video.addEventListener('playing', () => {
+                // Only hide if minimum display time has passed
+                if (!minimumLoaderDisplay) {
+                    loader.classList.add('hidden');
+                }
+            });
+            
+            // Показываем лоадер при ожидании данных
+            video.addEventListener('waiting', () => {
+                loader.classList.remove('hidden');
+            });
+            
+            // Скрываем лоадер при приостановке ожидания
+            video.addEventListener('canplay', () => {
+                // Only hide if minimum display time has passed
+                if (!minimumLoaderDisplay) {
+                    loader.classList.add('hidden');
+                }
+            });
         })
         .catch(err => {
             console.error(err);
@@ -174,7 +243,7 @@ function createCloseButton() {
         z-index: 10010;
         width: 48px;
         height: 48px;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0.7);
         color: #fff;
         border: none;
         border-radius: 50%;
@@ -616,7 +685,7 @@ function setupVideoResumeFix(video) {
     });
 }
 
-// ────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────
 // Утилиты для работы с сериалами (пример)
 // ────────────────────────────────────────────────────────────────
 

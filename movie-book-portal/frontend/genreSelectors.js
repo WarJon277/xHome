@@ -42,7 +42,7 @@ export function updateGenreSelectInForm() {
     const select = document.getElementById(selectElementId);
     if (!select) return;
 
-    select.innerHTML = '<option value="">Выберите категорию</option>';
+    select.innerHTML = isGalleryPage ? '<option value="">Выберите категорию</option>' : '<option value="">Выберите жанр</option>';
     let genres;
     if (state.currentCategory === 'movie') {
         genres = MOVIE_GENRES;

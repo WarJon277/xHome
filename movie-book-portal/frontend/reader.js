@@ -187,11 +187,19 @@ class BookReader {
     }
 
     exitReader() {
-        if (window.opener) {
+    // 1. Пробуем закрыть, если это popup
+        if (window.opener || window.history.length <= 1) {
             window.close();
-        } else {
-            window.location.href = '/';
         }
+
+        // 2. Если закрыть не получилось — возвращаемся назад
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        // 3. Последний рубеж — на главную (replace чтобы не засорять историю)
+        window.location.replace('/');
     }
 }
 

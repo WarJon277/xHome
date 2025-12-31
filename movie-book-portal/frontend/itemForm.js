@@ -28,7 +28,7 @@ export async function handleSubmit(e) {
         return;
     }
     
-    const title = titleElement.value.trim();
+    const title = titleElement ? titleElement.value.trim() : '';
     if (state.currentCategory !== 'photo' && !title) {
         showError('Название — обязательное поле');
         return;
@@ -47,7 +47,7 @@ export async function handleSubmit(e) {
         }
 
         let data = {
-            title,
+            title: title || null,
             description: descriptionElement ? descriptionElement.value.trim() || null : null
         };
 
@@ -262,8 +262,8 @@ export async function editItem(id) {
     const formTitleElement = document.getElementById('form-title');
     const submitBtnElement = document.getElementById('submit-btn');
 
-    if (titleElement) titleElement.value = item.title;
-    if (descriptionElement) descriptionElement.value = item.description || '';
+    if (titleElement && titleElement.value !== undefined) titleElement.value = item.title || '';
+    if (descriptionElement && descriptionElement.value !== undefined) descriptionElement.value = item.description || '';
 
     if (state.currentCategory === 'photo') {
         // Для фото устанавливаем категорию

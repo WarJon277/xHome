@@ -1,0 +1,115 @@
+/* Floating Action Button for adding photos */
+.fab-button {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    color: white;
+    border: none;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    overflow: hidden;
+    position: relative;
+    /* Fixed position moved to container */
+}
+
+/* FAB positioning container */
+.fab-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column-reverse;
+    /* Stack from bottom up */
+    gap: 15px;
+    z-index: 10000;
+}
+
+/* Specific colors for different FAB types */
+.fab-photo {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+}
+
+.fab-photo:hover {
+    background: linear-gradient(135deg, #45a049, #1b5e20);
+}
+
+.fab-folder {
+    background: linear-gradient(135deg, #2196f3, #1565c0);
+}
+
+.fab-folder:hover {
+    background: linear-gradient(135deg, #1e88e5, #0d47a1);
+}
+
+.fab-button:hover {
+    transform: scale(1.15);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.fab-button:active {
+    transform: scale(0.95);
+}
+
+.fab-icon {
+    pointer-events: none;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease;
+}
+
+.fab-button:hover .fab-icon {
+    transform: scale(1.2);
+}
+
+/* Pulse animation effect */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 8px 24px rgba(255, 255, 255, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+}
+
+.fab-button {
+    animation: pulse 2s infinite;
+}
+
+/* Show FAB on all devices for gallery page */
+.fab-container {
+    display: flex;
+}
+
+/* Специфические стили для FAB с иконкой папки */
+.fab-folder .fab-icon sup {
+    font-size: 0.6em;
+    margin-left: 2px;
+}
+
+@media (max-width: 768px) {
+    .fab-button {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+
+    .fab-container {
+        bottom: 20px !important;
+        right: 20px !important;
+        gap: 15px !important;
+        display: flex !important;
+        z-index: 10001 !important;
+    }
+}

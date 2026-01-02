@@ -6,7 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Галерея фото</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/forms.css">
+    <link rel="stylesheet" href="/static/css/grid.css">
+    <link rel="stylesheet" href="/static/css/cards.css">
+    <link rel="stylesheet" href="/static/css/gallery.css">
+    <link rel="stylesheet" href="/static/css/modals.css">
+    <link rel="stylesheet" href="/static/css/fab.css">
+    <link rel="stylesheet" href="/static/css/photo_modal.css">
 </head>
 
 <body>
@@ -395,8 +404,6 @@
                         const contextMenu = document.createElement('div');
                         contextMenu.id = 'context-menu';
                         contextMenu.style.position = 'fixed';
-                        contextMenu.style.left = e.pageX + 'px';
-                        contextMenu.style.top = e.pageY + 'px';
                         contextMenu.style.backgroundColor = 'rgba(30,30,30,0.95)';
                         contextMenu.style.backdropFilter = 'blur(10px)';
                         contextMenu.style.border = '1px solid rgba(255,255,255,0.1)';
@@ -404,6 +411,7 @@
                         contextMenu.style.padding = '8px';
                         contextMenu.style.zIndex = '10000';
                         contextMenu.style.boxShadow = '0 10px 20px rgba(0,0,0,0.5)';
+                        contextMenu.style.minWidth = '180px';
 
                         if (photoItem) {
                             const photoPath = photoItem.getAttribute('data-path') || photoItem.querySelector('img').src;
@@ -508,6 +516,32 @@
                         }
 
                         document.body.appendChild(contextMenu);
+
+                        // Позиционируем меню с учетом границ экрана
+                        const menuRect = contextMenu.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+
+                        // Используем clientX/clientY для корректного позиционирования на мобильных
+                        let left = e.clientX;
+                        let top = e.clientY;
+
+                        // Проверяем, не выходит ли меню за правую границу
+                        if (left + menuRect.width > viewportWidth) {
+                            left = viewportWidth - menuRect.width - 10;
+                        }
+
+                        // Проверяем, не выходит ли меню за нижнюю границу
+                        if (top + menuRect.height > viewportHeight) {
+                            top = viewportHeight - menuRect.height - 10;
+                        }
+
+                        // Убеждаемся, что меню не выходит за левую и верхнюю границы
+                        left = Math.max(10, left);
+                        top = Math.max(10, top);
+
+                        contextMenu.style.left = left + 'px';
+                        contextMenu.style.top = top + 'px';
 
                         // Обработчик для перемещения фото
                         contextMenu.querySelector('[data-action="move"]')?.addEventListener('click', async (event) => {

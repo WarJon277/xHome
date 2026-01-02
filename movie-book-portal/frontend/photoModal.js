@@ -18,110 +18,32 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
                 justify-content: center;
                 align-items: center;
                 z-index: 1000;
-                padding: 20px;
+                padding: 0;
                 display: none;
             ">
                 <div class="photo-container" style="
-                    width: 95vw;
-                    max-width: 1200px;
-                    max-height: 80vh;
+                    width: 100%;
+                    height: 100%;
                     position: relative;
-                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 ">
                     <img id="modal-photo" src="" alt="Фото" style="
-                        width: 100%;
-                        height: 100%;
-                        max-height: 80vh;
+                        max-width: 100%;
+                        max-height: calc(100vh - 120px);
                         object-fit: contain;
-                        border-radius: 8px;
-                        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+                        border-radius: 0;
+                        box-shadow: none;
                     ">
-                <div class="modal-controls" style="
-                    position: absolute;
-                    top: 10px;
-                    right: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    z-index: 1001;
-                ">
-                     <button id="close-modal" class="modal-btn" title="Закрыть" style="
-                        background-color: rgba(0, 0, 0, 0.6);
-                        color: #fff;
-                        border: none;
-                        padding: 8px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: background-color 0.2s ease;
-                        backdrop-filter: blur(5px);
-                        width: 36px;
-                        height: 36px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                    ">×</button>
-                    <button id="download-photo-modal" class="modal-btn" title="Скачать" style="
-                        background-color: rgba(0, 100, 200, 0.6);
-                        color: #fff;
-                        border: none;
-                        padding: 8px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: background-color 0.2s ease;
-                        backdrop-filter: blur(5px);
-                        width: 36px;
-                        height: 36px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                    ">📥</button>
-                    <button id="share-photo-modal" class="modal-btn" title="Поделиться" style="
-                        background-color: rgba(0, 150, 0, 0.6);
-                        color: #fff;
-                        border: none;
-                        padding: 8px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: background-color 0.2s ease;
-                        backdrop-filter: blur(5px);
-                        width: 36px;
-                        height: 36px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                    ">🔗</button>
-                    <button id="delete-photo-modal" class="modal-btn delete-btn-modal" title="Удалить" style="
-                        background-color: rgba(204, 51, 0, 0.7);
-                        color: #fff;
-                        border: none;
-                        padding: 8px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: background-color 0.2s ease;
-                        backdrop-filter: blur(5px);
-                        width: 36px;
-                        height: 36px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                    ">🗑</button>
-                </div>
                 
                 <!-- Стрелки навигации -->
                 <button id="prev-photo" class="nav-arrow" title="Предыдущее фото" style="
                     position: absolute;
-                    left: 20px;
+                    left: 10px;
                     top: 50%;
                     transform: translateY(-50%);
-                    background-color: rgba(0, 0, 0, 0.5);
+                    background-color: rgba(0, 0, 0, 0.3);
                     color: white;
                     border: none;
                     width: 50px;
@@ -138,10 +60,10 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
                 ">‹</button>
                 <button id="next-photo" class="nav-arrow" title="Следующее фото" style="
                     position: absolute;
-                    right: 20px;
+                    right: 10px;
                     top: 50%;
                     transform: translateY(-50%);
-                    background-color: rgba(0, 0, 0, 0.5);
+                    background-color: rgba(0, 0, 0, 0.3);
                     color: white;
                     border: none;
                     width: 50px;
@@ -156,93 +78,179 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
                     z-index: 1001;
                     backdrop-filter: blur(5px);
                 ">›</button>
+                </div>
                 
-                <!-- Кнопки для фильтров -->
-                <div class="photo-filters" style="
-                    position: absolute;
-                    bottom: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
+                <!-- Панель управления внизу -->
+                <div class="modal-bottom-panel" style="
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7));
+                    backdrop-filter: blur(10px);
+                    padding: 15px;
+                    z-index: 1002;
                     display: flex;
-                    gap: 10px;
-                    z-index: 1001;
-                    background-color: rgba(0, 0, 0, 0.6);
-                    padding: 10px;
-                    border-radius: 30px;
-                    backdrop-filter: blur(5px);
+                    flex-direction: column;
+                    gap: 12px;
                 ">
-                    <button id="filter-brightness" class="filter-btn" title="Яркость" style="
-                        background-color: rgba(255, 255, 255, 0.5);
-                        color: black;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-                    ">☀️</button>
-                    <button id="filter-contrast" class="filter-btn" title="Контраст" style="
-                        background-color: rgba(255, 255, 255, 0.5);
-                        color: black;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0.3);
-                    ">◑</button>
-                    <button id="filter-saturation" class="filter-btn" title="Насыщенность" style="
-                        background-color: rgba(255, 255, 255, 0.5);
-                        color: black;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0.3);
-                    ">🌈</button>
-                    <button id="filter-bw" class="filter-btn" title="Черно-белый" style="
-                        background-color: rgba(128, 128, 128, 0.7);
-                        color: white;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0.3);
-                    ">⚫</button>
-                    <button id="filter-vintage" class="filter-btn" title="Винтаж" style="
-                        background-color: rgba(160, 82, 45, 0.7);
-                        color: white;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0.3);
-                    ">❐</button>
-                    <button id="filter-reset" class="filter-btn" title="Сбросить фильтр" style="
-                        background-color: rgba(255, 255, 255, 0.5);
-                        color: black;
-                        border: none;
-                        width: 36px;
-                        height: 36px;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        font-size: 1rem;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 2px 5px rgba(0, 0, 0.3);
-                    ">↺</button>
+                    <!-- Кнопки управления -->
+                    <div class="modal-controls" style="
+                        display: flex;
+                        justify-content: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                    ">
+                        <button id="close-modal" class="modal-btn" title="Закрыть" style="
+                            background-color: rgba(100, 100, 100, 0.8);
+                            color: #fff;
+                            border: none;
+                            padding: 10px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.95rem;
+                            transition: all 0.2s ease;
+                            backdrop-filter: blur(5px);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            font-weight: 500;
+                            min-width: 80px;
+                        ">× Закрыть</button>
+                        <button id="download-photo-modal" class="modal-btn" title="Скачать" style="
+                            background-color: rgba(0, 100, 200, 0.8);
+                            color: #fff;
+                            border: none;
+                            padding: 10px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.95rem;
+                            transition: all 0.2s ease;
+                            backdrop-filter: blur(5px);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            font-weight: 500;
+                            min-width: 80px;
+                        ">📥</button>
+                        <button id="share-photo-modal" class="modal-btn" title="Поделиться" style="
+                            background-color: rgba(0, 150, 0, 0.8);
+                            color: #fff;
+                            border: none;
+                            padding: 10px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.95rem;
+                            transition: all 0.2s ease;
+                            backdrop-filter: blur(5px);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            font-weight: 500;
+                            min-width: 80px;
+                        ">🔗</button>
+                        <button id="delete-photo-modal" class="modal-btn delete-btn-modal" title="Удалить" style="
+                            background-color: rgba(204, 51, 0, 0.8);
+                            color: #fff;
+                            border: none;
+                            padding: 10px 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 0.95rem;
+                            transition: all 0.2s ease;
+                            backdrop-filter: blur(5px);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            font-weight: 500;
+                            min-width: 80px;
+                        ">🗑</button>
+                    </div>
+                    
+                    <!-- Кнопки для фильтров -->
+                    <div class="photo-filters" style="
+                        display: flex;
+                        gap: 8px;
+                        justify-content: center;
+                        flex-wrap: wrap;
+                    ">
+                        <button id="filter-brightness" class="filter-btn" title="Яркость" style="
+                            background-color: rgba(255, 255, 255, 0.5);
+                            color: black;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                        ">☀️</button>
+                        <button id="filter-contrast" class="filter-btn" title="Контраст" style="
+                            background-color: rgba(255, 255, 255, 0.5);
+                            color: black;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                        ">◑</button>
+                        <button id="filter-saturation" class="filter-btn" title="Насыщенность" style="
+                            background-color: rgba(255, 255, 255, 0.5);
+                            color: black;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                        ">🌈</button>
+                        <button id="filter-bw" class="filter-btn" title="Черно-белый" style="
+                            background-color: rgba(128, 128, 128, 0.7);
+                            color: white;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0.3);
+                        ">⚫</button>
+                        <button id="filter-vintage" class="filter-btn" title="Винтаж" style="
+                            background-color: rgba(160, 82, 45, 0.7);
+                            color: white;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0.3);
+                        ">❐</button>
+                        <button id="filter-reset" class="filter-btn" title="Сбросить фильтр" style="
+                            background-color: rgba(255, 255, 255, 0.5);
+                            color: black;
+                            border: none;
+                            width: 40px;
+                            height: 40px;
+                            border-radius: 50%;
+                            cursor: pointer;
+                            font-size: 1.1rem;
+                            transition: all 0.2s ease;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+                        ">↺</button>
+                    </div>
                 </div>
             </div>
         `;

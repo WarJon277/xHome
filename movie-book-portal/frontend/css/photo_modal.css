@@ -33,11 +33,43 @@
         width: 40px !important;
         height: 40px !important;
         font-size: 1.5rem !important;
-        left: 10px !important;
+        left: 5px !important;
+        background-color: rgba(0, 0, 0, 0.2) !important;
+        opacity: 0.6;
+    }
+
+    .nav-arrow:hover {
+        opacity: 1;
+        background-color: rgba(0, 0, 0, 0.5) !important;
     }
 
     #next-photo {
-        right: 10px !important;
+        right: 5px !important;
         left: auto !important;
+    }
+
+    .modal-bottom-panel {
+        padding: 10px !important;
+        gap: 10px !important;
+    }
+
+    .modal-controls {
+        gap: 8px !important;
+    }
+
+    .modal-btn {
+        padding: 8px 12px !important;
+        font-size: 0.85rem !important;
+        min-width: 70px !important;
+    }
+
+    .filter-btn {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1rem !important;
+    }
+
+    #photo-modal img {
+        max-height: calc(100vh - 140px) !important;
     }
 }

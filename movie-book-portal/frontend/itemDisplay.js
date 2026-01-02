@@ -102,7 +102,11 @@ export function displayItems(items) {
 
             // Если путь относительный и не начинается с /, добавляем /uploads/
             if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
-                thumbnailUrl = `/uploads/${thumbnailUrl.replace(/\\/g, '/')}`;
+                if (thumbnailUrl.startsWith('uploads/')) {
+                    thumbnailUrl = `/${thumbnailUrl.replace(/\\/g, '/')}`;
+                } else {
+                    thumbnailUrl = `/uploads/${thumbnailUrl.replace(/\\/g, '/')}`;
+                }
             }
 
             // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
@@ -202,6 +206,8 @@ export function displayItems(items) {
             // Если это папка
             if (item.type === 'folder') {
                 card.classList.add('folder-item');
+                card.setAttribute('data-type', 'folder');
+                card.setAttribute('data-name', item.name);
 
                 // 1. Добавляем иконку первой
                 card.appendChild(img);
@@ -212,7 +218,45 @@ export function displayItems(items) {
                 folderOverlay.textContent = item.name;
                 card.appendChild(folderOverlay);
 
-                // 3. Обработка клика по папке - вход внутрь
+                // 3. Добавляем кнопку удаления папки
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'folder-delete-btn';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.title = 'Удалить папку с содержимым';
+                deleteBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const { deleteFolder } = await import('./api.js');
+                    const { getCurrentFolder } = await import('./state.js');
+                    const currentFolder = getCurrentFolder();
+                    const fullPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+
+                    if (typeof window.showConfirm === 'function') {
+                        window.showConfirm('Удаление папки', `Вы уверены, что хотите удалить папку "${item.name}" и всё её содержимое?`, async () => {
+                            try {
+                                await deleteFolder(fullPath);
+                                await loadItems();
+                            } catch (error) {
+                                console.error('Ошибка при удалении папки:', error);
+                                if (typeof window.showAlert === 'function') {
+                                    window.showAlert('Ошибка', 'Ошибка при удалении папки: ' + error.message);
+                                } else {
+                                    alert('Ошибка при удалении папки: ' + error.message);
+                                }
+                            }
+                        });
+                    } else if (confirm(`Вы уверены, что хотите удалить папку "${item.name}" и всё её содержимое?`)) {
+                        try {
+                            await deleteFolder(fullPath);
+                            await loadItems();
+                        } catch (error) {
+                            console.error('Ошибка при удалении папки:', error);
+                            alert('Ошибка при удалении папки: ' + error.message);
+                        }
+                    }
+                };
+                card.appendChild(deleteBtn);
+
+                // 4. Обработка клика по папке - вход внутрь
                 img.onclick = async (e) => {
                     e.stopPropagation(); // Останавливаем всплытие
                     const { setCurrentFolder, getCurrentFolder } = await import('./state.js');

@@ -1606,3 +1606,36 @@ main {
     font-size: 0.6em;
     margin-left: 2px;
 }
+
+/* Кнопка удаления папки */
+.folder-delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    /* Скрыта по умолчанию */
+}
+
+.card.folder-item:hover .folder-delete-btn {
+    opacity: 1;
+    /* Показываем при наведении на карточку */
+}
+
+.folder-delete-btn:hover {
+    background: rgba(255, 0, 0, 0.9);
+    transform: scale(1.1);
+}

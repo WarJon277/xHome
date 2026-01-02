@@ -52,9 +52,9 @@ export async function uploadMovieThumbnail(movieId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 resolve(JSON.parse(xhr.responseText));
@@ -63,11 +63,11 @@ export async function uploadMovieThumbnail(movieId, file) {
                 reject(new Error(errorData.detail || 'Ошибка при загрузке миниатюры'));
             }
         });
-        
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке миниатюры'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/movies/${movieId}/upload_thumbnail`);
         xhr.send(formData);
     });
@@ -77,9 +77,9 @@ export async function uploadTvshowThumbnail(tvshowId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 resolve(JSON.parse(xhr.responseText));
@@ -88,11 +88,11 @@ export async function uploadTvshowThumbnail(tvshowId, file) {
                 reject(new Error(errorData.detail || 'Ошибка при загрузке миниатюры'));
             }
         });
-        
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке миниатюры'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/tvshows/${tvshowId}/upload_thumbnail`);
         xhr.send(formData);
     });
@@ -102,16 +102,16 @@ export async function uploadMovieFile(movieId, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable && onProgress) {
                 const percentComplete = Math.round((e.loaded / e.total) * 10);
                 onProgress(percentComplete);
             }
         });
-        
+
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 resolve(JSON.parse(xhr.responseText));
@@ -120,11 +120,11 @@ export async function uploadMovieFile(movieId, file, onProgress) {
                 reject(new Error(errorData.detail || 'Ошибка при загрузке файла'));
             }
         });
-        
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке файла'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/movies/${movieId}/upload`);
         xhr.send(formData);
     });
@@ -134,29 +134,29 @@ export async function uploadTvshowFile(tvshowId, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable && onProgress) {
                 const percentComplete = Math.round((e.loaded / e.total) * 10);
                 onProgress(percentComplete);
             }
         });
-        
+
         xhr.addEventListener('load', () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(JSON.parse(xhr.responseText));
-                    } else {
-                        const errorData = JSON.parse(xhr.responseText);
-                        reject(new Error(errorData.detail || 'Ошибка при загрузке файла'));
-                    }
-                });
-        
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(JSON.parse(xhr.responseText));
+            } else {
+                const errorData = JSON.parse(xhr.responseText);
+                reject(new Error(errorData.detail || 'Ошибка при загрузке файла'));
+            }
+        });
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке файла'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/tvshows/${tvshowId}/upload`);
         xhr.send(formData);
     });
@@ -206,9 +206,9 @@ export async function uploadEpisodeFile(episodeId, file) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
@@ -226,15 +226,15 @@ export async function uploadEpisodeFile(episodeId, file) {
                 }
             }
         });
-        
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке файла эпизода'));
         });
-        
+
         xhr.addEventListener('timeout', () => {
             reject(new Error('Таймаут при загрузке файла эпизода'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/episodes/${episodeId}/upload`);
         xhr.send(formData);
     });
@@ -348,16 +348,16 @@ export async function uploadPhotoToFolder(folder, file, onProgress) {
         const formData = new FormData();
         formData.append('folder', folder);
         formData.append('file', file);
-        
+
         const xhr = new XMLHttpRequest();
-        
+
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable && onProgress) {
                 const percentComplete = Math.round((e.loaded / e.total) * 100);
                 onProgress(percentComplete);
             }
         });
-        
+
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
@@ -375,15 +375,15 @@ export async function uploadPhotoToFolder(folder, file, onProgress) {
                 }
             }
         });
-        
+
         xhr.addEventListener('error', () => {
             reject(new Error('Ошибка сети при загрузке файла фото'));
         });
-        
+
         xhr.addEventListener('timeout', () => {
             reject(new Error('Таймаут при загрузке файла фото'));
         });
-        
+
         xhr.open('POST', `${API_BASE}/gallery/upload_to_folder`);
         xhr.send(formData);
     });
@@ -405,10 +405,17 @@ export async function movePhoto(photoPath, targetFolder) {
     const formData = new FormData();
     formData.append('photo_path', photoPath);
     formData.append('target_folder', targetFolder);
-    
+
     const response = await fetch(`${API_BASE}/gallery/move_photo`, {
         method: 'POST',
         body: formData
+    });
+    return response.json();
+}
+
+export async function deleteFolder(folderPath) {
+    const response = await fetch(`${API_BASE}/gallery/manage/folder_delete?path=${encodeURIComponent(folderPath)}`, {
+        method: 'DELETE'
     });
     return response.json();
 }

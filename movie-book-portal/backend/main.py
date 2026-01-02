@@ -1,4 +1,4 @@
-# main.py
+# main.py - Reloaded after endpoint fix
 import os
 import sys
 import shutil
@@ -936,6 +936,32 @@ def create_photo(photo_data: dict):
         return {"message": "Папка создана успешно", "path": folder_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании папки: {str(e)}")
+
+
+@app.delete("/gallery/manage/folder_delete")
+def delete_folder(path: str):
+    # Рекурсивно удаляем папку в галерее
+    try:
+        # Проверяем, что путь не выходит за пределы папки gallery
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        requested_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, path))
+        
+        # Проверяем, что запрашиваемый путь находится внутри базовой папки
+        if not requested_path.startswith(base_path) or requested_path == base_path:
+            raise HTTPException(status_code=400, detail="Недопустимый путь или попытка удалить корень")
+        
+        if not os.path.exists(requested_path):
+            raise HTTPException(status_code=404, detail="Папка не найдена")
+        
+        if not os.path.isdir(requested_path):
+            raise HTTPException(status_code=400, detail="Указанный путь не является папкой")
+        
+        # Рекурсивно удаляем папку
+        shutil.rmtree(requested_path)
+        
+        return {"message": "Папка и её содержимое удалены успешно"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при удалении папки: {str(e)}")
 
 
 @app.delete("/gallery/{photo_id}")

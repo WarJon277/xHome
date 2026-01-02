@@ -316,13 +316,76 @@
                 window.updateBreadcrumb = updateBreadcrumb;
                 window.updateBackButtonVisibility = updateBackButtonVisibility;
 
-                // Добавляем контекстное меню для перемещения фото
-                document.addEventListener('contextmenu', async (e) => {
-                    if (e.target.closest('.photo-item')) {
-                        e.preventDefault();
+                // Функция для показа модального окна подтверждения
+                window.showConfirm = (title, message, onConfirm, okText = 'Удалить') => {
+                    const modal = document.getElementById('confirm-modal');
+                    const titleEl = document.getElementById('confirm-title');
+                    const messageEl = document.getElementById('confirm-message');
+                    const okBtn = document.getElementById('confirm-ok');
+                    const cancelBtn = document.getElementById('confirm-cancel');
 
-                        const photoItem = e.target.closest('.photo-item');
-                        const photoPath = photoItem.getAttribute('data-path');
+                    if (!modal) return;
+
+                    titleEl.textContent = title;
+                    messageEl.textContent = message;
+                    okBtn.textContent = okText;
+                    modal.style.display = 'flex';
+
+                    const closeModal = () => {
+                        modal.style.display = 'none';
+                        okBtn.removeEventListener('click', handleOk);
+                        cancelBtn.removeEventListener('click', closeModal);
+                        modal.removeEventListener('click', onOverlayClick);
+                    };
+
+                    const handleOk = () => {
+                        onConfirm();
+                        closeModal();
+                    };
+
+                    const onOverlayClick = (e) => {
+                        if (e.target === modal) closeModal();
+                    };
+
+                    okBtn.addEventListener('click', handleOk);
+                    cancelBtn.addEventListener('click', closeModal);
+                    modal.addEventListener('click', onOverlayClick);
+                };
+
+                // Функция для показа модального окна уведомления
+                window.showAlert = (title, message) => {
+                    const modal = document.getElementById('alert-modal');
+                    const titleEl = document.getElementById('alert-title');
+                    const messageEl = document.getElementById('alert-message');
+                    const okBtn = document.getElementById('alert-ok');
+
+                    if (!modal) return;
+
+                    titleEl.textContent = title;
+                    messageEl.textContent = message;
+                    modal.style.display = 'flex';
+
+                    const closeModal = () => {
+                        modal.style.display = 'none';
+                        okBtn.removeEventListener('click', closeModal);
+                        modal.removeEventListener('click', onOverlayClick);
+                    };
+
+                    const onOverlayClick = (e) => {
+                        if (e.target === modal) closeModal();
+                    };
+
+                    okBtn.addEventListener('click', closeModal);
+                    modal.addEventListener('click', onOverlayClick);
+                };
+
+                // Добавляем контекстное меню для перемещения фото и управления папками
+                document.addEventListener('contextmenu', async (e) => {
+                    const photoItem = e.target.closest('.photo-item');
+                    const folderItem = e.target.closest('.folder-item');
+
+                    if (photoItem || folderItem) {
+                        e.preventDefault();
 
                         // Удаляем существующее контекстное меню, если есть
                         const existingMenu = document.getElementById('context-menu');
@@ -334,25 +397,41 @@
                         contextMenu.style.position = 'fixed';
                         contextMenu.style.left = e.pageX + 'px';
                         contextMenu.style.top = e.pageY + 'px';
-                        contextMenu.style.backgroundColor = '#2a2a2a';
-                        contextMenu.style.border = '1px solid #444';
-                        contextMenu.style.borderRadius = '4px';
-                        contextMenu.style.padding = '5px';
+                        contextMenu.style.backgroundColor = 'rgba(30,30,30,0.95)';
+                        contextMenu.style.backdropFilter = 'blur(10px)';
+                        contextMenu.style.border = '1px solid rgba(255,255,255,0.1)';
+                        contextMenu.style.borderRadius = '8px';
+                        contextMenu.style.padding = '8px';
                         contextMenu.style.zIndex = '10000';
-                        contextMenu.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-                        contextMenu.innerHTML = `
-                        <div class="context-menu-item" data-action="move" style="padding: 8px; cursor: pointer; color: #e0e0e0; border-radius: 3px;">
-                            Переместить в...
-                        </div>
-                        <div class="context-menu-item" data-action="delete" style="padding: 8px; cursor: pointer; color: #e0e0e0; border-radius: 3px;">
-                            Удалить
-                        </div>
-                    `;
+                        contextMenu.style.boxShadow = '0 10px 20px rgba(0,0,0,0.5)';
+
+                        if (photoItem) {
+                            const photoPath = photoItem.getAttribute('data-path');
+                            contextMenu.innerHTML = `
+                                <div class="context-menu-item" data-action="move" data-path="${photoPath}" style="padding: 10px 15px; cursor: pointer; color: #e0e0e0; border-radius: 6px;">
+                                    Переместить в...
+                                </div>
+                                <div class="context-menu-item" data-action="delete" data-id="${photoItem.getAttribute('data-id')}" style="padding: 10px 15px; cursor: pointer; color: #ff6666; border-radius: 6px;">
+                                    Удалить
+                                </div>
+                            `;
+                        } else if (folderItem) {
+                            const folderName = folderItem.getAttribute('data-name');
+                            contextMenu.innerHTML = `
+                                <div class="context-menu-item" data-action="open-folder" data-name="${folderName}" style="padding: 10px 15px; cursor: pointer; color: #e0e0e0; border-radius: 6px;">
+                                    Открыть
+                                </div>
+                                <div class="context-menu-item" data-action="delete-folder" data-name="${folderName}" style="padding: 10px 15px; cursor: pointer; color: #ff6666; border-radius: 6px;">
+                                    Удалить
+                                </div>
+                            `;
+                        }
 
                         document.body.appendChild(contextMenu);
 
                         // Обработчик для перемещения фото
-                        contextMenu.querySelector('[data-action="move"]').addEventListener('click', async () => {
+                        contextMenu.querySelector('[data-action="move"]')?.addEventListener('click', async (event) => {
+                            event.stopPropagation();
                             contextMenu.remove();
 
                             // Получаем список папок для перемещения
@@ -364,7 +443,7 @@
                             const folders = contents.filter(item => item.type === 'folder');
 
                             if (folders.length === 0) {
-                                alert('Нет доступных папок для перемещения');
+                                window.showAlert('Инфо', 'Нет доступных папок для перемещения');
                                 return;
                             }
 
@@ -386,33 +465,67 @@
                                         await loadItems(); // перезагружаем содержимое
                                     } catch (error) {
                                         console.error('Ошибка при перемещении фото:', error);
-                                        alert('Ошибка при перемещении фото: ' + error.message);
+                                        window.showAlert('Ошибка', 'Ошибка при перемещении фото: ' + error.message);
                                     }
                                 } else {
-                                    alert('Папка с таким именем не найдена');
+                                    window.showAlert('Ошибка', 'Папка с таким именем не найдена');
                                 }
                             }
                         });
 
                         // Обработчик для удаления фото
-                        contextMenu.querySelector('[data-action="delete"]').addEventListener('click', async () => {
-                            if (confirm('Вы уверены, что хотите удалить это фото?')) {
-                                contextMenu.remove();
+                        contextMenu.querySelector('[data-action="delete"]')?.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            contextMenu.remove();
+                            const photoId = photoItem.getAttribute('data-id');
+                            window.showConfirm('Удаление', 'Вы уверены, что хотите удалить это фото?', async () => {
                                 const { deletePhoto } = await import('/static/api.js');
-                                const photoId = photoItem.getAttribute('data-id');
                                 await deletePhoto(photoId);
-                                await loadItems(); // перезагружаем содержимое
-                            }
+                                const { loadItems } = await import('/static/itemDisplay.js');
+                                await loadItems();
+                            });
                         });
 
-                        // Закрытие меню при клике вне его
+                        // Обработчик для открытия папки
+                        contextMenu.querySelector('[data-action="open-folder"]')?.addEventListener('click', async (event) => {
+                            event.stopPropagation();
+                            contextMenu.remove();
+                            const { setCurrentFolder, getCurrentFolder } = await import('/static/state.js');
+                            const currentFolder = getCurrentFolder();
+                            const folderName = event.target.closest('.context-menu-item').getAttribute('data-name');
+                            const newPath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
+                            setCurrentFolder(newPath);
+                            const { loadItems } = await import('/static/itemDisplay.js');
+                            await loadItems();
+                        });
+
+                        // Обработчик для удаления папки
+                        contextMenu.querySelector('[data-action="delete-folder"]')?.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            contextMenu.remove();
+                            const folderName = event.target.closest('.context-menu-item').getAttribute('data-name');
+                            window.showConfirm('Удаление папки', `Вы уверены, что хотите удалить папку "${folderName}" и всё её содержимое?`, async () => {
+                                const { deleteFolder } = await import('/static/api.js');
+                                const { getCurrentFolder } = await import('/static/state.js');
+                                const currentFolder = getCurrentFolder();
+                                const fullPath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
+                                try {
+                                    await deleteFolder(fullPath);
+                                    const { loadItems } = await import('/static/itemDisplay.js');
+                                    await loadItems();
+                                } catch (error) {
+                                    window.showAlert('Ошибка', 'Ошибка при удалении папки: ' + error.message);
+                                }
+                            });
+                        });
+
+                        // Закрытие меню при клике в любом месте
                         const closeMenu = () => {
-                            if (document.getElementById('context-menu')) {
-                                document.getElementById('context-menu').remove();
-                            }
+                            const existing = document.getElementById('context-menu');
+                            if (existing) existing.remove();
                             document.removeEventListener('click', closeMenu);
                         };
-                        setTimeout(() => document.addEventListener('click', closeMenu), 100);
+                        setTimeout(() => document.addEventListener('click', closeMenu), 10);
                     }
                 });
 
@@ -457,6 +570,29 @@
             <div class="modal-actions">
                 <button id="cancel-folder-create" class="modal-btn modal-btn-cancel">Отмена</button>
                 <button id="create-folder-submit" class="modal-btn modal-btn-create">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="confirm-title">Подтверждение</h2>
+            <p id="confirm-message" style="color: #ccc; margin-bottom: 24px; text-align: center; line-height: 1.5;"></p>
+            <div class="modal-actions">
+                <button id="confirm-cancel" class="modal-btn modal-btn-cancel">Отмена</button>
+                <button id="confirm-ok" class="modal-btn modal-btn-create" style="background: #cc3333;">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно уведомления (Alert) -->
+    <div id="alert-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="alert-title">Уведомление</h2>
+            <p id="alert-message" style="color: #ccc; margin-bottom: 24px; text-align: center; line-height: 1.5;"></p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button id="alert-ok" class="modal-btn modal-btn-create">OK</button>
             </div>
         </div>
     </div>

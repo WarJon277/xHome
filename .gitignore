@@ -24,7 +24,7 @@ cat > .gitignore << 'EOF'
 *.out
 *.webp
 *.jpg
-
+*.jpeg
 
 
 # Python кэш

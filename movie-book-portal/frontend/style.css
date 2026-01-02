@@ -314,10 +314,9 @@ main {
     /* Minimal top margin */
 }
 
-/* Адаптивная сетка для мобильных устройств */
 @media (max-width: 768px) {
     #photos-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 0.2rem;
         /* Consistent thin spacing */
     }
@@ -325,7 +324,7 @@ main {
 
 @media (max-width: 480px) {
     #photos-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 0.15rem;
         /* Consistent thin spacing */
     }
@@ -450,8 +449,8 @@ main {
 
     /* Увеличиваем размер миниатюр в сетке фото */
     #photos-grid .card img.thumbnail {
-        min-height: 120px !important;
-        height: 120px !important;
+        min-height: 150px !important;
+        height: auto !important;
     }
 }
 
@@ -976,10 +975,17 @@ main {
     padding: 20px;
     cursor: pointer;
     border-radius: 6px;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: rgba(76, 175, 80, 0.2);
 }
 
-.upload-area:hover {
-    background-color: #333;
+.upload-area:active {
+    background-color: rgba(76, 175, 80, 0.1);
+    transform: scale(0.98);
+}
+
+.upload-area * {
+    pointer-events: none;
 }
 
 .upload-icon {

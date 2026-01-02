@@ -1,0 +1,65 @@
+from pydantic import BaseModel
+from typing import Optional
+
+class MovieCreate(BaseModel):
+    title: str
+    year: Optional[int] = None
+    director: Optional[str] = None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class TvshowCreate(BaseModel):
+    title: str
+    year: Optional[int] = None
+    director: Optional[str] = None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+    episodes_count: Optional[int] = None
+    season_count: Optional[int] = None
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class EpisodeCreate(BaseModel):
+    tvshow_id: int
+    season_number: int
+    episode_number: int
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class BookCreate(BaseModel):
+    title: str
+    year: Optional[int] = None
+    author: Optional[str] = None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class PhotoCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = "general"
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }

@@ -533,7 +533,9 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
         // Восстанавливаем FAB кнопки при закрытии модального окна
         const fabContainer = document.querySelector('.fab-container');
         if (fabContainer) {
-            fabContainer.style.display = 'flex';
+            fabContainer.style.visibility = 'visible';
+            fabContainer.style.opacity = '1';
+            fabContainer.style.pointerEvents = 'auto';
         }
     };
 
@@ -619,7 +621,9 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
     // Скрываем FAB кнопки при открытии модального окна
     const fabContainer = document.querySelector('.fab-container');
     if (fabContainer) {
-        fabContainer.style.display = 'none';
+        fabContainer.style.visibility = 'hidden';
+        fabContainer.style.opacity = '0';
+        fabContainer.style.pointerEvents = 'none';
     }
 
     // Показываем модальное окно

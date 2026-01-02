@@ -29,6 +29,7 @@
     /* Stack from bottom up */
     gap: 15px;
     z-index: 10000;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 /* Specific colors for different FAB types */

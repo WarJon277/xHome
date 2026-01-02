@@ -477,26 +477,38 @@
 
                                 if (navigator.share) {
                                     try {
+                                        // Получаем файл
                                         const response = await fetch(photoPath);
-                                        const blob = await response.blob();
-                                        const file = new File([blob], 'photo.jpg', { type: blob.type });
+                                        if (!response.ok) throw new Error('Failed to fetch file');
 
-                                        await navigator.share({
-                                            title: photoTitle,
-                                            files: [file]
-                                        });
+                                        const blob = await response.blob();
+
+                                        // Определяем правильное расширение и MIME тип
+                                        let fileName = photoTitle;
+                                        let mimeType = blob.type || 'image/jpeg';
+
+                                        // Если в названии нет расширения, добавляем его
+                                        if (!fileName.includes('.')) {
+                                            const extension = mimeType.split('/')[1] || 'jpg';
+                                            fileName = `${fileName}.${extension}`;
+                                        }
+
+                                        const file = new File([blob], fileName, { type: mimeType });
+
+                                        // Проверяем, поддерживает ли браузер шаринг файлов
+                                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                            await navigator.share({
+                                                title: photoTitle,
+                                                files: [file]
+                                            });
+                                        } else {
+                                            // Если шаринг файлов не поддерживается, показываем сообщение
+                                            window.showAlert('Инфо', 'Ваш браузер не поддерживает отправку файлов. Попробуйте скачать файл и отправить его вручную.');
+                                        }
                                     } catch (error) {
                                         if (error.name !== 'AbortError') {
                                             console.error('Ошибка при шаринге:', error);
-                                            // Если не удалось поделиться файлом, пробуем ссылкой
-                                            try {
-                                                await navigator.share({
-                                                    title: photoTitle,
-                                                    url: window.location.origin + photoPath
-                                                });
-                                            } catch (err) {
-                                                console.error('Ошибка при шаринге ссылки:', err);
-                                            }
+                                            window.showAlert('Ошибка', 'Не удалось поделиться файлом. Попробуйте скачать файл и отправить его вручную.');
                                         }
                                     }
                                 } else {

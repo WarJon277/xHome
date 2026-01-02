@@ -968,7 +968,14 @@ main {
 }
 
 .upload-input {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
 }
 
 .upload-area {
@@ -1644,4 +1651,48 @@ main {
 .folder-delete-btn:hover {
     background: rgba(255, 0, 0, 0.9);
     transform: scale(1.1);
+}
+
+/* ============================= */
+/* СТИЛИ ДЛЯ ФОТО-МОДАЛА */
+/* ============================= */
+
+.nav-arrow {
+    transition: all 0.2s ease !important;
+}
+
+.nav-arrow:hover {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+}
+
+.nav-arrow:active {
+    transform: translateY(-50%) scale(0.95) !important;
+}
+
+#photo-modal .modal-btn {
+    transition: all 0.2s ease !important;
+}
+
+#photo-modal .modal-btn:hover {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+}
+
+#photo-modal .modal-btn:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .nav-arrow {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.5rem !important;
+        left: 10px !important;
+    }
+
+    #next-photo {
+        right: 10px !important;
+        left: auto !important;
+    }
 }

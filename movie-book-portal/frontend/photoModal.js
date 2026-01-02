@@ -1,8 +1,8 @@
 // Функция для открытия модального окна просмотра фото
-window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
+window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
     // Проверяем, существует ли модальное окно, если нет - создаем его
     let modal = document.getElementById('photo-modal');
-    
+
     if (!modal) {
         // Создаем HTML модального окна динамически
         const modalHTML = `
@@ -45,7 +45,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                     gap: 10px;
                     z-index: 1001;
                 ">
-                    <button id="close-modal" class="modal-btn" title="Закрыть" style="
+                     <button id="close-modal" class="modal-btn" title="Закрыть" style="
                         background-color: rgba(0, 0, 0, 0.6);
                         color: #fff;
                         border: none;
@@ -62,8 +62,42 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                         justify-content: center;
                         font-weight: bold;
                     ">×</button>
+                    <button id="download-photo-modal" class="modal-btn" title="Скачать" style="
+                        background-color: rgba(0, 100, 200, 0.6);
+                        color: #fff;
+                        border: none;
+                        padding: 8px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        transition: background-color 0.2s ease;
+                        backdrop-filter: blur(5px);
+                        width: 36px;
+                        height: 36px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                    ">📥</button>
+                    <button id="share-photo-modal" class="modal-btn" title="Поделиться" style="
+                        background-color: rgba(0, 150, 0, 0.6);
+                        color: #fff;
+                        border: none;
+                        padding: 8px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        transition: background-color 0.2s ease;
+                        backdrop-filter: blur(5px);
+                        width: 36px;
+                        height: 36px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                    ">🔗</button>
                     <button id="delete-photo-modal" class="modal-btn delete-btn-modal" title="Удалить" style="
-                        background-color: rgba(204, 51, 0.7);
+                        background-color: rgba(204, 51, 0, 0.7);
                         color: #fff;
                         border: none;
                         padding: 8px;
@@ -80,6 +114,48 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                         font-weight: bold;
                     ">🗑</button>
                 </div>
+                
+                <!-- Стрелки навигации -->
+                <button id="prev-photo" class="nav-arrow" title="Предыдущее фото" style="
+                    position: absolute;
+                    left: 20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background-color: rgba(0, 0, 0, 0.5);
+                    color: white;
+                    border: none;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 2rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.2s;
+                    z-index: 1001;
+                    backdrop-filter: blur(5px);
+                ">‹</button>
+                <button id="next-photo" class="nav-arrow" title="Следующее фото" style="
+                    position: absolute;
+                    right: 20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background-color: rgba(0, 0, 0, 0.5);
+                    color: white;
+                    border: none;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 2rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.2s;
+                    z-index: 1001;
+                    backdrop-filter: blur(5px);
+                ">›</button>
                 
                 <!-- Кнопки для фильтров -->
                 <div class="photo-filters" style="
@@ -170,15 +246,17 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 </div>
             </div>
         `;
-        
+
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         modal = document.getElementById('photo-modal');
     }
-    
+
     const modalImg = document.getElementById('modal-photo');
     const closeModalBtn = document.getElementById('close-modal');
     const deleteBtn = document.getElementById('delete-photo-modal');
-    
+    const downloadBtn = document.getElementById('download-photo-modal');
+    const shareBtn = document.getElementById('share-photo-modal');
+
     // Элементы для фильтров
     const filterBrightnessBtn = document.getElementById('filter-brightness');
     const filterContrastBtn = document.getElementById('filter-contrast');
@@ -186,14 +264,92 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
     const filterBwBtn = document.getElementById('filter-bw');
     const filterVintageBtn = document.getElementById('filter-vintage');
     const filterResetBtn = document.getElementById('filter-reset');
-    
+    const prevBtn = document.getElementById('prev-photo');
+    const nextBtn = document.getElementById('next-photo');
+
+    // Функция для переключения на другое фото
+    const navigateToPhoto = (direction) => {
+        const photoItems = Array.from(document.querySelectorAll('.photo-item'));
+        if (photoItems.length <= 1) return;
+
+        const currentIndex = photoItems.findIndex(item => item.getAttribute('data-id') === photoId.toString());
+        if (currentIndex === -1) return;
+
+        let nextIndex;
+        if (direction === 'next') {
+            nextIndex = (currentIndex + 1) % photoItems.length;
+        } else {
+            nextIndex = (currentIndex - 1 + photoItems.length) % photoItems.length;
+        }
+
+        const nextItem = photoItems[nextIndex];
+        const nextId = nextItem.getAttribute('data-id');
+        const nextImg = nextItem.querySelector('img');
+        const nextSrc = nextImg.getAttribute('data-path') || nextImg.src;
+        const nextTitle = nextImg.alt;
+
+        // Вместо открытия нового модального окна, обновляем текущее
+        // Но для простоты реализации и сохранения всех обработчиков, 
+        // мы можем просто вызвать openPhotoModal снова
+        window.openPhotoModal(nextSrc, nextTitle, nextId);
+    };
+
+    // Функция для скачивания
+    const handleDownload = async () => {
+        try {
+            const response = await fetch(modalImg.src);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = photoTitle.includes('.') ? photoTitle : `${photoTitle}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Ошибка при скачивании:', error);
+            if (window.showAlert) window.showAlert('Ошибка', 'Не удалось скачать фото');
+        }
+    };
+
+    // Функция для "поделиться"
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                const response = await fetch(modalImg.src);
+                const blob = await response.blob();
+                const file = new File([blob], 'photo.jpg', { type: blob.type });
+
+                await navigator.share({
+                    title: photoTitle,
+                    files: [file]
+                });
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Ошибка при шаринге:', error);
+                    try {
+                        await navigator.share({
+                            title: photoTitle,
+                            url: window.location.origin + modalImg.getAttribute('src')
+                        });
+                    } catch (err) {
+                        console.error('Ошибка при шаринге ссылки:', err);
+                    }
+                }
+            }
+        } else {
+            if (window.showAlert) window.showAlert('Инфо', 'Ваш браузер не поддерживает функцию "Поделиться"');
+        }
+    };
+
     // Сохраняем оригинальный src изображения
     let originalSrc = modalImg.src;
     let currentFilter = 'none';
-    
+
     // Функция для применения фильтра к изображению
     function applyFilter(filterType) {
-        switch(filterType) {
+        switch (filterType) {
             case 'brightness':
                 modalImg.style.filter = 'brightness(1.3)';
                 break;
@@ -216,16 +372,16 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 modalImg.style.filter = 'none';
         }
         currentFilter = filterType;
-        
+
         // Обновляем миниатюру на странице с тем же фильтром
         if (photoId) {
             updateThumbnailFilter(photoId, modalImg.style.filter);
-            
+
             // Сохраняем фильтр в localStorage для сохранения между сессиями
             localStorage.setItem(`photo_filter_${photoId}`, modalImg.style.filter);
         }
     }
-    
+
     // Загружаем сохраненный фильтр при открытии модального окна, если он существует
     const savedFilter = localStorage.getItem(`photo_filter_${photoId}`);
     if (savedFilter) {
@@ -245,7 +401,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
             currentFilter = 'none';
         }
     }
-    
+
     // Назначаем обработчики для кнопок фильтров
     if (filterBrightnessBtn) filterBrightnessBtn.onclick = () => applyFilter('brightness');
     if (filterContrastBtn) filterContrastBtn.onclick = () => applyFilter('contrast');
@@ -253,7 +409,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
     if (filterBwBtn) filterBwBtn.onclick = () => applyFilter('bw');
     if (filterVintageBtn) filterVintageBtn.onclick = () => applyFilter('vintage');
     if (filterResetBtn) filterResetBtn.onclick = () => applyFilter('none');
-    
+
     // Загружаем полноразмерное фото, если оно доступно, иначе используем миниатюру
     if (photoId && window.currentCategory === 'photo') {
         // Пытаемся получить полный путь к фото из API
@@ -283,19 +439,19 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
             try {
                 // Импортируем функцию применения фильтра
                 const { applyPhotoFilter } = await import('./api.js');
-                
+
                 // Применяем фильтр на сервере
                 await applyPhotoFilter(photoId, currentFilter);
-                
+
                 // Получаем обновленные данные фото с сервера
                 const { fetchPhoto } = await import('./api.js');
                 const updatedPhoto = await fetchPhoto(photoId);
-                
+
                 // Обновляем src изображения на обновленный путь
                 modalImg.src = updatedPhoto.file_path || originalSrc;
                 modalImg.style.filter = 'none';
                 currentFilter = 'none';
-                
+
                 // Обновляем миниатюру на странице, если она существует
                 // Используем обновленный путь к миниатюре с временным параметром для обновления кэша
                 if (updatedPhoto.thumbnail_path) {
@@ -305,7 +461,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 } else {
                     updateThumbnail(photoId, originalSrc + '?t=' + new Date().getTime());
                 }
-                
+
                 // Обновляем галерею на главной странице и на странице галереи
                 try {
                     // Пробуем вызвать глобальную функцию loadItems
@@ -332,37 +488,57 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 updateThumbnail(photoId, photoSrc);
             }
         }
-        
+
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
     };
-    
+
     // Удаляем предыдущие обработчики, чтобы избежать дублирования
     closeModalBtn.onclick = null;
     deleteBtn.onclick = null;
-    
+    if (downloadBtn) downloadBtn.onclick = null;
+    if (shareBtn) shareBtn.onclick = null;
+    if (prevBtn) prevBtn.onclick = null;
+    if (nextBtn) nextBtn.onclick = null;
+
     closeModalBtn.onclick = closeHandler;
-    
+    if (downloadBtn) downloadBtn.onclick = handleDownload;
+    if (shareBtn) shareBtn.onclick = handleShare;
+    if (prevBtn) prevBtn.onclick = () => navigateToPhoto('prev');
+    if (nextBtn) nextBtn.onclick = () => navigateToPhoto('next');
+
+    // Скрываем стрелки, если фото всего одно
+    const totalPhotos = document.querySelectorAll('.photo-item').length;
+    if (totalPhotos <= 1) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+    } else {
+        if (prevBtn) prevBtn.style.display = 'flex';
+        if (nextBtn) nextBtn.style.display = 'flex';
+    }
+
     // Закрытие по клику вне изображения
     modal.onclick = (e) => {
         if (e.target === modal) {
             closeHandler();
         }
     };
-    
-    // Закрытие по клавише Escape
-    const handleEscape = (e) => {
+
+    // Закрытие по клавише Escape и навигация стрелками
+    const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
             closeHandler();
+        } else if (e.key === 'ArrowRight') {
+            navigateToPhoto('next');
+        } else if (e.key === 'ArrowLeft') {
+            navigateToPhoto('prev');
         }
     };
-    
+
     // Удаляем предыдущий обработчик клавиатуры
     document.onkeydown = null;
-    document.onkeydown = handleEscape;
-    
-    // Обработчик удаления фото
-    
+    document.onkeydown = handleKeyDown;
+
     // Обработчик удаления фото
     deleteBtn.onclick = async () => {
         if (confirm('Вы уверены, что хотите удалить это фото?')) {
@@ -371,7 +547,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
                 const { deletePhoto } = await import('./api.js');
                 await deletePhoto(photoId);
                 closeHandler();
-                
+
                 // Обновляем галерею на главной странице и на странице галереи
                 try {
                     // Пробуем вызвать глобальную функцию loadItems
@@ -395,7 +571,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
             }
         }
     };
-    
+
     // Показываем модальное окно
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -405,7 +581,7 @@ window.openPhotoModal = async function(photoSrc, photoTitle, photoId) {
 async function updateThumbnail(photoId, newSrc) {
     // Обновляем изображение на странице галереи, если оно существует
     const galleryImages = document.querySelectorAll(`img[data-photo-id="${photoId}"], img[src*="${photoId}"], .photo-item img, img.thumbnail`);
-    
+
     for (const img of galleryImages) {
         // Проверяем, является ли это изображение миниатюрой для того же фото
         if (img.src.includes(photoId.toString()) ||
@@ -425,7 +601,7 @@ async function updateThumbnail(photoId, newSrc) {
             break;
         }
     }
-    
+
     // Также проверяем элементы с классом photo-item
     const photoItems = document.querySelectorAll(`.photo-item[data-id="${photoId}"]`);
     for (const item of photoItems) {
@@ -450,7 +626,7 @@ async function updateThumbnail(photoId, newSrc) {
 function updateThumbnailFilter(photoId, filterValue) {
     // Находим изображение миниатюры на странице по photoId
     const galleryImages = document.querySelectorAll(`img[data-photo-id="${photoId}"], .photo-item img, img.thumbnail`);
-    
+
     for (const img of galleryImages) {
         // Проверяем, является ли это изображение миниатюрой для того же фото
         // Проверяем по data-photo-id, по вхождению photoId в src, или по alt атрибуту
@@ -460,7 +636,7 @@ function updateThumbnailFilter(photoId, filterValue) {
             // Применяем фильтр к изображению
             img.style.filter = filterValue;
             img.style.webkitFilter = filterValue; // Для совместимости с некоторыми браузерами
-            
+
             // Сохраняем фильтр в localStorage для сохранения между сессиями
             if (photoId) {
                 localStorage.setItem(`photo_filter_${photoId}`, filterValue);
@@ -468,7 +644,7 @@ function updateThumbnailFilter(photoId, filterValue) {
             break;
         }
     }
-    
+
     // Также проверяем элементы с классом photo-item
     const photoItems = document.querySelectorAll(`.photo-item[data-id="${photoId}"]`);
     for (const item of photoItems) {

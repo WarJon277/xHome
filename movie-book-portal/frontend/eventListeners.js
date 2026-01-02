@@ -130,15 +130,12 @@ const initListeners = () => {
 
         // Добавляем обработчики для зоны загрузки фото
         if (uploadArea && photoInput) {
-            // Клик по зоне загрузки активирует скрытый input - ТЕПЕРЬ ТАКЖЕ ЧЕРЕЗ LABEL 'for' в HTML
-            // Но мы оставляем JS как дополнительный слой (без повторных срабатываний)
             uploadArea.addEventListener('click', (e) => {
-                // Если клик произошел не по самому input (который скрыт), а по label
-                if (e.target !== photoInput) {
-                    // Native label behavior will handle this, but for robustness:
-                    // photoInput.click(); 
-                    // Мы не вызываем click() вручную, так как label (for="photo") сделает это нативно.
-                }
+                // Предотвращаем двойное срабатывание если кликнули именно по инпуту (хотя он скрыт)
+                if (e.target === photoInput) return;
+
+                // Явно вызываем выбор файлов. Это критично для WebView.
+                photoInput.click();
             });
 
             // Обработчики drag-and-drop событий

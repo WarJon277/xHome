@@ -15,18 +15,16 @@ export async function loadItems() {
     showLoading(true);
     try {
         let items;
-        if (state.currentGenre === "Все") {
-            items = state.currentCategory === 'movie'
-                ? await fetchMovies()
-                : state.currentCategory === 'tvshow'
-                    ? await fetchTvshows()
-                    : state.currentCategory === 'photo'
-                        ? await fetchPhotos()
-                        : await fetchBooks();
+        if (state.currentCategory === 'photo') {
+            // Для фото используем путь к папке вместо категории
+            items = await fetchPhotos(state.currentFolder || "");
         } else {
-            if (state.currentCategory === 'photo') {
-                // Для фото используем категорию вместо жанра
-                items = await fetchPhotos(state.currentGenre);
+            if (state.currentGenre === "Все") {
+                items = state.currentCategory === 'movie'
+                    ? await fetchMovies()
+                    : state.currentCategory === 'tvshow'
+                        ? await fetchTvshows()
+                        : await fetchBooks();
             } else {
                 const allItems = state.currentCategory === 'movie'
                     ? await fetchMovies()
@@ -45,6 +43,16 @@ export async function loadItems() {
     } finally {
         showLoading(false);
     }
+
+    // Обновляем навигационную цепочку и видимость кнопки "назад" на странице галереи
+    if (state.currentCategory === 'photo' && window.location.pathname.includes('gallery.html')) {
+        if (typeof window.updateBreadcrumb === 'function') {
+            window.updateBreadcrumb();
+        }
+        if (typeof window.updateBackButtonVisibility === 'function') {
+            window.updateBackButtonVisibility();
+        }
+    }
 }
 
 export function displayItems(items) {
@@ -53,8 +61,22 @@ export function displayItems(items) {
     const gridElementId = isGalleryPage ? 'photos-grid' : 'items-grid';
     const grid = document.getElementById(gridElementId);
     if (!grid) return; // если элемент не найден, выходим
-    
+
     grid.innerHTML = ''; // очищаем
+
+    // Сортировка: сначала папки, потом файлы
+    if (state.currentCategory === 'photo') {
+        items.sort((a, b) => {
+            // Папки имеют приоритет
+            if (a.type === 'folder' && b.type !== 'folder') return -1;
+            if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+            // Если типы одинаковые, сортируем по имени
+            const nameA = a.name || a.title || '';
+            const nameB = b.name || b.title || '';
+            return nameA.localeCompare(nameB);
+        });
+    }
 
     items.forEach(item => {
         const card = document.createElement('div');
@@ -67,60 +89,25 @@ export function displayItems(items) {
         img.style.cursor = 'pointer';
 
         // Data URLs для placeholder изображений
-        const moviePlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23333"/><text x="150" y="200" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Movie</text></svg>';
-        const tvshowPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23444"/><text x="150" y="200" font-family="Arial" font-size="20" fill="white" text-anchor="middle">TV Show</text></svg>';
-        const bookPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23555"/><text x="150" y="200" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Book</text></svg>';
-        const photoPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23666"/><text x="150" y="200" font-family="Arial" font-size="20" fill="white" text-anchor="middle">Photo</text></svg>';
+        const moviePlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23333"/></svg>';
+        const tvshowPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23444"/></svg>';
+        const bookPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23555"/></svg>';
+        const photoPlaceholder = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect width="300" height="400" fill="%23666"/></svg>';
 
         // Устанавливаем путь к изображению с проверкой существования
         if (item.thumbnail_path && state.currentCategory === 'photo') {
             // Для фото в галерее используем миниатюру, если она есть
-            let thumbnailUrl;
-            // Для фото всегда формируем путь к uploads/gallery/, независимо от того, что хранится в базе
-            if (item.thumbnail_path.startsWith('/')) {
-                // Если путь начинается с /uploads/gallery/, используем как есть
-                if (item.thumbnail_path.includes('/uploads/gallery/')) {
-                    // Для всех фото в галерее используем единый формат миниатюры: baseName_thumb.webp
-                    const fileName = item.thumbnail_path.split('/').pop();
-                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
-                    // Убираем возможное дублирование "_thumb" в имени
-                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
-                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
-                } else {
-                    // Извлекаем имя файла и формируем правильный путь
-                    const fileName = item.thumbnail_path.split('/').pop();
-                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
-                    // Убираем возможное дублирование "_thumb" в имени
-                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
-                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
-                }
-            } else if (item.thumbnail_path.startsWith('uploads/')) {
-                // Если путь начинается с uploads/gallery/, используем как есть
-                if (item.thumbnail_path.includes('gallery')) {
-                    const fileName = item.thumbnail_path.split('/').pop();
-                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
-                    // Убираем возможное дублирование "_thumb" в имени
-                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
-                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
-                } else {
-                    // Извлекаем имя файла и формируем правильный путь
-                    const fileName = item.thumbnail_path.split('/').pop();
-                    const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
-                    // Убираем возможное дублирование "_thumb" в имени
-                    const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
-                    thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
-                }
-            } else {
-                // Если путь не начинается с / или uploads/, добавляем правильный префикс
-                const fileName = item.thumbnail_path.replace(/\\/g, '/').split('/').pop();
-                const baseName = fileName.replace(/\.[^/.]+$/, ""); // Убираем расширение
-                // Убираем возможное дублирование "_thumb" в имени
-                const cleanBaseName = baseName.endsWith('_thumb') ? baseName.substring(0, baseName.lastIndexOf('_thumb')) : baseName;
-                thumbnailUrl = `/uploads/gallery/${cleanBaseName}_thumb.webp`;
+            // Trust the backend provided path!
+            let thumbnailUrl = item.thumbnail_path;
+
+            // Если путь относительный и не начинается с /, добавляем /uploads/
+            if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
+                thumbnailUrl = `/uploads/${thumbnailUrl.replace(/\\/g, '/')}`;
             }
+
             // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
             img.src = photoPlaceholder;
-            
+
             // Затем пытаемся загрузить реальное изображение
             // Используем Image для проверки загрузки изображения
             const testImg = new Image();
@@ -134,13 +121,13 @@ export function displayItems(items) {
             testImg.src = thumbnailUrl;
         } else if (item.thumbnail_path) {
             // Для других категорий (фильмы, сериалы, книги) используем обычную логику
-            let thumbnailUrl;
-            if (item.thumbnail_path.startsWith('/')) {
-                thumbnailUrl = item.thumbnail_path;
-            } else if (item.thumbnail_path.startsWith('uploads/')) {
-                thumbnailUrl = `/${item.thumbnail_path.replace(/\\/g, '/')}`;
+            let thumbnailUrl = item.thumbnail_path.replace(/\\/g, '/');
+            if (thumbnailUrl.startsWith('/')) {
+                // Путь уже абсолютный от корня
+            } else if (thumbnailUrl.startsWith('uploads/')) {
+                thumbnailUrl = `/${thumbnailUrl}`;
             } else {
-                thumbnailUrl = `/uploads/${item.thumbnail_path.replace(/\\/g, '/')}`;
+                thumbnailUrl = `/uploads/${thumbnailUrl}`;
             }
             // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
             img.src = state.currentCategory === 'movie'
@@ -148,7 +135,7 @@ export function displayItems(items) {
                 : state.currentCategory === 'tvshow'
                     ? tvshowPlaceholder
                     : bookPlaceholder;
-            
+
             // Затем пытаемся загрузить реальное изображение
             // Используем Image для проверки загрузки изображения
             const testImg = new Image();
@@ -185,6 +172,8 @@ export function displayItems(items) {
                 showEpisodesList(item.id, item.title || 'Без названия');
             } else if (state.currentCategory === 'photo') {
                 // Для фото показываем полноразмерное изображение в модальном окне
+                if (item.type === 'folder') return;
+
                 let photoPath;
                 if (item.file_path) {
                     photoPath = item.file_path;
@@ -192,7 +181,7 @@ export function displayItems(items) {
                     alert(`Файл фото ещё не загружен`);
                     return;
                 }
-                
+
                 // Открываем модальное окно просмотра фото
                 if (typeof window.openPhotoModal === 'function') {
                     window.openPhotoModal(photoPath, item.title, item.id);
@@ -206,12 +195,41 @@ export function displayItems(items) {
             }
         });
 
-        // Создаём остальные элементы карточки
-        // Для фото не добавляем название и текстовую информацию
-        if (state.currentCategory !== 'photo') {
+        // ============================================
+        // СПЕЦИАЛЬНАЯ ОБРАБОТКА ДЛЯ ПАПОК И ФОТО
+        // ============================================
+        if (state.currentCategory === 'photo') {
+            // Если это папка
+            if (item.type === 'folder') {
+                card.classList.add('folder-item');
+                // 1. Накладываем название папки на иконку
+                const folderOverlay = document.createElement('div');
+                folderOverlay.className = 'folder-overlay';
+                folderOverlay.textContent = item.name;
+                card.appendChild(folderOverlay);
+
+                // 2. Обработка клика по папке - вход внутрь
+                // Переопределяем клик на изображении (или карточке)
+                img.onclick = async (e) => {
+                    e.stopPropagation(); // Останавливаем всплытие
+                    const { setCurrentFolder, getCurrentFolder } = await import('./state.js');
+                    const currentFolder = getCurrentFolder();
+                    // Формируем новый путь
+                    const newPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+                    setCurrentFolder(newPath);
+                    await loadItems();
+                };
+            } else {
+                // Если это обычное фото
+                card.setAttribute('data-id', item.id);
+                card.classList.add('photo-item');
+            }
+            card.appendChild(img);
+        } else {
+            // Для других категорий (фильмы, сериалы, книги)
             const titleEl = document.createElement('h3');
             titleEl.textContent = item.title || 'Без названия';
-            
+
             let infoEl;
             infoEl = document.createElement('p');
             infoEl.innerHTML = `
@@ -232,15 +250,10 @@ export function displayItems(items) {
             card.appendChild(infoEl);
             card.appendChild(metaEl);
             card.appendChild(descEl);
-            
-            // Убираем дублирующее добавление изображения
-        }
 
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
+            const actions = document.createElement('div');
+            actions.className = 'card-actions';
 
-        // Показываем кнопки только если не фото или на главной странице
-        if (state.currentCategory !== 'photo') {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
             editBtn.textContent = 'Редактировать';
@@ -257,34 +270,17 @@ export function displayItems(items) {
                     await deleteItem(item.id);
                 }
                 // Перезагружаем элементы после удаления
-                await loadItems(); // вызываем функцию из текущего модуля
+                await loadItems();
             };
 
             actions.appendChild(editBtn);
             actions.appendChild(deleteBtn);
-        }
-
-        // Собираем карточку
-        if (state.currentCategory === 'photo') {
-            // Для фото добавляем только изображение
-            card.appendChild(img);
-            
-            // Устанавливаем data-id для фото, чтобы можно было применить фильтры
-            card.setAttribute('data-id', item.id);
-            card.classList.add('photo-item');
-        } else {
-            // Для других категорий добавляем остальные элементы
-            // (они уже добавлены выше в условии if (state.currentCategory !== 'photo'))
-        }
-        
-        // Добавляем контейнер действий только если он не пустой
-        if (actions.children.length > 0) {
             card.appendChild(actions);
         }
 
         grid.appendChild(card);
     });
-    
+
     // Применяем сохраненные фильтры к миниатюрам, если они есть
     if (typeof window.applyAllSavedFilters === 'function') {
         window.applyAllSavedFilters();

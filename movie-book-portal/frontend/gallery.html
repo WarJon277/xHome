@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,170 +8,422 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
-<header>
-  <div class="header-container">
-    <h1>Галерея фото</h1>
+    <header>
+        <div class="header-container">
+            <h1>Галерея фото</h1>
 
-    <!-- Кнопка-меню (гамбургер) -->
-    <button class="menu-toggle" id="menu-toggle" aria-label="Открыть меню">
-      <span class="hamburger"></span>
-    </button>
+            <!-- Кнопка-меню (гамбургер) -->
+            <button class="menu-toggle" id="menu-toggle" aria-label="Открыть меню">
+                <span class="hamburger"></span>
+            </button>
 
-    <!-- Выпадающее меню -->
-    <nav class="dropdown-menu" id="dropdown-menu">
-      <button class="nav-item" data-category="movie">Фильмы</button>
-      <button class="nav-item" data-category="tvshow">Сериалы</button>
-      <button class="nav-item" data-category="book">Книги</button>
-      <button class="nav-item active" data-category="photo">Фото</button>
-      
-      <div class="genre-filter-container">
-        <label for="genre-filter">Категория:</label>
-        <select id="category-filter" class="genre-select">
-          <option value="Все">Все</option>
-          <option value="general">Общее</option>
-          <option value="vacation">Отпуск</option>
-          <option value="family">Семья</option>
-          <option value="nature">Природа</option>
-        </select>
-      </div>
+            <!-- Выпадающее меню -->
+            <nav class="dropdown-menu" id="dropdown-menu">
+                <button class="nav-item" data-category="movie">Фильмы</button>
+                <button class="nav-item" data-category="tvshow">Сериалы</button>
+                <button class="nav-item" data-category="book">Книги</button>
+                <button class="nav-item active" data-category="photo">Фото</button>
 
-      <button class="nav-item add-btn" id="show-add">Добавить фото</button>
-    </nav>
-  </div>
-</header>
-
-<main>
-    <!-- Форма добавления/редактирования -->
-    <section id="add-form" style="display: none;">
-        <h2 id="form-title">Добавить новое фото</h2>
-        <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
-        
-        <form id="photo-form">
-            
-            <div class="genre-row">
-                <select id="category-select" name="category-select" class="category-select-enhanced">
-                    <option value="general">Общее</option>
-                    <option value="vacation">Отпуск</option>
-                    <option value="family">Семья</option>
-                    <option value="nature">Природа</option>
-                    <option value="other">Другое</option>
-                </select>
-            </div>
-            
-            <!-- Загрузка фото -->
-            <div id="photo-upload-container" class="upload-container">
-                <label for="photo" class="upload-label">Выберите фото для загрузки</label>
-                <input type="file" id="photo" accept="image/*" multiple required class="upload-input">
-                <div class="upload-area" id="upload-area">
-                    <div class="upload-icon">📁</div>
-                    <p class="upload-text">Перетащите сюда фото или нажмите для выбора</p>
-                    <div id="photo-info" class="photo-info"></div>
+                <div class="genre-filter-container">
+                    <label for="genre-filter">Категория:</label>
+                    <select id="category-filter" class="genre-select">
+                        <option value="Все">Все</option>
+                        <option value="general">Общее</option>
+                        <option value="vacation">Отпуск</option>
+                        <option value="family">Семья</option>
+                        <option value="nature">Природа</option>
+                    </select>
                 </div>
-                
-            </div>
-            
 
-            <div id="progress-container" class="progress-container" style="display: none; margin-top: 15px;">
-                <div class="progress-bar-container">
-                    <div id="progress" class="progress-bar" style="width: 0%;"></div>
+                <button class="nav-item add-btn" id="show-add">Добавить фото</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Форма добавления/редактирования -->
+        <section id="add-form" style="display: none;">
+            <h2 id="form-title">Добавить новое фото</h2>
+            <button class="nav-btn view-btn" id="show-view" title="Вернуться к списку">← Назад</button>
+
+            <form id="photo-form">
+
+                <div class="genre-row">
+                    <select id="category-select" name="category-select" class="category-select-enhanced">
+                        <option value="general">Общее</option>
+                        <option value="vacation">Отпуск</option>
+                        <option value="family">Семья</option>
+                        <option value="nature">Природа</option>
+                        <option value="other">Другое</option>
+                    </select>
                 </div>
-                <div id="progress-text" class="progress-text">0%</div>
-            </div>
 
-            <button type="submit" id="submit-btn" class="submit-btn">Добавить фото</button>
+                <!-- Загрузка фото -->
+                <div id="photo-upload-container" class="upload-container">
+                    <label for="photo" class="upload-label">Выберите фото для загрузки</label>
+                    <input type="file" id="photo" accept="image/*" multiple required class="upload-input">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">Перетащите сюда фото или нажмите для выбора</p>
+                        <div id="photo-info" class="photo-info"></div>
+                    </div>
 
-            <div id="loading-message" class="loading-message" style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
-                Загрузка...
-            </div>
-            <div id="error-message" class="error-message" style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;"></div>
-        </form>
-    </section>
+                </div>
 
-    <!-- Сетка фото -->
-    <section id="photos-grid">
-        <!-- Фото карточки будут вставляться сюда через JS -->
-    </section>
-</main>
 
-<script type="module" src="/static/api.js"></script>
-<script type="module" src="/static/state.js"></script>
-<script type="module" src="/static/utils.js"></script>
-<script type="module" src="/static/genres.js"></script>
-<script type="module" src="/static/genreSelectors.js"></script>
-<script type="module" src="/static/itemDisplay.js"></script>
-<script type="module" src="/static/itemForm.js"></script>
-<script type="module" src="/static/eventListeners.js"></script>
-<script type="module" src="/static/app.js"></script>
-<script type="module" src="/static/photoModal.js"></script>
+                <div id="progress-container" class="progress-container" style="display: none; margin-top: 15px;">
+                    <div class="progress-bar-container">
+                        <div id="progress" class="progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <div id="progress-text" class="progress-text">0%</div>
+                </div>
 
-<!-- Scripts for functionality -->
-<script type="module">
-    // После полной загрузки страницы галереи устанавливаем правильную категорию
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            // Динамически импортируем необходимые модули
-            const [{ setCurrentCategory, setCurrentGenre }, { updateGenreSelect, updateGenreSelectInForm }, { updateFormLabels }, { loadItems }] = await Promise.all([
-                import('/static/state.js'),
-                import('/static/genreSelectors.js'),
-                import('/static/utils.js'),
-                import('/static/itemDisplay.js')
-            ]);
-            
-            // Устанавливаем категорию на 'photo' при загрузке страницы галереи
-            setCurrentCategory('photo');
-            setCurrentGenre('Все');
-            
-            // Обновляем глобальные переменные для совместимости
-            window.currentCategory = 'photo';
-            window.currentGenre = 'Все';
-            if (window.state) {
-                window.state.currentCategory = 'photo';
-                window.state.currentGenre = 'Все';
-            }
-            
-            // Обновляем интерфейс и загружаем фото
-            updateGenreSelect();
-            updateGenreSelectInForm();
-            updateFormLabels();
-            await loadItems(); // загружаем фото с ожиданием
-        } catch (error) {
-            console.error('Ошибка при инициализации галереи:', error);
-        }
-    });
-    
-    // Обновляем галерею при каждом входе на страницу (включая навигацию)
-    window.addEventListener('pageshow', async () => {
-        if (window.location.pathname.includes('gallery.html')) {
+                <button type="submit" id="submit-btn" class="submit-btn">Добавить фото</button>
+
+                <div id="loading-message" class="loading-message"
+                    style="display: none; margin-top: 15px; padding: 10px; background: #1e3a5f; color: #9cd0f7; border-radius: 4px;">
+                    Загрузка...
+                </div>
+                <div id="error-message" class="error-message"
+                    style="display: none; margin-top: 15px; padding: 10px; background: #5f1e1e; color: #f79c9c; border-radius: 4px;">
+                </div>
+            </form>
+        </section>
+
+        <!-- Навигационная цепочка -->
+        <section id="breadcrumb" class="breadcrumb-container" style="display: none; margin: 10px 0;">
+            <button id="breadcrumb-home" class="breadcrumb-btn">🏠</button>
+            <span id="breadcrumb-path"></span>
+        </section>
+
+        <!-- Кнопки управления -->
+        <section id="folder-controls" class="folder-controls" style="display: none; margin: 10px 0;">
+            <button id="back-to-parent-btn" class="nav-item" style="display: none;">← Назад</button>
+        </section>
+
+        <!-- Сетка фото -->
+        <section id="photos-grid">
+            <!-- Фото карточки будут вставляться сюда через JS -->
+        </section>
+    </main>
+
+    <script type="module" src="/static/api.js"></script>
+    <script type="module" src="/static/state.js"></script>
+    <script type="module" src="/static/utils.js"></script>
+    <script type="module" src="/static/genres.js"></script>
+    <script type="module" src="/static/genreSelectors.js"></script>
+    <script type="module" src="/static/itemDisplay.js"></script>
+    <script type="module" src="/static/itemForm.js"></script>
+    <script type="module" src="/static/eventListeners.js"></script>
+    <script type="module" src="/static/app.js"></script>
+    <script type="module" src="/static/photoModal.js"></script>
+
+    <!-- Scripts for functionality -->
+    <script type="module">
+        // После полной загрузки страницы галереи устанавливаем правильную категорию
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Импортируем и вызываем loadItems если находимся на странице галереи
-                const { loadItems } = await import('/static/itemDisplay.js');
-                await loadItems();
+                // Динамически импортируем необходимые модули
+                const [{ setCurrentCategory, setCurrentGenre, setCurrentFolder, getCurrentFolder }, { updateGenreSelect, updateGenreSelectInForm }, { updateFormLabels }, { loadItems }] = await Promise.all([
+                    import('/static/state.js'),
+                    import('/static/genreSelectors.js'),
+                    import('/static/utils.js'),
+                    import('/static/itemDisplay.js')
+                ]);
+
+                // Устанавливаем категорию на 'photo' при загрузке страницы галереи
+                setCurrentCategory('photo');
+                setCurrentGenre('Все');
+                setCurrentFolder(''); // Начинаем с корневой папки
+
+                // Обновляем глобальные переменные для совместимости
+                window.currentCategory = 'photo';
+                window.currentGenre = 'Все';
+                window.currentFolder = '';
+                if (window.state) {
+                    window.state.currentCategory = 'photo';
+                    window.state.currentGenre = 'Все';
+                    window.state.currentFolder = '';
+                }
+
+                // Обновляем интерфейс и загружаем фото
+                updateGenreSelect();
+                updateGenreSelectInForm();
+                updateFormLabels();
+                await loadItems(); // загружаем фото с ожиданием
+
+                // Добавляем обработчики для кнопок управления папками
+                const createFolderBtn = document.getElementById('create-folder-btn');
+                const backToParentBtn = document.getElementById('back-to-parent-btn');
+                const breadcrumbHome = document.getElementById('breadcrumb-home');
+                const breadcrumbPath = document.getElementById('breadcrumb-path');
+                const folderControls = document.getElementById('folder-controls');
+                const breadcrumbContainer = document.getElementById('breadcrumb');
+
+                // Функция для создания папки (вынесена для использования в FAB)
+                async function triggerCreateFolder() {
+                    const folderName = prompt('Введите имя новой папки:');
+                    if (folderName) {
+                        try {
+                            const { createPhoto } = await import('/static/api.js');
+                            await createPhoto({ title: folderName });
+                            const { loadItems } = await import('/static/itemDisplay.js');
+                            await loadItems(); // перезагружаем содержимое
+                        } catch (error) {
+                            console.error('Ошибка при создании папки:', error);
+                            alert('Ошибка при создании папки: ' + error.message);
+                        }
+                    }
+                }
+
+                // Сохраняем функцию глобально для доступа из script ниже
+                window.triggerCreateFolder = triggerCreateFolder;
+
+                if (createFolderBtn) {
+                    createFolderBtn.addEventListener('click', triggerCreateFolder);
+                }
+
+
+                if (backToParentBtn) {
+                    backToParentBtn.addEventListener('click', async () => {
+                        const { getCurrentFolder, setCurrentFolder } = await import('/static/state.js');
+                        let currentFolder = getCurrentFolder();
+
+                        // Получаем родительскую папку
+                        if (currentFolder && currentFolder.includes('/')) {
+                            const parentFolder = currentFolder.substring(0, currentFolder.lastIndexOf('/'));
+                            setCurrentFolder(parentFolder);
+                        } else {
+                            setCurrentFolder(''); // Возвращаемся в корень
+                        }
+
+                        await loadItems(); // перезагружаем содержимое
+                    });
+                }
+
+                if (breadcrumbHome) {
+                    breadcrumbHome.addEventListener('click', async () => {
+                        const { setCurrentFolder } = await import('/static/state.js');
+                        setCurrentFolder(''); // Переходим в корень
+                        await loadItems(); // перезагружаем содержимое
+                    });
+                }
+
+                // Показываем элементы управления папками
+                if (folderControls) folderControls.style.display = 'block';
+                if (breadcrumbContainer) breadcrumbContainer.style.display = 'flex';
+
+                // Обновляем видимость кнопки "назад" в зависимости от текущей папки
+                async function updateBackButtonVisibility() {
+                    if (backToParentBtn) {
+                        const { getCurrentFolder } = await import('/static/state.js');
+                        const currentFolder = getCurrentFolder();
+                        backToParentBtn.style.display = currentFolder ? 'block' : 'none';
+                    }
+                }
+
+                // Обновляем путь в навигационной цепочке
+                async function updateBreadcrumb() {
+                    const { getCurrentFolder } = await import('/static/state.js');
+                    const currentFolder = getCurrentFolder();
+                    const breadcrumbPathEl = document.getElementById('breadcrumb-path');
+
+                    if (!breadcrumbPathEl) return;
+
+                    if (currentFolder) {
+                        const pathParts = currentFolder.split('/');
+                        let pathHtml = '';
+
+                        pathParts.forEach((part, index) => {
+                            if (index === pathParts.length - 1) {
+                                // Последняя часть - текущая папка
+                                pathHtml += `<span>${part}</span>`;
+                            } else {
+                                // Ссылки на родительские папки
+                                const parentPath = pathParts.slice(0, index + 1).join('/');
+                                pathHtml += `<span class="breadcrumb-part" data-path="${parentPath}">${part}</span> / `;
+                            }
+                        });
+
+                        breadcrumbPathEl.innerHTML = pathHtml;
+
+                        // Добавляем обработчики для частей пути
+                        document.querySelectorAll('.breadcrumb-part').forEach(part => {
+                            part.addEventListener('click', async (e) => {
+                                const { setCurrentFolder } = await import('/static/state.js');
+                                const path = e.target.getAttribute('data-path');
+                                setCurrentFolder(path);
+                                await loadItems();
+                            });
+                        });
+                    } else {
+                        // Корневая папка
+                        breadcrumbPathEl.innerHTML = '<span>Галерея</span>';
+                    }
+                }
+
+                // Вызываем обновление пути при загрузке
+                await updateBreadcrumb();
+                await updateBackButtonVisibility();
+
+                // Делаем функцию доступной глобально для других модулей
+                window.updateBreadcrumb = updateBreadcrumb;
+                window.updateBackButtonVisibility = updateBackButtonVisibility;
+
+                // Добавляем контекстное меню для перемещения фото
+                document.addEventListener('contextmenu', async (e) => {
+                    if (e.target.closest('.photo-item')) {
+                        e.preventDefault();
+
+                        const photoItem = e.target.closest('.photo-item');
+                        const photoPath = photoItem.getAttribute('data-path');
+
+                        // Удаляем существующее контекстное меню, если есть
+                        const existingMenu = document.getElementById('context-menu');
+                        if (existingMenu) existingMenu.remove();
+
+                        // Создаем контекстное меню
+                        const contextMenu = document.createElement('div');
+                        contextMenu.id = 'context-menu';
+                        contextMenu.style.position = 'fixed';
+                        contextMenu.style.left = e.pageX + 'px';
+                        contextMenu.style.top = e.pageY + 'px';
+                        contextMenu.style.backgroundColor = '#2a2a2a';
+                        contextMenu.style.border = '1px solid #444';
+                        contextMenu.style.borderRadius = '4px';
+                        contextMenu.style.padding = '5px';
+                        contextMenu.style.zIndex = '10000';
+                        contextMenu.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+                        contextMenu.innerHTML = `
+                        <div class="context-menu-item" data-action="move" style="padding: 8px; cursor: pointer; color: #e0e0e0; border-radius: 3px;">
+                            Переместить в...
+                        </div>
+                        <div class="context-menu-item" data-action="delete" style="padding: 8px; cursor: pointer; color: #e0e0e0; border-radius: 3px;">
+                            Удалить
+                        </div>
+                    `;
+
+                        document.body.appendChild(contextMenu);
+
+                        // Обработчик для перемещения фото
+                        contextMenu.querySelector('[data-action="move"]').addEventListener('click', async () => {
+                            contextMenu.remove();
+
+                            // Получаем список папок для перемещения
+                            const { fetchPhotos } = await import('/static/api.js');
+                            const { getCurrentFolder } = await import('/static/state.js');
+                            const currentFolder = getCurrentFolder();
+
+                            const contents = await fetchPhotos(currentFolder);
+                            const folders = contents.filter(item => item.type === 'folder');
+
+                            if (folders.length === 0) {
+                                alert('Нет доступных папок для перемещения');
+                                return;
+                            }
+
+                            // Создаем список папок для выбора
+                            const folderNames = folders.map(folder => folder.name);
+                            const folderList = folderNames.join('\n');
+                            const targetFolderName = prompt(`Выберите папку для перемещения:\n${folderList}\n\nВведите имя папки:`);
+
+                            if (targetFolderName) {
+                                const targetFolder = folders.find(folder => folder.name === targetFolderName);
+                                if (targetFolder) {
+                                    try {
+                                        const { movePhoto } = await import('/static/api.js');
+
+                                        // Если текущая папка не корневая, добавляем её к пути
+                                        const targetPath = currentFolder ? `${currentFolder}/${targetFolder.name}` : targetFolder.name;
+
+                                        await movePhoto(photoPath, targetPath);
+                                        await loadItems(); // перезагружаем содержимое
+                                    } catch (error) {
+                                        console.error('Ошибка при перемещении фото:', error);
+                                        alert('Ошибка при перемещении фото: ' + error.message);
+                                    }
+                                } else {
+                                    alert('Папка с таким именем не найдена');
+                                }
+                            }
+                        });
+
+                        // Обработчик для удаления фото
+                        contextMenu.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+                            if (confirm('Вы уверены, что хотите удалить это фото?')) {
+                                contextMenu.remove();
+                                const { deletePhoto } = await import('/static/api.js');
+                                const photoId = photoItem.getAttribute('data-id');
+                                await deletePhoto(photoId);
+                                await loadItems(); // перезагружаем содержимое
+                            }
+                        });
+
+                        // Закрытие меню при клике вне его
+                        const closeMenu = () => {
+                            if (document.getElementById('context-menu')) {
+                                document.getElementById('context-menu').remove();
+                            }
+                            document.removeEventListener('click', closeMenu);
+                        };
+                        setTimeout(() => document.addEventListener('click', closeMenu), 100);
+                    }
+                });
+
             } catch (error) {
-                console.error('Ошибка при обновлении галереи:', error);
+                console.error('Ошибка при инициализации галереи:', error);
             }
-        }
-    });
-    
-</script>
+        });
 
-<!-- Floating Action Button for adding photos on mobile -->
-<button id="fab-add-photo" class="fab-button" title="Добавить фото">
-    <span class="fab-icon">+</span>
-</button>
+        // Обновляем галерею при каждом входе на страницу (включая навигацию)
+        window.addEventListener('pageshow', async () => {
+            if (window.location.pathname.includes('gallery.html')) {
+                try {
+                    // Импортируем и вызываем loadItems если находимся на странице галереи
+                    const { loadItems } = await import('/static/itemDisplay.js');
+                    await loadItems();
+                } catch (error) {
+                    console.error('Ошибка при обновлении галереи:', error);
+                }
+            }
+        });
 
-<script type="module">
-    // Add event listener for the floating action button
-    document.addEventListener('DOMContentLoaded', () => {
-        const fabButton = document.getElementById('fab-add-photo');
-        const showAddButton = document.getElementById('show-add');
-        
-        if (fabButton && showAddButton) {
-            fabButton.addEventListener('click', () => {
-                showAddButton.click(); // Trigger the existing "Добавить фото" button functionality
-            });
-        }
-    });
-</script>
+    </script>
+
+    <!-- Floating Action Buttons for gallery -->
+    <div class="fab-container">
+        <button id="fab-add-folder" class="fab-button fab-folder" title="Создать папку">
+            <span class="fab-icon">📁<sup>+</sup></span>
+        </button>
+        <button id="fab-add-photo" class="fab-button fab-photo" title="Добавить фото">
+            <span class="fab-icon">+</span>
+        </button>
+    </div>
+
+    <script type="module">
+        // Add event listeners for the floating action buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const fabPhotoButton = document.getElementById('fab-add-photo');
+            const fabFolderButton = document.getElementById('fab-add-folder');
+            const showAddButton = document.getElementById('show-add');
+
+            if (fabPhotoButton && showAddButton) {
+                fabPhotoButton.addEventListener('click', () => {
+                    showAddButton.click(); // Trigger the existing "Добавить фото" button functionality
+                });
+            }
+
+            if (fabFolderButton) {
+                fabFolderButton.addEventListener('click', () => {
+                    if (typeof window.triggerCreateFolder === 'function') {
+                        window.triggerCreateFolder();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
+
 </html>

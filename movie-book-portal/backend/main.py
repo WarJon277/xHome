@@ -1,5 +1,6 @@
 # main.py
 import os
+import sys
 import shutil
 import io
 import fitz  # PyMuPDF
@@ -8,7 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, status
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -17,10 +18,17 @@ from PIL import Image
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
+# Add backend directory to Python path to support absolute imports
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from database import get_db, create_tables, add_sample_data as add_sample_data_movies, Movie
 from database_books import get_db_books, create_books_tables, Book  # ← обязательно импортируем модель Book
 from database_tvshows import get_db_tvshows, create_tvshows_tables, Tvshow, Episode
 from database_gallery import get_db_gallery, create_gallery_tables, Photo
+import json
+from fastapi.responses import JSONResponse
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -805,234 +813,285 @@ async def upload_episode_file(episode_id: int, file: UploadFile = File(...), db:
 
 # ==================== ГАЛЕРЕЯ ====================
 
-def get_db_gallery_simple():
-    db = next(get_db_gallery())
-    try:
-        yield db
-    finally:
-        db.close()
-
-
+# Добавляем новый маршрут для получения содержимого папки галереи
 @app.get("/gallery")
-def get_gallery(category: str = None, db: Session = Depends(get_db_gallery_simple)):
-    query = db.query(Photo)
-    if category and category != "Все":
-        query = query.filter(Photo.category.ilike(f"%{category}%"))
-    return query.all()
+def get_gallery_contents(folder: str = ""):
+    try:
+        # Проверяем, что путь не выходит за пределы папки gallery
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        requested_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder))
+        
+        # Проверяем, что запрашиваемый путь находится внутри базовой папки
+        if not requested_path.startswith(base_path):
+            raise HTTPException(status_code=400, detail="Недопустимый путь")
+        
+        if not os.path.exists(requested_path):
+            raise HTTPException(status_code=404, detail="Папка не найдена")
+        
+        contents = []
+        for item in os.listdir(requested_path):
+            item_path = os.path.join(requested_path, item)
+            is_directory = os.path.isdir(item_path)
+            
+            # Если это папка, добавляем информацию о ней
+            if is_directory:
+                contents.append({
+                    "id": None,
+                    "name": item,
+                    "type": "folder",
+                    "path": os.path.join(folder, item).replace('\\', '/'),
+                    "size": None,
+                    "modified": os.path.getmtime(item_path),
+                    "thumbnail_path": "/static/assets/images/folder-icon_thumb.png"  # Заглушка для папки
+                })
+            # Если это файл изображения, добавляем информацию о нем
+            elif os.path.isfile(item_path):
+                # Пропускаем файлы миниатюр, чтобы они не дублировались в галерее
+                if '_thumb.' in item:
+                    continue
 
-
-@app.post("/gallery")
-def create_photo(photo: PhotoCreate, db: Session = Depends(get_db_gallery_simple)):
-    db_photo = Photo(**photo.dict())
-    db.add(db_photo)
-    db.commit()
-    db.refresh(db_photo)
-    return db_photo
+                _, ext = os.path.splitext(item)
+                if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    # Генерируем ID на основе пути к файлу для совместимости
+                    import hashlib
+                    file_id = int(hashlib.md5(item_path.encode()).hexdigest(), 16) % 10**8
+                    
+                    # Проверяем наличие миниатюры
+                    thumb_path = os.path.join(requested_path, f"{os.path.splitext(item)[0]}_thumb.webp")
+                    if not os.path.exists(thumb_path):
+                        thumb_path = item_path  # Используем оригинал, если миниатюры нет
+                    
+                    thumb_filename = os.path.basename(thumb_path)
+                    
+                    contents.append({
+                        "id": file_id,
+                        "name": item,
+                        "type": "photo",
+                        "path": os.path.join(folder, item).replace('\\', '/'),
+                        "size": os.path.getsize(item_path),
+                        "modified": os.path.getmtime(item_path),
+                        "thumbnail_path": f"/uploads/gallery/{os.path.join(folder, thumb_filename).replace('\\', '/')}",
+                        "file_path": f"/uploads/gallery/{os.path.join(folder, item).replace('\\', '/')}"
+                    })
+        
+        return contents
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении содержимого галереи: {str(e)}")
 
 
 @app.get("/gallery/{photo_id}")
-def get_photo(photo_id: int, db: Session = Depends(get_db_gallery_simple)):
-    photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not photo:
+def get_photo(photo_id: int):
+    # Находим фото по ID (который теперь генерируется на основе пути)
+    try:
+        # Ищем файл по ID в папке галереи
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                file_path = os.path.join(root, file)
+                import hashlib
+                file_id = int(hashlib.md5(file_path.encode()).hexdigest(), 16) % 10**8
+                
+                if file_id == photo_id:
+                    _, ext = os.path.splitext(file)
+                    if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                        relative_path = os.path.relpath(file_path, BASE_DIR).replace('\\', '/')
+                        
+                        # Проверяем наличие миниатюры
+                        thumb_path = os.path.join(os.path.dirname(file_path), f"{os.path.splitext(file)[0]}_thumb.webp")
+                        if not os.path.exists(thumb_path):
+                            thumb_path = file_path  # Используем оригинал, если миниатюры нет
+                        
+                        relative_thumb_path = os.path.relpath(thumb_path, BASE_DIR).replace('\\', '/')
+                        
+                        return {
+                            "id": file_id,
+                            "title": os.path.splitext(file)[0],
+                            "description": "",
+                            "file_path": f"/{relative_path}",
+                            "thumbnail_path": f"/{relative_thumb_path}",
+                            "upload_date": os.path.getmtime(file_path)
+                        }
+        
         raise HTTPException(status_code=404, detail="Photo not found")
-    return photo
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при получении фото: {str(e)}")
 
 
-@app.put("/gallery/{photo_id}")
-def update_photo(photo_id: int, photo: PhotoCreate, db: Session = Depends(get_db_gallery_simple)):
-    db_photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not db_photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    for key, value in photo.dict().items():
-        setattr(db_photo, key, value)
-    db.commit()
-    db.refresh(db_photo)
-    return db_photo
+@app.post("/gallery")
+def create_photo(photo_data: dict):
+    # Создание папки в галерее
+    try:
+        folder_name = photo_data.get("title", "")
+        if not folder_name:
+            raise HTTPException(status_code=400, detail="Название папки не указано")
+        
+        # Очищаем имя папки от недопустимых символов
+        import re
+        folder_name = re.sub(r'[<>:"/\\|?*]', '_', folder_name)
+        folder_path = os.path.join(GALLERY_UPLOADS, folder_name)
+        
+        if os.path.exists(folder_path):
+            raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+        
+        os.makedirs(folder_path, exist_ok=True)
+        return {"message": "Папка создана успешно", "path": folder_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при создании папки: {str(e)}")
 
 
 @app.delete("/gallery/{photo_id}")
-def delete_photo(photo_id: int, db: Session = Depends(get_db_gallery_simple)):
-    photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not photo:
+def delete_photo(photo_id: int):
+    # Удаляем файл изображения по ID
+    try:
+        # Ищем файл по ID в папке галереи
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                file_path = os.path.join(root, file)
+                import hashlib
+                file_id = int(hashlib.md5(file_path.encode()).hexdigest(), 16) % 10**8
+                
+                if file_id == photo_id:
+                    os.remove(file_path)
+                    
+                    # Удаляем связанную миниатюру, если она существует
+                    thumb_path = os.path.join(os.path.dirname(file_path), f"{os.path.splitext(file)[0]}_thumb.webp")
+                    if os.path.exists(thumb_path):
+                        os.remove(thumb_path)
+                    
+                    return {"message": "Фото удалено успешно"}
+        
         raise HTTPException(status_code=404, detail="Photo not found")
-    
-    # Удаляем файлы изображения, если они существуют
-    if photo.file_path:
-        try:
-            file_path = os.path.join(BASE_DIR, photo.file_path)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            print(f"Ошибка при удалении файла фото: {e}")
-    
-    # Удаляем файл миниатюры, если он существует
-    if photo.thumbnail_path and photo.thumbnail_path != photo.file_path:
-        try:
-            thumb_path = os.path.join(BASE_DIR, photo.thumbnail_path)
-            if os.path.exists(thumb_path):
-                os.remove(thumb_path)
-        except Exception as e:
-            print(f"Ошибка при удалении миниатюры фото: {e}")
-    
-    db.delete(photo)
-    db.commit()
-    return {"message": "Photo deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при удалении фото: {str(e)}")
 
 
 @app.post("/gallery/{photo_id}/upload")
-async def upload_photo_file(photo_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_gallery_simple)):
-    photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
+async def upload_photo_file(photo_id: int, file: UploadFile = File(...)):
+    raise HTTPException(status_code=400, detail="Загрузка файлов по ID больше не поддерживается. Используйте /gallery/upload_to_folder")
 
-    allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in allowed_ext:
-        raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
 
-    # Сохраняем путь к старому файлу, чтобы удалить его позже
-    old_file_path = photo.file_path
-    print(f"Старый путь к файлу: {old_file_path}")  # Отладочное сообщение
-
-    file_path = os.path.abspath(f"uploads/gallery/{photo_id}_{file.filename}")
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Сохраняем относительный путь для корректной отдачи через статический маршрут
-    relative_path = os.path.relpath(file_path, BASE_DIR)
-    # Приводим к стандартным слэшам для URL
-    photo.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
-    print(f"Новый путь к файлу: {photo.file_path}")  # Отладочное сообщение
-
-    # Создаем миниатюру
+@app.post("/gallery/upload_to_folder")
+async def upload_photo_to_folder(folder: str = Form(""), file: UploadFile = File(...)):
     try:
-        with Image.open(file_path) as img:
-            # Определяем размеры миниатюры (например, 300x300)
-            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
-            # Сохраняем миниатюру
-            thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
-            img.save(thumb_path, "WEBP", quality=85)
-            # Обновляем путь к миниатюре в базе данных
-            thumb_relative_path = os.path.relpath(thumb_path, BASE_DIR)
-            photo.thumbnail_path = thumb_relative_path.replace(os.sep, '/').replace('\\', '/')
-            print(f"Создана миниатюра: {photo.thumbnail_path}")  # Отладочное сообщение
-            
-            # Удаляем старую миниатюру с другим расширением, если она существует
-            for old_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-                old_thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{old_ext}")
-                if os.path.exists(old_thumb_path) and old_thumb_path != thumb_path:
-                    os.remove(old_thumb_path)
-                    print(f"Удалена старая миниатюра: {old_thumb_path}")
-    except Exception as e:
-        print(f"Ошибка при создании миниатюры: {e}")
-        # Если не удалось создать миниатюру, используем оригинальное изображение как миниатюру
-        photo.thumbnail_path = photo.file_path
-
-    # Удаляем старый файл фото, если он существует и отличается от нового
-    if old_file_path:
+        # Проверяем, что путь не выходит за пределы папки gallery
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        if folder:
+            requested_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder))
+        else:
+            requested_path = base_path
+        
+        # Проверяем, что запрашиваемый путь находится внутри базовой папки
+        if not requested_path.startswith(base_path):
+            raise HTTPException(status_code=400, detail="Недопустимый путь")
+        
+        # Создаем папку, если она не существует
+        os.makedirs(requested_path, exist_ok=True)
+        
+        allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in allowed_ext:
+            raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
+        
+        file_path = os.path.join(requested_path, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Создаем миниатюру
         try:
-            old_full_path = os.path.join(BASE_DIR, old_file_path)
-            if os.path.exists(old_full_path) and old_full_path != file_path:
-                os.remove(old_full_path)
-                print(f"Удален старый файл фото: {old_full_path}")
+            with Image.open(file_path) as img:
+                # Определяем размеры миниатюры (например, 300x300)
+                img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                # Сохраняем миниатюру
+                thumb_path = os.path.join(requested_path, f"{os.path.splitext(file.filename)[0]}_thumb.webp")
+                img.save(thumb_path, "WEBP", quality=85)
         except Exception as e:
-            print(f"Ошибка при удалении старого файла фото: {e}")
-
-    db.commit()
-    return photo
-
-
-@app.post("/gallery/{photo_id}/upload_thumbnail")
-async def upload_photo_thumbnail(photo_id: int, file: UploadFile = File(...), db: Session = Depends(get_db_gallery_simple)):
-    photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-
-    allowed_ext = {".jpg", ".jpeg", ".png", ".webp"}
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in allowed_ext:
-        raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
-
-    # Сохраняем загруженный файл временно
-    temp_path = os.path.abspath(f"uploads/gallery/{photo_id}_temp{ext}")
-    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Конвертируем в WebP для миниатюры
-    thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
-    try:
-        with Image.open(temp_path) as img:
-            # Определяем размеры миниатюры (например, 300x300)
-            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
-            img.save(thumb_path, "WEBP", quality=85)
+            print(f"Ошибка при создании миниатюры: {e}")
+            # Если не удалось создать миниатюру, продолжаем без нее
+            thumb_path = file_path  # Используем оригинал, если миниатюра не создалась
+        
+        return {"message": "Файл загружен успешно", "file_path": file_path}
     except Exception as e:
-        print(f"Ошибка при конвертации миниатюры в WebP: {e}")
-        # Если не удалось конвертировать, сохраняем как есть
-        shutil.copy2(temp_path, thumb_path)
+        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла: {str(e)}")
 
-    # Удаляем временный файл
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
 
-    # Удаляем старую миниатюру с другим расширением, если она существует
-    for old_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-        old_thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb{old_ext}")
-        if os.path.exists(old_thumb_path) and old_thumb_path != thumb_path:
-            os.remove(old_thumb_path)
-            print(f"Удалена старая миниатюра: {old_thumb_path}")
-
-    # Сохраняем относительный путь для корректной отдачи через статический маршрут
-    relative_path = os.path.relpath(thumb_path, BASE_DIR)
-    # Приводим к стандартным слэшам для URL
-    photo.thumbnail_path = relative_path.replace(os.sep, '/').replace('\\', '/')
-    db.commit()
-    return photo
+@app.post("/gallery/move_photo")
+async def move_photo(photo_path: str = Form(...), target_folder: str = Form(...)):
+    try:
+        # Проверяем, что пути не выходят за пределы папки gallery
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, photo_path))
+        target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))
+        
+        # Проверяем, что пути находятся внутри базовой папки
+        if not source_path.startswith(base_path) or not target_path.startswith(base_path):
+            raise HTTPException(status_code=400, detail="Недопустимый путь")
+        
+        # Проверяем, что исходный файл существует
+        if not os.path.exists(source_path):
+            raise HTTPException(status_code=404, detail="Файл не найден")
+        
+        # Проверяем, что целевая папка существует
+        if not os.path.isdir(target_path):
+            raise HTTPException(status_code=404, detail="Целевая папка не найдена")
+        
+        # Перемещаем файл
+        filename = os.path.basename(source_path)
+        destination_path = os.path.join(target_path, filename)
+        shutil.move(source_path, destination_path)
+        
+        # Перемещаем связанную миниатюру, если она существует
+        source_thumb_path = os.path.join(os.path.dirname(source_path), f"{os.path.splitext(filename)[0]}_thumb.webp")
+        dest_thumb_path = os.path.join(target_path, f"{os.path.splitext(filename)[0]}_thumb.webp")
+        if os.path.exists(source_thumb_path):
+            shutil.move(source_thumb_path, dest_thumb_path)
+        
+        return {"message": "Фото перемещено успешно", "new_path": destination_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при перемещении фото: {str(e)}")
 
 
 @app.post("/gallery/{photo_id}/apply_filter")
-async def apply_filter_to_photo(photo_id: int,
-                                filter_type: str = None,
-                                db: Session = Depends(get_db_gallery_simple)):
-    photo = db.query(Photo).filter(Photo.id == photo_id).first()
-    if not photo:
-        raise HTTPException(status_code=404, detail="Photo not found")
-    
-    if not photo.file_path:
-        raise HTTPException(status_code=400, detail="Photo file path not found")
-    
-    # Get the original file path
-    original_file_path = os.path.join(BASE_DIR, photo.file_path)
-    if not os.path.exists(original_file_path):
-        raise HTTPException(status_code=404, detail="Original photo file not found")
-    
+async def apply_filter_to_photo(photo_id: int, filter_type: str = None):
     try:
-        # Load the original image
-        with Image.open(original_file_path) as img:
-            # Apply the filter based on filter_type
-            filtered_img = apply_image_filter(img, filter_type)
-            
-            # Save the filtered image back to the same file path
-            filtered_img.save(original_file_path, quality=95, optimize=True)
-            
-            # Create a new thumbnail from the filtered original image
-            # This ensures the thumbnail and original both have the same filter
-            thumb_path = os.path.abspath(f"uploads/gallery/{photo_id}_thumb.webp")
-            filtered_thumb = filtered_img.copy()
-            filtered_thumb.thumbnail((300, 300), Image.Resampling.LANCZOS)
-            filtered_thumb.save(thumb_path, "WEBP", quality=85)
-            
-            # Update thumbnail path in database
-            thumb_relative_path = os.path.relpath(thumb_path, BASE_DIR)
-            photo.thumbnail_path = thumb_relative_path.replace(os.sep, '/').replace('\\', '/')
-            db.commit()
+        # Находим фото по ID
+        source_file_path = None
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                file_path = os.path.join(root, file)
+                import hashlib
+                file_id = int(hashlib.md5(file_path.encode()).hexdigest(), 16) % 10**8
+                
+                if file_id == photo_id and os.path.isfile(file_path):
+                    _, ext = os.path.splitext(file)
+                    if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                        source_file_path = file_path
+                        break
+            if source_file_path:
+                break
         
-        return {"message": "Filter applied successfully", "photo": photo}
-    
+        if not source_file_path:
+            raise HTTPException(status_code=404, detail="Photo not found")
+        
+        try:
+            with Image.open(source_file_path) as img:
+                # Apply the filter based on filter_type
+                filtered_img = apply_image_filter(img, filter_type)
+                
+                # Save the filtered image back to the same file path
+                filtered_img.save(source_file_path, quality=95, optimize=True)
+                
+                # Create a new thumbnail from the filtered original image
+                # This ensures the thumbnail and original both have the same filter
+                thumb_path = os.path.join(os.path.dirname(source_file_path), f"{os.path.splitext(os.path.basename(source_file_path))[0]}_thumb.webp")
+                filtered_thumb = filtered_img.copy()
+                filtered_thumb.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                filtered_thumb.save(thumb_path, "WEBP", quality=85)
+        except Exception as e:
+            print(f"Error applying filter: {e}")
+            raise HTTPException(status_code=500, detail=f"Ошибка при применении фильтра: {str(e)}")
+        
+        return {"message": "Filter applied successfully"}
     except Exception as e:
-        print(f"Error applying filter: {e}")
-        raise HTTPException(status_code=500, detail=f"Error applying filter: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка при применении фильтра: {str(e)}")
 
 
 def apply_image_filter(img, filter_type):
@@ -1092,8 +1151,41 @@ def apply_image_filter(img, filter_type):
 
 
 @app.get("/gallery/search")
-def search_photos(query: str, db: Session = Depends(get_db_gallery_simple)):
-    return db.query(Photo).filter(Photo.title.ilike(f"%{query}%")).all()
+def search_photos(query: str):
+    # Поиск по именам файлов в галерее
+    try:
+        results = []
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                _, ext = os.path.splitext(file)
+                if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    if query.lower() in file.lower():
+                        file_path = os.path.join(root, file)
+                        import hashlib
+                        file_id = int(hashlib.md5(file_path.encode()).hexdigest(), 16) % 10**8
+                        
+                        relative_path = os.path.relpath(file_path, BASE_DIR).replace('\\', '/')
+                        
+                        # Проверяем наличие миниатюры
+                        thumb_path = os.path.join(root, f"{os.path.splitext(file)[0]}_thumb.webp")
+                        if not os.path.exists(thumb_path):
+                            thumb_path = file_path  # Используем оригинал, если миниатюры нет
+                        
+                        relative_thumb_path = os.path.relpath(thumb_path, BASE_DIR).replace('\\', '/')
+                        
+                        results.append({
+                            "id": file_id,
+                            "name": file,
+                            "type": "photo",
+                            "path": relative_path,
+                            "size": os.path.getsize(file_path),
+                            "modified": os.path.getmtime(file_path),
+                            "thumbnail_path": f"/{relative_thumb_path}",
+                            "file_path": f"/{relative_path}"
+                        })
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при поиске фото: {str(e)}")
 
 
 @app.get("/books/search")

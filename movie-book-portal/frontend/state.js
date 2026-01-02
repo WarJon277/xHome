@@ -2,6 +2,7 @@
 export const state = {
     currentCategory: 'movie',
     currentGenre: 'Все',
+    currentFolder: "",  // Путь к текущей папке в галерее
     editingItem: null
 };
 
@@ -12,6 +13,10 @@ export function setCurrentCategory(category) {
 
 export function setCurrentGenre(genre) {
     state.currentGenre = genre;
+}
+
+export function setCurrentFolder(folder) {
+    state.currentFolder = folder;
 }
 
 export function setEditingItem(item) {
@@ -25,6 +30,10 @@ export function getCurrentCategory() {
 
 export function getCurrentGenre() {
     return state.currentGenre;
+}
+
+export function getCurrentFolder() {
+    return state.currentFolder;
 }
 
 export function getEditingItem() {

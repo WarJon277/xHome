@@ -5,14 +5,14 @@ import { loadItems } from './itemDisplay.js';
 import { updateFileInfo, updateThumbnailInfo, updateEpisodesInfo } from './utils.js';
 import { showLoading, showError, escapeHtml } from './utils.js';
 import { uploadFile, uploadEpisodes } from './utils.js';
-import { fetchMovie, fetchTvshow, fetchBook, fetchPhoto, fetchEpisodes, createMovie, createTvshow, createBook, createPhoto, updateMovie, updateTvshow, updateBook, updatePhoto } from './api.js';
+import { fetchMovie, fetchTvshow, fetchBook, fetchPhoto, fetchEpisodes, createMovie, createTvshow, createBook, createPhoto, updateMovie, updateTvshow, updateBook, updatePhoto, uploadPhotoToFolder } from './api.js';
 
 // ============================================
 // Форма — добавление / редактирование
 // ============================================
 export async function handleSubmit(e) {
     e.preventDefault();
-    
+
     // Проверяем, на какой странице мы находимся - на главной или на галерее
     const isGalleryPage = window.location.pathname.includes('gallery.html');
     const titleElement = document.getElementById('title');
@@ -22,16 +22,18 @@ export async function handleSubmit(e) {
     const directorAuthorElement = document.getElementById('director-author');
     const ratingElement = document.getElementById('rating');
     const descriptionElement = document.getElementById('description');
-    
-    if (!titleElement) {
-        showError('Не найден элемент заголовка');
-        return;
-    }
-    
+
     const title = titleElement ? titleElement.value.trim() : '';
+    // Для фото название необязательно при создании (можно взять из имени файла)
     if (state.currentCategory !== 'photo' && !title) {
-        showError('Название — обязательное поле');
-        return;
+        if (!titleElement && state.currentCategory !== 'photo') {
+            showError('Не найден элемент заголовка');
+            return;
+        }
+        if (titleElement && !title) {
+            showError('Название — обязательное поле');
+            return;
+        }
     }
 
     showLoading(true);
@@ -58,7 +60,7 @@ export async function handleSubmit(e) {
             if (yearElement) data.year = parseInt(yearElement.value) || null;
             data.genre = genreValue || null;
             if (ratingElement) data.rating = parseFloat(ratingElement.value) || null;
-            
+
             if (state.currentCategory === 'movie' || state.currentCategory === 'tvshow') {
                 if (directorAuthorElement) data.director = directorAuthorElement.value.trim() || null;
             } else {
@@ -97,7 +99,7 @@ export async function handleSubmit(e) {
 
         // Загрузка файлов
         const thumbInput = document.getElementById('thumbnail');
-        
+
         // Загрузка основного файла (для фильмов, книг и фото)
         if (state.currentCategory === 'movie' || state.currentCategory === 'book') {
             const fileInput = document.getElementById('file');
@@ -109,53 +111,14 @@ export async function handleSubmit(e) {
                 await uploadFile(endpoint, file, p => updateProgress(20 + p * 50 / 100));
             }
         } else if (state.currentCategory === 'photo') {
-            // Для фото загружаем каждое изображение как отдельный элемент
-            const fileInput = document.getElementById('photo'); // используем другой ID для фото
+            // Для фото загружаем каждое изображение в текущую папку галереи
+            const fileInput = document.getElementById('photo') || document.getElementById('file');
             if (fileInput && fileInput.files.length > 0) {
-                // Если редактируем существующее фото, загружаем файлы в существующий элемент
-                if (state.editingItem) {
-                    // Загружаем все выбранные фото в существующий элемент
-                    for (let i = 0; i < fileInput.files.length; i++) {
-                        const file = fileInput.files[i];
-                        const endpoint = `/gallery/${itemId}/upload`;
-                        await uploadFile(endpoint, file, p => updateProgress(20 + (i+1) * 50 / fileInput.files.length));
-                        
-                        // Если миниатюра не была загружена, используем основное фото как миниатюру
-                        const thumbInput = document.getElementById('thumbnail');
-                        if (!thumbInput || !thumbInput.files.length > 0) {
-                            // Копируем основное фото как миниатюру
-                            const thumbnailEndpoint = `/gallery/${itemId}/upload_thumbnail`;
-                            await uploadFile(thumbnailEndpoint, file, p => updateProgress(70 + (i+1) * 30 / fileInput.files.length));
-                        }
-                    }
-                } else {
-                    // При добавлении новых фото создаем отдельную запись для каждого файла
-                    for (let i = 0; i < fileInput.files.length; i++) {
-                        const file = fileInput.files[i];
-                        // Создаем отдельную запись для каждого фото
-                        const photoData = {
-                            ...data,
-                            title: file.name.replace(/\.[^/.]+$/, ""), // Используем имя файла без расширения как заголовок, если не задан
-                        };
-                        if (!title) {
-                            photoData.title = file.name.replace(/\.[^/.]+$/, "");
-                        }
-                        
-                        const newPhotoItem = await createPhoto(photoData);
-                        const newPhotoId = newPhotoItem.id;
-                        
-                        // Загружаем текущий файл в только что созданную запись
-                        const endpoint = `/gallery/${newPhotoId}/upload`;
-                        await uploadFile(endpoint, file, p => updateProgress(20 + (i+1) * 50 / fileInput.files.length));
-                        
-                        // Если миниатюра не была загружена, используем основное фото как миниатюру
-                        const thumbInput = document.getElementById('thumbnail');
-                        if (!thumbInput || !thumbInput.files.length > 0) {
-                            // Копируем основное фото как миниатюру
-                            const thumbnailEndpoint = `/gallery/${newPhotoId}/upload_thumbnail`;
-                            await uploadFile(thumbnailEndpoint, file, p => updateProgress(70 + (i+1) * 30 / fileInput.files.length));
-                        }
-                    }
+                const currentFolder = state.currentFolder || "";
+
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const file = fileInput.files[i];
+                    await uploadPhotoToFolder(currentFolder, file, p => updateProgress(20 + (i + 1) * 80 / fileInput.files.length));
                 }
             }
         }
@@ -179,7 +142,7 @@ export async function handleSubmit(e) {
                 const seasonNumber = parseInt(document.getElementById('season-number').value) || 1;
                 // Если это редактирование, нам нужно определить правильный начальный номер эпизода
                 let startEpisodeNumber = parseInt(document.getElementById('start-episode-number').value) || 1;
-                
+
                 // Если мы редактируем существующий сериал, получаем количество уже существующих эпизодов в этом сезоне
                 if (state.editingItem) {
                     try {
@@ -197,7 +160,7 @@ export async function handleSubmit(e) {
                         startEpisodeNumber = parseInt(document.getElementById('start-episode-number').value) || 1;
                     }
                 }
-                
+
                 await uploadEpisodes(itemId, episodesInput.files, seasonNumber, startEpisodeNumber, p => updateProgress(50 + p * 50 / 100));
             } else {
                 // Если эпизоды не загружены, обновляем прогресс до 100%
@@ -219,7 +182,7 @@ export async function handleSubmit(e) {
             const formElement = document.getElementById(formElementId);
             const formTitle = document.getElementById('form-title');
             const submitBtn = document.getElementById('submit-btn');
-            
+
             if (formElement) formElement.reset();
             updateFileInfo();
             updateThumbnailInfo();
@@ -248,7 +211,7 @@ export async function editItem(id) {
             : state.currentCategory === 'photo'
                 ? await fetchPhoto(id)
                 : await fetchBook(id);
-    
+
     setEditingItem(item);
 
     // Убедимся, что элементы существуют перед тем как к ним обращаться
@@ -315,7 +278,7 @@ export function showAddMode() {
     const isGalleryPage = window.location.pathname.includes('gallery.html');
     const gridElementId = isGalleryPage ? 'photos-grid' : 'items-grid';
     const gridElement = document.getElementById(gridElementId);
-    
+
     if (addForm) addForm.style.display = 'block';
     if (gridElement) gridElement.style.display = 'none';
 }
@@ -330,7 +293,7 @@ export function showViewMode() {
     const formElement = document.getElementById(formElementId);
     const formTitle = document.getElementById('form-title');
     const submitBtn = document.getElementById('submit-btn');
-    
+
     if (addForm) addForm.style.display = 'none';
     if (gridElement) gridElement.style.display = 'grid';
     if (formElement) formElement.reset();

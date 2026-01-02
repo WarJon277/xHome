@@ -309,11 +309,8 @@ export async function getTvshowIdByName(name) {
 
 // === ГАЛЕРЕЯ ФОТО ===
 
-export async function fetchPhotos(category = null) {
-    let url = `${API_BASE}/gallery`;
-    if (category && category !== "Все") {
-        url += `?category=${encodeURIComponent(category)}`;
-    }
+export async function fetchPhotos(folder = "") {
+    const url = `${API_BASE}/gallery?folder=${encodeURIComponent(folder)}`;
     const response = await fetch(url);
     return response.json();
 }
@@ -324,6 +321,7 @@ export async function fetchPhoto(id) {
 }
 
 export async function createPhoto(data) {
+    // Create folder in the gallery
     const response = await fetch(`${API_BASE}/gallery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,12 +331,7 @@ export async function createPhoto(data) {
 }
 
 export async function updatePhoto(id, data) {
-    const response = await fetch(`${API_BASE}/gallery/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    return response.json();
+    throw new Error("Updating photos by ID is no longer supported in directory-based system");
 }
 
 export async function deletePhoto(id) {
@@ -347,8 +340,13 @@ export async function deletePhoto(id) {
 }
 
 export async function uploadPhotoFile(photoId, file, onProgress) {
+    throw new Error("Uploading photos by ID is no longer supported in directory-based system. Use uploadPhotoToFolder instead.");
+}
+
+export async function uploadPhotoToFolder(folder, file, onProgress) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
+        formData.append('folder', folder);
         formData.append('file', file);
         
         const xhr = new XMLHttpRequest();
@@ -386,40 +384,31 @@ export async function uploadPhotoFile(photoId, file, onProgress) {
             reject(new Error('Таймаут при загрузке файла фото'));
         });
         
-        xhr.open('POST', `${API_BASE}/gallery/${photoId}/upload`);
+        xhr.open('POST', `${API_BASE}/gallery/upload_to_folder`);
         xhr.send(formData);
     });
 }
 
 export async function uploadPhotoThumbnail(photoId, file) {
-    return new Promise((resolve, reject) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const xhr = new XMLHttpRequest();
-        
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                resolve(JSON.parse(xhr.responseText));
-            } else {
-                const errorData = JSON.parse(xhr.responseText);
-                reject(new Error(errorData.detail || 'Ошибка при загрузке миниатюры'));
-            }
-        });
-        
-        xhr.addEventListener('error', () => {
-            reject(new Error('Ошибка сети при загрузке миниатюры'));
-        });
-        
-        xhr.open('POST', `${API_BASE}/gallery/${photoId}/upload_thumbnail`);
-        xhr.send(formData);
-    });
+    throw new Error("Uploading thumbnails by ID is no longer supported in directory-based system.");
 }
 
 export async function applyPhotoFilter(photoId, filterType) {
     const response = await fetch(`${API_BASE}/gallery/${photoId}/apply_filter?filter_type=${encodeURIComponent(filterType)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
+    });
+    return response.json();
+}
+
+export async function movePhoto(photoPath, targetFolder) {
+    const formData = new FormData();
+    formData.append('photo_path', photoPath);
+    formData.append('target_folder', targetFolder);
+    
+    const response = await fetch(`${API_BASE}/gallery/move_photo`, {
+        method: 'POST',
+        body: formData
     });
     return response.json();
 }

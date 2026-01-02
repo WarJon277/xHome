@@ -315,6 +315,13 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
 
     // Функция для "поделиться"
     const handleShare = async () => {
+        // Сначала пробуем через Android Interface (если приложение открыто в WebView)
+        if (window.AndroidApp && typeof window.AndroidApp.shareFile === 'function') {
+            const fullUrl = window.location.origin + modalImg.getAttribute('src');
+            window.AndroidApp.shareFile(fullUrl, photoTitle);
+            return;
+        }
+
         if (navigator.share) {
             try {
                 const response = await fetch(modalImg.src);
@@ -339,7 +346,7 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
                 }
             }
         } else {
-            if (window.showAlert) window.showAlert('Инфо', 'Ваш браузер не поддерживает функцию "Поделиться"');
+            if (window.showAlert) window.showAlert('Инфо', 'Ваш браузер не поддерживает функцию "Поделиться". Попробуйте использовать HTTPS или официальное приложение.');
         }
     };
 

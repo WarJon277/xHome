@@ -452,6 +452,13 @@
                                 e.stopPropagation();
                                 contextMenu.remove();
 
+                                // Сначала пробуем через Android Interface (если приложение открыто в WebView)
+                                if (window.AndroidApp && typeof window.AndroidApp.shareFile === 'function') {
+                                    const fullUrl = window.location.origin + photoPath;
+                                    window.AndroidApp.shareFile(fullUrl, photoTitle);
+                                    return;
+                                }
+
                                 if (navigator.share) {
                                     try {
                                         const response = await fetch(photoPath);
@@ -477,7 +484,7 @@
                                         }
                                     }
                                 } else {
-                                    window.showAlert('Инфо', 'Ваш браузер не поддерживает функцию "Поделиться"');
+                                    window.showAlert('Инфо', 'Ваш браузер не поддерживает функцию "Поделиться". Попробуйте использовать HTTPS или официальное приложение.');
                                 }
                             };
                         } else if (folderItem) {

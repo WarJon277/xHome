@@ -428,10 +428,10 @@ main {
         height: auto !important;
     }
 
-    /* Увеличиваем размер миниатюр в сетке фото */
+    /* Увеличиваем размер миниатюр в сетке фото - убираем принудительную высоту для сохранения пропорций */
     #photos-grid .card img.thumbnail {
-        min-height: 150px !important;
-        height: 150px !important;
+        height: auto;
+        min-height: auto;
     }
 }
 
@@ -1114,7 +1114,7 @@ main {
     flex-direction: column-reverse;
     /* Stack from bottom up */
     gap: 15px;
-    z-index: 1000;
+    z-index: 10000;
 }
 
 /* Specific colors for different FAB types */
@@ -1348,9 +1348,10 @@ main {
     cursor: pointer;
     transition: all 0.3s ease;
     background-color: #2a2a2a;
-    border: 2px solid #444;
     position: relative;
     /* Чтобы оверлей позиционировался относительно карточки */
+    overflow: hidden;
+    aspect-ratio: 1/1;
 }
 
 .folder-item:hover {
@@ -1382,13 +1383,37 @@ main {
     background-color: rgba(0, 0, 0, 0.4);
     padding: 8px;
     border-radius: 4px;
+    border-radius: 4px;
     pointer-events: none;
     /* Чтобы клик проходил сквозь оверлей */
     word-wrap: break-word;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Адаптивные стили для мобильных устройств */
 @media (max-width: 768px) {
+    .folder-overlay {
+        font-size: 0.9rem;
+        padding: 4px;
+    }
+
+    .fab-button {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+
+    .fab-container {
+        bottom: 20px !important;
+        right: 20px !important;
+        gap: 15px !important;
+        display: flex !important;
+        z-index: 10001 !important;
+    }
+
     .folder-controls {
         display: flex;
         flex-direction: column;

@@ -202,14 +202,17 @@ export function displayItems(items) {
             // Если это папка
             if (item.type === 'folder') {
                 card.classList.add('folder-item');
-                // 1. Накладываем название папки на иконку
+
+                // 1. Добавляем иконку первой
+                card.appendChild(img);
+
+                // 2. Накладываем название папки на иконку
                 const folderOverlay = document.createElement('div');
                 folderOverlay.className = 'folder-overlay';
                 folderOverlay.textContent = item.name;
                 card.appendChild(folderOverlay);
 
-                // 2. Обработка клика по папке - вход внутрь
-                // Переопределяем клик на изображении (или карточке)
+                // 3. Обработка клика по папке - вход внутрь
                 img.onclick = async (e) => {
                     e.stopPropagation(); // Останавливаем всплытие
                     const { setCurrentFolder, getCurrentFolder } = await import('./state.js');
@@ -223,8 +226,8 @@ export function displayItems(items) {
                 // Если это обычное фото
                 card.setAttribute('data-id', item.id);
                 card.classList.add('photo-item');
+                card.appendChild(img);
             }
-            card.appendChild(img);
         } else {
             // Для других категорий (фильмы, сериалы, книги)
             const titleEl = document.createElement('h3');

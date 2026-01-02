@@ -269,6 +269,8 @@ export function displayItems(items) {
             } else {
                 // Если это обычное фото
                 card.setAttribute('data-id', item.id);
+                card.setAttribute('data-path', item.file_path);
+                card.setAttribute('data-title', item.title || 'photo');
                 card.classList.add('photo-item');
                 card.appendChild(img);
             }

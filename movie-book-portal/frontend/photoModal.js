@@ -296,8 +296,17 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
 
     // Функция для скачивания
     const handleDownload = async () => {
+        // Сначала пробуем через Android Interface
+        if (window.AndroidApp && typeof window.AndroidApp.downloadFile === 'function') {
+            const currentSrc = modalImg.getAttribute('src');
+            const fullUrl = window.location.origin + (currentSrc.startsWith('/') ? currentSrc : '/' + currentSrc);
+            window.AndroidApp.downloadFile(fullUrl, photoTitle.includes('.') ? photoTitle : `${photoTitle}.jpg`);
+            return;
+        }
+
         try {
             const response = await fetch(modalImg.src);
+            if (!response.ok) throw new Error('Network response was not ok');
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -309,7 +318,7 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
             document.body.removeChild(a);
         } catch (error) {
             console.error('Ошибка при скачивании:', error);
-            if (window.showAlert) window.showAlert('Ошибка', 'Не удалось скачать фото');
+            if (window.showAlert) window.showAlert('Ошибка', 'Не удалось начать скачивание. Попробуйте использовать официальное приложение.');
         }
     };
 

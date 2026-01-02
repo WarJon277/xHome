@@ -408,7 +408,7 @@
                         if (photoItem) {
                             const photoPath = photoItem.getAttribute('data-path') || photoItem.querySelector('img').src;
                             const photoId = photoItem.getAttribute('data-id');
-                            const photoTitle = photoItem.querySelector('img').alt || 'photo';
+                            const photoTitle = photoItem.getAttribute('data-title') || photoItem.querySelector('img').alt || 'photo';
 
                             contextMenu.innerHTML = `
                                 <div class="context-menu-item" data-action="download" style="padding: 10px 15px; cursor: pointer; color: #e0e0e0; border-radius: 6px;">
@@ -430,8 +430,16 @@
                                 e.stopPropagation();
                                 contextMenu.remove();
 
+                                // Сначала пробуем через Android Interface
+                                if (window.AndroidApp && typeof window.AndroidApp.downloadFile === 'function') {
+                                    const fullUrl = window.location.origin + (photoPath.startsWith('/') ? photoPath : '/' + photoPath);
+                                    window.AndroidApp.downloadFile(fullUrl, photoTitle.includes('.') ? photoTitle : `${photoTitle}.jpg`);
+                                    return;
+                                }
+
                                 try {
                                     const response = await fetch(photoPath);
+                                    if (!response.ok) throw new Error('Network response was not ok');
                                     const blob = await response.blob();
                                     const url = window.URL.createObjectURL(blob);
                                     const a = document.createElement('a');
@@ -443,7 +451,7 @@
                                     document.body.removeChild(a);
                                 } catch (error) {
                                     console.error('Ошибка при скачивании:', error);
-                                    window.showAlert('Ошибка', 'Не удалось скачать фото');
+                                    window.showAlert('Ошибка', 'Не удалось начать скачивание. Попробуйте использовать официальное приложение.');
                                 }
                             };
 

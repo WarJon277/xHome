@@ -391,14 +391,14 @@ main {
 /* Адаптивные стили для миниатюр на мобильных устройствах */
 @media (max-width: 768px) {
     .card img.thumbnail {
-        max-height: 180px !important;
-        min-height: 150px !important;
+        max-height: 280px !important;
+        min-height: 250px !important;
         height: auto !important;
     }
     
     .card video {
-        max-height: 180px !important;
-        min-height: 150px !important;
+        max-height: 280px !important;
+        min-height: 250px !important;
         height: auto !important;
     }
     

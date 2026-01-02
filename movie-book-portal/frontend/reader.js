@@ -186,21 +186,26 @@ class BookReader {
         }
     }
 
-    exitReader() {
-    // 1. Пробуем закрыть, если это popup
-        if (window.opener || window.history.length <= 1) {
-            window.close();
-        }
+exitReader() {
+if (window.history.length > 1) {
+        window.history.back();
+        return;
+    }
 
-        // 2. Если закрыть не получилось — возвращаемся назад
-        if (window.history.length > 1) {
-            window.history.back();
-            return;
-        }
-
-        // 3. Последний рубеж — на главную (replace чтобы не засорять историю)
+    // Если истории по какой-то причине нет
+    try {
+        window.location.replace(document.referrer || '/');
+    } catch {
         window.location.replace('/');
     }
+
+    // Дополнительная защита — через 300 мс (иногда помогает на iOS/Android)
+    setTimeout(() => {
+        if (document.referrer) {
+            window.location.replace(document.referrer);
+        }
+    }, 300);
+}
 }
 
 // Запуск

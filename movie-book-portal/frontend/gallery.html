@@ -164,18 +164,62 @@
 
                 // Функция для создания папки (вынесена для использования в FAB)
                 async function triggerCreateFolder() {
-                    const folderName = prompt('Введите имя новой папки:');
-                    if (folderName) {
-                        try {
-                            const { createPhoto } = await import('/static/api.js');
-                            await createPhoto({ title: folderName });
-                            const { loadItems } = await import('/static/itemDisplay.js');
-                            await loadItems(); // перезагружаем содержимое
-                        } catch (error) {
-                            console.error('Ошибка при создании папки:', error);
-                            alert('Ошибка при создании папки: ' + error.message);
+                    const modal = document.getElementById('folder-modal');
+                    const input = document.getElementById('folder-name-input');
+                    const createBtn = document.getElementById('create-folder-submit');
+                    const cancelBtn = document.getElementById('cancel-folder-create');
+
+                    if (!modal || !input) return;
+
+                    // Очищаем и показываем модальное окно
+                    input.value = '';
+                    modal.style.display = 'flex';
+                    input.focus();
+
+                    // Функция закрытия
+                    const closeModal = () => {
+                        modal.style.display = 'none';
+                        cleanup();
+                    };
+
+                    // Функция создания
+                    const handleCreate = async () => {
+                        const folderName = input.value.trim();
+                        if (folderName) {
+                            try {
+                                const { createPhoto } = await import('/static/api.js');
+                                await createPhoto({ title: folderName });
+                                const { loadItems } = await import('/static/itemDisplay.js');
+                                await loadItems(); // перезагружаем содержимое
+                                closeModal();
+                            } catch (error) {
+                                console.error('Ошибка при создании папки:', error);
+                                alert('Ошибка при создании папки: ' + error.message);
+                            }
                         }
-                    }
+                    };
+
+                    // Обработчики событий
+                    const onKeyDown = (e) => {
+                        if (e.key === 'Enter') handleCreate();
+                        if (e.key === 'Escape') closeModal();
+                    };
+
+                    const onOverlayClick = (e) => {
+                        if (e.target === modal) closeModal();
+                    };
+
+                    const cleanup = () => {
+                        createBtn.removeEventListener('click', handleCreate);
+                        cancelBtn.removeEventListener('click', closeModal);
+                        window.removeEventListener('keydown', onKeyDown);
+                        modal.removeEventListener('click', onOverlayClick);
+                    };
+
+                    createBtn.addEventListener('click', handleCreate);
+                    cancelBtn.addEventListener('click', closeModal);
+                    window.addEventListener('keydown', onKeyDown);
+                    modal.addEventListener('click', onOverlayClick);
                 }
 
                 // Сохраняем функцию глобально для доступа из script ниже
@@ -400,6 +444,21 @@
         <button id="fab-add-photo" class="fab-button fab-photo" title="Добавить фото">
             <span class="fab-icon">+</span>
         </button>
+    </div>
+
+    <!-- Модальное окно создания папки -->
+    <div id="folder-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Новая папка</h2>
+            <div class="modal-input-group">
+                <input type="text" id="folder-name-input" class="modal-input" placeholder="Введите название..."
+                    autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-folder-create" class="modal-btn modal-btn-cancel">Отмена</button>
+                <button id="create-folder-submit" class="modal-btn modal-btn-create">Создать</button>
+            </div>
+        </div>
     </div>
 
     <script type="module">

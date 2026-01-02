@@ -526,8 +526,15 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
             }
         }
 
+
         modal.style.display = 'none';
         document.body.style.overflow = 'auto';
+
+        // Восстанавливаем FAB кнопки при закрытии модального окна
+        const fabContainer = document.querySelector('.fab-container');
+        if (fabContainer) {
+            fabContainer.style.display = 'flex';
+        }
     };
 
     // Удаляем предыдущие обработчики, чтобы избежать дублирования
@@ -608,6 +615,12 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
             }
         }
     };
+
+    // Скрываем FAB кнопки при открытии модального окна
+    const fabContainer = document.querySelector('.fab-container');
+    if (fabContainer) {
+        fabContainer.style.display = 'none';
+    }
 
     // Показываем модальное окно
     modal.style.display = 'flex';

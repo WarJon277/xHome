@@ -273,6 +273,49 @@
                 // Сохраняем функцию глобально для доступа из script ниже
                 window.triggerCreateFolder = triggerCreateFolder;
 
+                // Функция для обновления папки из URL параметров (без изменения истории)
+                function updateFolderFromUrl() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const folderParam = urlParams.get('folder');
+                    if (folderParam !== null) {
+                        // Декодируем параметр папки из URL
+                        const folderPath = decodeURIComponent(folderParam);
+                        
+                        // Обновляем состояние приложения
+                        stateModule.setCurrentFolder(folderPath);
+                        window.currentFolder = folderPath;
+                        if (window.state) window.state.currentFolder = folderPath;
+                    } else {
+                        // Если параметра нет, устанавливаем корневую папку
+                        stateModule.setCurrentFolder('');
+                        window.currentFolder = '';
+                        if (window.state) window.state.currentFolder = '';
+                    }
+                }
+
+        // Обработчик события popstate для кнопки "назад" в браузере
+        window.addEventListener('popstate', async (event) => {
+            // При нажатии кнопки "назад" в браузере переходим на главную страницу
+            // Это отличает поведение кнопки "назад" в галерее от кнопки "назад" в браузере
+            window.location.href = '/';
+        });
+
+                // Обработчик перед закрытием/покиданием страницы
+                window.addEventListener('beforeunload', () => {
+                    // Удаляем параметры из URL, чтобы не сохранялось состояние при возврате
+                    if (window.location.pathname.includes('gallery.html')) {
+                        const url = new URL(window.location);
+                        if (url.searchParams.get('folder')) {
+                            url.searchParams.delete('folder');
+                            // Используем replaceState чтобы убрать параметры из истории
+                            history.replaceState({}, '', url.toString());
+                        }
+                    }
+                });
+
+                // Инициализируем папку из URL при загрузке страницы
+                updateFolderFromUrl();
+
                 if (createFolderBtn) {
                     createFolderBtn.addEventListener('click', triggerCreateFolder);
                 }
@@ -285,12 +328,15 @@
                         let currentFolder = stateModule.getCurrentFolder();
                         
                         // Получаем родительскую папку
+                        let newFolder = '';
                         if (currentFolder && currentFolder.includes('/')) {
-                            const parentFolder = currentFolder.substring(0, currentFolder.lastIndexOf('/'));
-                            stateModule.setCurrentFolder(parentFolder);
-                        } else {
-                            stateModule.setCurrentFolder(''); // Возвращаемся в корень
+                            newFolder = currentFolder.substring(0, currentFolder.lastIndexOf('/'));
                         }
+                        
+                        // Обновляем состояние
+                        stateModule.setCurrentFolder(newFolder);
+                        window.currentFolder = newFolder;
+                        if (window.state) window.state.currentFolder = newFolder;
                         
                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
                     });
@@ -300,7 +346,12 @@
                     breadcrumbHome.addEventListener('click', async () => {
                         const stateModule = await import('/static/state.js');
                         const itemDisplayModule = await import('/static/itemDisplay.js');
-                        stateModule.setCurrentFolder(''); // Переходим в корень
+                        
+                        // Обновляем состояние
+                        stateModule.setCurrentFolder('');
+                        window.currentFolder = '';
+                        if (window.state) window.state.currentFolder = '';
+                        
                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
                     });
                 }
@@ -349,7 +400,12 @@
                                 const stateModule = await import('/static/state.js');
                                 const itemDisplayModule = await import('/static/itemDisplay.js');
                                 const path = e.target.getAttribute('data-path');
+                                
+                                // Обновляем состояние
                                 stateModule.setCurrentFolder(path);
+                                window.currentFolder = path;
+                                if (window.state) window.state.currentFolder = path;
+                                
                                 await itemDisplayModule.loadItems();
                             });
                         });

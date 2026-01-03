@@ -297,7 +297,7 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
         const nextTitle = nextImg.alt;
 
         // Вместо открытия нового модального окна, обновляем текущее
-        // Но для простоты реализации и сохранения всех обработчиков, 
+        // Но для простоты реализации и сохранения всех обработчиков,
         // мы можем просто вызвать openPhotoModal снова
         window.openPhotoModal(nextSrc, nextTitle, nextId);
     };
@@ -537,6 +537,7 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
             fabContainer.style.opacity = '1';
             fabContainer.style.pointerEvents = 'auto';
         }
+        
     };
 
     // Удаляем предыдущие обработчики, чтобы избежать дублирования
@@ -629,6 +630,7 @@ window.openPhotoModal = async function (photoSrc, photoTitle, photoId) {
     // Показываем модальное окно
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    
 };
 
 // Функция для обновления миниатюры на странице

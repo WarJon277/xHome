@@ -289,11 +289,17 @@ export function displayItems(items) {
                 img.onclick = async (e) => {
                     e.stopPropagation(); // Останавливаем всплытие
                     const stateModule = await import('./state.js');
+                    const itemDisplayModule = await import('./itemDisplay.js');
                     const currentFolder = stateModule.getCurrentFolder();
                     // Формируем новый путь
                     const newPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+                    
+                    // Обновляем состояние
                     stateModule.setCurrentFolder(newPath);
-                    await loadItems();
+                    window.currentFolder = newPath;
+                    if (window.state) window.state.currentFolder = newPath;
+                    
+                    await itemDisplayModule.loadItems();
                 };
             } else {
                 // Если это обычное фото

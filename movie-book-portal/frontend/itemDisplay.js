@@ -12,6 +12,14 @@ import { deletePhoto } from './api.js';
 // Загрузка элементов с учётом жанра/категории
 // ============================================
 export async function loadItems() {
+    // Показываем индикатор загрузки для галереи
+    if (state.currentCategory === 'photo' && window.location.pathname.includes('gallery.html')) {
+        const galleryLoadingIndicator = document.getElementById('gallery-loading-indicator');
+        if (galleryLoadingIndicator) {
+            galleryLoadingIndicator.style.display = 'block';
+        }
+    }
+    
     showLoading(true);
     try {
         let items;
@@ -42,6 +50,14 @@ export async function loadItems() {
         showError('Ошибка загрузки списка');
     } finally {
         showLoading(false);
+        
+        // Скрываем индикатор загрузки для галереи
+        if (state.currentCategory === 'photo' && window.location.pathname.includes('gallery.html')) {
+            const galleryLoadingIndicator = document.getElementById('gallery-loading-indicator');
+            if (galleryLoadingIndicator) {
+                galleryLoadingIndicator.style.display = 'none';
+            }
+        }
     }
 
     // Обновляем навигационную цепочку и видимость кнопки "назад" на странице галереи

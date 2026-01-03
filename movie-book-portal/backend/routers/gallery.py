@@ -158,17 +158,31 @@ def get_photo(photo_id: int):
 def create_photo(photo_data: dict):
     try:
         folder_name = photo_data.get("title", "")
+        folder_path = photo_data.get("path", "")  # Путь к папке, в которой нужно создать новую папку
+        
         if not folder_name:
             raise HTTPException(status_code=400, detail="Название папки не указано")
         
         folder_name = re.sub(r'[<>:"/\\|?*]', '_', folder_name)
-        folder_path = os.path.join(GALLERY_UPLOADS, folder_name)
         
-        if os.path.exists(folder_path):
+        # Если указан путь к папке, создаем внутри неё, иначе в корне
+        if folder_path:
+            # Проверяем, что путь находится в пределах разрешенной директории
+            base_path = os.path.abspath(GALLERY_UPLOADS)
+            requested_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder_path))
+            
+            if not requested_path.startswith(base_path):
+                raise HTTPException(status_code=400, detail="Недопустимый путь")
+            
+            final_path = os.path.join(requested_path, folder_name)
+        else:
+            final_path = os.path.join(GALLERY_UPLOADS, folder_name)
+        
+        if os.path.exists(final_path):
             raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
         
-        os.makedirs(folder_path, exist_ok=True)
-        return {"message": "Папка создана успешно", "path": folder_path}
+        os.makedirs(final_path, exist_ok=True)
+        return {"message": "Папка создана успешно", "path": final_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при создании папки: {str(e)}")
 
@@ -251,9 +265,14 @@ async def move_photo(photo_path: str = Form(...), target_folder: str = Form(...)
     try:
         base_path = os.path.abspath(GALLERY_UPLOADS)
         source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, photo_path))
-        target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))
         
-        if not source_path.startswith(base_path) or not target_path.startswith(base_path):
+        # Если целевая папка пустая строка, это означает перемещение в корень
+        if target_folder == "":
+            target_path = GALLERY_UPLOADS
+        else:
+            target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))
+        
+        if not source_path.startswith(base_path):
             raise HTTPException(status_code=400, detail="Недопустимый путь")
         
         if not os.path.exists(source_path):
@@ -274,6 +293,53 @@ async def move_photo(photo_path: str = Form(...), target_folder: str = Form(...)
         return {"message": "Фото перемещено успешно", "new_path": destination_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при перемещении фото: {str(e)}")
+
+@router.post("/move_folder")
+async def move_folder(folder_path: str = Form(...), target_folder: str = Form(...)):
+    try:
+        # Логирование для отладки
+        print(f"Получен запрос на перемещение папки: folder_path='{folder_path}', target_folder='{target_folder}'")
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder_path))
+        
+        # Если целевая папка пустая строка, это означает перемещение в корень
+        if target_folder == "":
+            target_path = GALLERY_UPLOADS
+        else:
+            target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))
+        
+        if not source_path.startswith(base_path):
+            print(f"source_path '{source_path}' не начинается с base_path '{base_path}'")
+            raise HTTPException(status_code=400, detail="Недопустимый путь")
+        
+        if not os.path.exists(source_path):
+            print(f"source_path '{source_path}' не существует")
+            raise HTTPException(status_code=404, detail="Папка не найдена")
+        
+        if not os.path.isdir(source_path):
+            print(f"source_path '{source_path}' не является папкой")
+            raise HTTPException(status_code=400, detail="Указанный путь не является папкой")
+        
+        if not os.path.isdir(target_path):
+            print(f"target_path '{target_path}' не существует или не является папкой")
+            raise HTTPException(status_code=404, detail="Целевая папка не найдена")
+        
+        # Проверяем, что мы не пытаемся переместить папку внутрь самой себя
+        if source_path == target_path or target_path.startswith(source_path + os.sep):
+            raise HTTPException(status_code=400, detail="Невозможно переместить папку внутрь самой себя")
+        
+        folder_name = os.path.basename(source_path)
+        destination_path = os.path.join(target_path, folder_name)
+        
+        # Проверяем, что папка с таким именем не существует в целевой директории
+        if os.path.exists(destination_path):
+            raise HTTPException(status_code=400, detail="Папка с таким именем уже существует в целевой директории")
+        
+        shutil.move(source_path, destination_path)
+        
+        return {"message": "Папка перемещена успешно", "new_path": destination_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при перемещении папки: {str(e)}")
 
 @router.post("/{photo_id}/apply_filter")
 async def apply_filter_to_photo(photo_id: int, filter_type: str = None):

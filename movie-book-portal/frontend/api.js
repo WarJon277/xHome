@@ -403,10 +403,28 @@ export async function applyPhotoFilter(photoId, filterType) {
 
 export async function movePhoto(photoPath, targetFolder) {
     const formData = new FormData();
-    formData.append('photo_path', photoPath);
-    formData.append('target_folder', targetFolder);
+    const photoPathValue = photoPath || '';
+    const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
+    
+    formData.append('photo_path', photoPathValue);
+    formData.append('target_folder', targetFolderValue);
 
     const response = await fetch(`${API_BASE}/gallery/move_photo`, {
+        method: 'POST',
+        body: formData
+    });
+    return response.json();
+}
+
+export async function moveFolder(folderPath, targetFolder) {
+    const formData = new FormData();
+    const folderPathValue = typeof folderPath === 'object' ? (folderPath.path || '') : (folderPath || '');
+    const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
+    
+    formData.append('folder_path', folderPathValue);
+    formData.append('target_folder', targetFolderValue);
+
+    const response = await fetch(`${API_BASE}/gallery/move_folder`, {
         method: 'POST',
         body: formData
     });

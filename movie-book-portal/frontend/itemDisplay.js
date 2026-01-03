@@ -100,30 +100,43 @@ export function displayItems(items) {
             // Trust the backend provided path!
             let thumbnailUrl = item.thumbnail_path;
 
-            // Если путь относительный и не начинается с /, добавляем /uploads/
-            if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
-                if (thumbnailUrl.startsWith('uploads/')) {
-                    thumbnailUrl = `/${thumbnailUrl.replace(/\\/g, '/')}`;
-                } else {
-                    thumbnailUrl = `/uploads/${thumbnailUrl.replace(/\\/g, '/')}`;
+            // Проверяем, что путь к миниатюре принадлежит галерее
+            if (thumbnailUrl && thumbnailUrl.includes('/uploads/movies/') || thumbnailUrl.includes('/uploads/tvshows/') || thumbnailUrl.includes('/uploads/books/')) {
+                // Если миниатюра принадлежит другой категории, не пытаемся её загружать
+                img.src = photoPlaceholder;
+            } else {
+                // Если путь относительный и не начинается с /, добавляем /uploads/
+                if (thumbnailUrl && !thumbnailUrl.startsWith('/') && !thumbnailUrl.startsWith('http')) {
+                    if (thumbnailUrl.startsWith('uploads/')) {
+                        thumbnailUrl = `/${thumbnailUrl.replace(/\\/g, '/')}`;
+                    } else {
+                        thumbnailUrl = `/uploads/${thumbnailUrl.replace(/\\/g, '/')}`;
+                    }
                 }
+
+                // Для путей, начинающихся с /uploads/gallery, не добавляем префикс дважды
+                if (thumbnailUrl && thumbnailUrl.startsWith('/uploads/gallery')) {
+                    // Оставляем путь как есть, он уже правильный
+                } else if (thumbnailUrl && !thumbnailUrl.startsWith('http') && !thumbnailUrl.startsWith('/')) {
+                    thumbnailUrl = `/${thumbnailUrl}`;
+                }
+
+                // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
+                img.src = photoPlaceholder;
+
+                // Затем пытаемся загрузить реальное изображение
+                // Используем Image для проверки загрузки изображения
+                const testImg = new Image();
+                testImg.onload = () => {
+                    img.src = thumbnailUrl;
+                };
+                testImg.onerror = () => {
+                    // Изображение не существует, оставляем placeholder
+                    console.warn(`Миниатюра не найдена: ${thumbnailUrl}`);
+                };
+                testImg.src = thumbnailUrl;
             }
-
-            // Сначала устанавливаем placeholder, чтобы избежать проблем с отсутствующим изображением
-            img.src = photoPlaceholder;
-
-            // Затем пытаемся загрузить реальное изображение
-            // Используем Image для проверки загрузки изображения
-            const testImg = new Image();
-            testImg.onload = () => {
-                img.src = thumbnailUrl;
-            };
-            testImg.onerror = () => {
-                // Изображение не существует, оставляем placeholder
-                console.warn(`Миниатюра не найдена: ${thumbnailUrl}`);
-            };
-            testImg.src = thumbnailUrl;
-        } else if (item.thumbnail_path) {
+        } else if (item.thumbnail_path && state.currentCategory !== 'photo') {
             // Для других категорий (фильмы, сериалы, книги) используем обычную логику
             let thumbnailUrl = item.thumbnail_path.replace(/\\/g, '/');
             if (thumbnailUrl.startsWith('/')) {
@@ -225,15 +238,15 @@ export function displayItems(items) {
                 deleteBtn.title = 'Удалить папку с содержимым';
                 deleteBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    const { deleteFolder } = await import('./api.js');
-                    const { getCurrentFolder } = await import('./state.js');
-                    const currentFolder = getCurrentFolder();
+                    const apiModule = await import('./api.js');
+                    const stateModule = await import('./state.js');
+                    const currentFolder = stateModule.getCurrentFolder();
                     const fullPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
-
+                    
                     if (typeof window.showConfirm === 'function') {
                         window.showConfirm('Удаление папки', `Вы уверены, что хотите удалить папку "${item.name}" и всё её содержимое?`, async () => {
                             try {
-                                await deleteFolder(fullPath);
+                                await apiModule.deleteFolder(fullPath);
                                 await loadItems();
                             } catch (error) {
                                 console.error('Ошибка при удалении папки:', error);
@@ -246,7 +259,7 @@ export function displayItems(items) {
                         });
                     } else if (confirm(`Вы уверены, что хотите удалить папку "${item.name}" и всё её содержимое?`)) {
                         try {
-                            await deleteFolder(fullPath);
+                            await apiModule.deleteFolder(fullPath);
                             await loadItems();
                         } catch (error) {
                             console.error('Ошибка при удалении папки:', error);
@@ -259,11 +272,11 @@ export function displayItems(items) {
                 // 4. Обработка клика по папке - вход внутрь
                 img.onclick = async (e) => {
                     e.stopPropagation(); // Останавливаем всплытие
-                    const { setCurrentFolder, getCurrentFolder } = await import('./state.js');
-                    const currentFolder = getCurrentFolder();
+                    const stateModule = await import('./state.js');
+                    const currentFolder = stateModule.getCurrentFolder();
                     // Формируем новый путь
                     const newPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
-                    setCurrentFolder(newPath);
+                    stateModule.setCurrentFolder(newPath);
                     await loadItems();
                 };
             } else {

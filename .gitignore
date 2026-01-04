@@ -1,6 +1,7 @@
 # Перейдите в корень проекта
 cd movie-book-portal
 venv
+.venv
 
 # Создайте .gitignore в корне
 cat > .gitignore << 'EOF'

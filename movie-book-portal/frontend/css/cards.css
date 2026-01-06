@@ -1,5 +1,6 @@
 .card {
-    background-color: #1e1e1e;
+    background: transparent;
+    backdrop-filter: blur(10px);
     padding: 0;
     /* Remove padding for consistent spacing */
     border-radius: 0;
@@ -284,9 +285,20 @@
 }
 
 @media (max-width: 600px) {
+    .card {
+        background: transparent;
+        backdrop-filter: blur(10px);
+    }
 
     .edit-btn,
     .delete-btn {
         width: 48%;
+    }
+}
+
+@media (max-width: 480px) {
+    .card {
+        background: transparent;
+        backdrop-filter: blur(10px);
     }
 }

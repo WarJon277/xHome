@@ -6,7 +6,8 @@
 }
 
 .genre-select {
-    background: #2a2a2a;
+    background: rgba(42, 42, 42, 0.7);
+    backdrop-filter: blur(10px);
     color: white;
     border: 1px solid #444;
     border-radius: 6px;
@@ -71,7 +72,8 @@
 
 /* Enhanced styles for category select */
 .category-select-enhanced {
-    background: linear-gradient(to bottom, #2c2c2c, #1e1e1e);
+    background: rgba(44, 44, 0.7);
+    backdrop-filter: blur(10px);
     color: white;
     border: 2px solid #444;
     border-radius: 12px;
@@ -93,12 +95,14 @@
     outline: none;
     border-color: #4caf50;
     box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
-    background: linear-gradient(to bottom, #333, #252525);
+    background: rgba(51, 51, 0.7);
+    backdrop-filter: blur(10px);
 }
 
 .category-select-enhanced:hover {
     border-color: #555;
-    background: linear-gradient(to bottom, #333, #252525);
+    background: rgba(51, 51, 0.7);
+    backdrop-filter: blur(10px);
 }
 
 /* Genre row styling */

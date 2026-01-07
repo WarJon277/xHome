@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleCategoryInputs();
 });
 
+// Global var for editing
+let currentEditingId = null;
+
 function showAddForm() {
     document.getElementById('content-list-view').style.display = 'none';
     document.getElementById('content-add-view').style.display = 'block';
@@ -26,9 +29,56 @@ function hideAddForm() {
     document.getElementById('content-list-view').style.display = 'block';
     document.getElementById('content-add-view').style.display = 'none';
     document.getElementById('admin-add-form').reset();
+    currentEditingId = null; // Reset editing state
+    document.getElementById('form-submit-btn').innerText = "Добавить";
+    document.getElementById('add-form-title').innerText = "Добавить новый элемент";
     toggleCategoryInputs();
     document.getElementById('progress-container').style.display = 'none';
 }
+
+window.editAdminItem = async (category, id) => {
+    try {
+        const mapping = { 'movies': 'movie', 'books': 'book', 'tvshows': 'tvshow' };
+        // Reverse mapping logic if needed, but here category is likely 'movies' etc from loadContent('movies')
+        // Actually loadContent is called with 'movies', 'books', 'tvshows'.
+        // But the select input values are 'movie', 'book', 'tvshow'.
+        const endpoint = category;
+        const selectVal = category === 'movies' ? 'movie' : category === 'books' ? 'book' : 'tvshow';
+
+        const res = await fetch(`/${endpoint}/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch item details");
+        const item = await res.json();
+
+        // Populate Form
+        document.getElementById('category').value = selectVal;
+        toggleCategoryInputs(); // update visibility
+
+        document.getElementById('title').value = item.title || '';
+        document.getElementById('year').value = item.year || '';
+        document.getElementById('description').value = item.description || '';
+        document.getElementById('director-author').value = item.director || item.author || '';
+        // Rating/Genre if exist in form
+        const ratingInput = document.getElementById('rating');
+        if (ratingInput && item.rating) ratingInput.value = item.rating;
+        // genre select logic is tricky in admin.js as it doesn't seem to fetch genres dynamically in the snippet shown?
+        // Wait, admin.js DOES NOT show genre input in the form structure I saw earlier.
+        // Let's re-read admin.js snippet. It has:
+        /*
+            title, year, description, director-author
+        */
+        // It hardcodes genre="General" in handleAddSubmit.
+
+        currentEditingId = id;
+        document.getElementById('form-submit-btn').innerText = "Сохранить изменения";
+        document.getElementById('add-form-title').innerText = "Редактирование элемента";
+
+        showAddForm();
+
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка при загрузке данных для редактирования");
+    }
+};
 
 window.toggleCategoryInputs = () => {
     const cat = document.getElementById('category').value;
@@ -84,7 +134,7 @@ function uploadFileXHR(url, file, onProgress) {
 
 async function handleAddSubmit(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('button[type="submit"]');
+    const btn = document.getElementById('form-submit-btn'); // Use ID directly
     const originalText = btn.innerText;
     btn.disabled = true;
 
@@ -100,20 +150,37 @@ async function handleAddSubmit(e) {
             director: document.getElementById('director-author').value, // Used for Director or Author
             author: document.getElementById('director-author').value,
             genre: "General", // Default
-            rating: 0
+            rating: document.getElementById('rating').value ? parseFloat(document.getElementById('rating').value) : 0
         };
 
-        // 1. Create Main Item
-        btn.innerText = "Создание записи...";
-        const createRes = await fetch(`/${endpoint}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
+        // 1. Create OR Update Main Item
+        if (currentEditingId) {
+            btn.innerText = "Обновление записи...";
+            const updateRes = await fetch(`/${endpoint}/${currentEditingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
 
-        if (!createRes.ok) throw new Error("Failed to create item");
-        const createdItem = await createRes.json();
-        const id = createdItem.id;
+            if (!updateRes.ok) throw new Error("Failed to update item");
+            const updatedItem = await updateRes.json();
+            var id = updatedItem.id; // var to match scope
+
+            // For updates, we only upload files if user selected them
+            // Logic below handles files if input is not empty.
+
+        } else {
+            btn.innerText = "Создание записи...";
+            const createRes = await fetch(`/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!createRes.ok) throw new Error("Failed to create item");
+            const createdItem = await createRes.json();
+            var id = createdItem.id;
+        }
 
         // 2. Handle File Uploads
         if (category === 'tvshow') {
@@ -171,7 +238,7 @@ async function handleAddSubmit(e) {
             });
         }
 
-        alert("Успешно добавлено!");
+        alert(currentEditingId ? "Успешно обновлено!" : "Успешно добавлено!");
         hideAddForm();
         loadContent(endpoint, null);
         loadStats();
@@ -281,6 +348,7 @@ async function loadContent(category, btn) {
                 <td style="padding: 10px;">${item.id}</td>
                 <td style="padding: 10px;">${item.title}</td>
                 <td style="padding: 10px;">
+                    <button class="edit-btn" style="background-color: #f39c12; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;" onclick="editAdminItem('${category}', ${item.id})">Ред.</button>
                     <button class="delete-btn" style="background-color: #d32f2f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="deleteItem('${category}', ${item.id})">Удалить</button>
                 </td>
             `;

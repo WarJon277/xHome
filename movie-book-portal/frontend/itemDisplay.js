@@ -196,7 +196,7 @@ export function displayItems(items) {
             if (state.currentCategory === 'movie') {
                 if (item.file_path) {
                     // Экранирование уже не нужно — передаём напрямую
-                    openVideoPlayer(item.file_path, item.title || 'Без названия', null);
+                    openVideoPlayer(item.file_path, item.title || 'Без названия', { type: 'movie', id: item.id });
                 } else {
                     alert(`Видеофайл для этого фильма ещё не загружен`);
                 }

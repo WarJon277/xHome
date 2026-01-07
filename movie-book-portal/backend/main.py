@@ -9,8 +9,9 @@ from database import create_tables
 from database_books import create_books_tables
 from database_tvshows import create_tvshows_tables
 from database_gallery import create_gallery_tables
+from database_progress import create_progress_tables
 
-from routers import movies, books, tvshows, gallery, admin
+from routers import movies, books, tvshows, gallery, admin, progress
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -52,6 +53,7 @@ create_tables()
 create_books_tables()
 create_tvshows_tables()
 create_gallery_tables()
+create_progress_tables()
 
 # Основные маршруты для фронтенда
 @app.get("/")
@@ -76,3 +78,4 @@ app.include_router(books.router)
 app.include_router(tvshows.router)
 app.include_router(gallery.router)
 app.include_router(admin.router)
+app.include_router(progress.router)

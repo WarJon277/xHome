@@ -166,7 +166,9 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                                     tvshowId: tvshowId,
                                     seasonNumber: episode.season_number,
                                     episodeNumber: episode.episode_number,
-                                    episodeTitle: episode.title || `Эпизод ${episode.episode_number}`
+                                    episodeTitle: episode.title || `Эпизод ${episode.episode_number}`,
+                                    episodeId: episode.id,
+                                    type: 'episode'
                                 }
                             );
                         } else {

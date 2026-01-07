@@ -15,6 +15,8 @@ import { updateFileInfo, updateThumbnailInfo, updateEpisodesInfo, updateProgress
 import { openVideoPlayer } from './videoPlayer.js';
 import { openBookReader } from './bookReader.js';
 import { showEpisodesList } from './episodesList.js';
+import { initSearch } from './search.js';
+import { initTvNavigation } from './tvNavigation.js'; // Added import
 
 // Экспортируем глобальные переменные для использования в других модулях
 // Обновляем переменные в window для совместимости с другими частями приложения
@@ -55,6 +57,12 @@ window.setEditingItem = (item) => {
 import './eventListeners.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Инициализация поиска
+    initSearch();
+
+    // Инициализация TV навигации
+    initTvNavigation();
+
     const addBtn = document.getElementById('show-add');
     // Hide by default if default category is not photo (it's usually movie)
     // We can check state but calling setCurrentCategory logic is safer if we knew specific startup logic.

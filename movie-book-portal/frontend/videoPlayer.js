@@ -73,6 +73,34 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     video.preload = 'auto';
     video.muted = false;  // ← важно для автозапуска на некоторых устройствах
 
+    // ─── PROGRESS TRACKING ---------------
+    let progressInterval;
+
+    // Function to save progress
+    const saveProgress = async () => {
+        if (!metadata || !metadata.type || (!metadata.id && !metadata.episodeId)) return;
+        if (!video || !video.currentTime) return;
+
+        const type = metadata.type;
+        const id = type === 'movie' ? metadata.id : metadata.episodeId;
+
+        if (!id) return;
+
+        try {
+            await fetch('/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    item_type: type,
+                    item_id: id,
+                    progress_seconds: video.currentTime
+                })
+            });
+        } catch (e) {
+            console.error('Failed to save progress', e);
+        }
+    };
+
     // ─── КОНТЕЙНЕР ДЛЯ КНОПОК (поверх видео) ────────
     const overlay = document.createElement('div');
     Object.assign(overlay.style, {
@@ -106,7 +134,10 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
         pointerEvents: 'auto'
     });
 
-    closeBtn.onclick = () => modal.remove();
+    closeBtn.onclick = () => {
+        saveProgress(); // Save on close
+        modal.remove();
+    };
 
     // Добавляем кнопку закрытия
     overlay.appendChild(closeBtn);
@@ -142,7 +173,7 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
             video.load();
 
             // Ждём, пока видео сможет играть
-            video.addEventListener('loadedmetadata', () => {
+            video.addEventListener('loadedmetadata', async () => {
                 // Скрываем лоадер при успешной загрузке метаданных
                 // Only hide if minimum display time has passed
                 if (!minimumLoaderDisplay) {
@@ -159,6 +190,71 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
                         fullscreen: { enabled: true, iosNative: true }
                     });
 
+                    // RESUME LOGIC
+                    if (metadata && (metadata.type === 'movie' || metadata.type === 'episode')) {
+                        const type = metadata.type;
+                        const id = type === 'movie' ? metadata.id : metadata.episodeId;
+
+                        if (id) {
+                            try {
+                                const progRes = await fetch(`/progress/${type}/${id}`);
+                                const progData = await progRes.json();
+                                const savedTime = progData.progress_seconds;
+
+                                if (savedTime > 10 && savedTime < (video.duration - 30)) {
+                                    // Make resume button
+                                    const resumeOverlay = document.createElement('div');
+                                    Object.assign(resumeOverlay.style, {
+                                        position: 'absolute',
+                                        inset: '0',
+                                        background: 'rgba(0,0,0,0.85)',
+                                        zIndex: '10020',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white'
+                                    });
+
+                                    const timeStr = new Date(savedTime * 1000).toISOString().substr(11, 8).replace(/^00:/, '');
+
+                                    resumeOverlay.innerHTML = `
+                                        <h3 style="margin-bottom:20px">Продолжить просмотр?</h3>
+                                        <p style="margin-bottom:30px;color:#ccc">Вы остановились на ${timeStr}</p>
+                                        <div style="display:flex;gap:20px">
+                                            <button id="resume-yes" style="padding:10px 20px;background:#3498db;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Да, продолжить</button>
+                                            <button id="resume-no" style="padding:10px 20px;background:#555;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Начать сначала</button>
+                                        </div>
+                                    `;
+                                    modal.appendChild(resumeOverlay);
+
+                                    document.getElementById('resume-yes').onclick = () => {
+                                        video.currentTime = savedTime;
+                                        video.play();
+                                        resumeOverlay.remove();
+                                    };
+                                    document.getElementById('resume-no').onclick = () => {
+                                        video.currentTime = 0;
+                                        video.play();
+                                        resumeOverlay.remove();
+                                    };
+                                } else {
+                                    video.play();
+                                }
+                            } catch (e) {
+                                console.error('Error fetching progress', e);
+                                video.play();
+                            }
+                        } else { video.play(); }
+                    } else {
+                        // Auto-play if no metadata or no resume
+                        // But wait, Plyr might need interaction?
+                        // Usually handled by defaults.
+                    }
+
+                    // Save interval
+                    progressInterval = setInterval(saveProgress, 5000);
+
                     // Добавляем обработчики событий для показа/скрытия элементов управления эпизодами
                     video.addEventListener('play', () => {
                         episodeControls.style.opacity = '0';
@@ -166,6 +262,7 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
                     });
 
                     video.addEventListener('pause', () => {
+                        saveProgress();
                         episodeControls.style.opacity = '1';
                         episodeControls.style.pointerEvents = 'auto';
                     });
@@ -229,7 +326,9 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     // Esc для закрытия
     const escHandler = e => {
         if (e.key === 'Escape') {
+            saveProgress();
             modal.remove();
+            clearInterval(progressInterval);
             document.removeEventListener('keydown', escHandler);
         }
     };
@@ -403,7 +502,9 @@ function createEpisodeControls(title, modal, video, metadata) {
                         tvshowId: tvshowId,
                         seasonNumber: nextEp.season_number,
                         episodeNumber: nextEp.episode_number,
-                        episodeTitle: nextEp.title
+                        episodeTitle: nextEp.title,
+                        episodeId: nextEp.id,
+                        type: 'episode'
                     }
                 );
             }, 100);
@@ -455,7 +556,9 @@ function createEpisodeControls(title, modal, video, metadata) {
                         tvshowId: tvshowId,
                         seasonNumber: prevEp.season_number,
                         episodeNumber: prevEp.episode_number,
-                        episodeTitle: prevEp.title
+                        episodeTitle: prevEp.title,
+                        episodeId: prevEp.id,
+                        type: 'episode'
                     }
                 );
             }, 100);

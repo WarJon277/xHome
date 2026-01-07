@@ -101,51 +101,79 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
         }
     };
 
-    // ─── КОНТЕЙНЕР ДЛЯ КНОПОК (поверх видео) ────────
-    const overlay = document.createElement('div');
-    Object.assign(overlay.style, {
-        position: 'absolute',
-        inset: '0',
-        pointerEvents: 'none'           // пропускает клики к видео
-    });
-
-    // Добавляем элементы управления эпизодами (они должны быть кликабельными)
-    // Pass metadata directly
-    const episodeControls = createEpisodeControls(title, modal, video, metadata);
-    episodeControls.style.pointerEvents = 'auto';  // делаем элементы управления кликабельными
-    overlay.appendChild(episodeControls);
-
-    // Кнопка закрытия также должна быть кликабельной
-    const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
-    Object.assign(closeBtn.style, {
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        zIndex: '2147483647', // Max z-index
-        width: '60px',
-        height: '60px', /* Larger for TV */
-        background: 'rgba(200, 0, 0, 0.8)', /* Red tint to be obvious */
-        color: 'white',
-        border: '2px solid white',
-        borderRadius: '50%',
-        fontSize: '30px',
-        cursor: 'pointer',
-        pointerEvents: 'auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 0 10px rgba(0,0,0,0.5)'
-    });
-
-    closeBtn.onclick = () => {
-        saveProgress(); // Save on close
-        modal.remove();
+    // ─── TV DETECTION ────────────────────────
+    const isTV = () => {
+        const ua = navigator.userAgent.toLowerCase();
+        return /tv|web0s|tizen|smarttv|bravia|viera|netcast/.test(ua);
     };
 
-    // Добавляем кнопку закрытия
-    overlay.appendChild(closeBtn);
-    modal.append(video, overlay);
+    // ─── КОНТЕЙНЕР ДЛЯ КНОПОК (поверх видео) ────────
+    // На ТВ мы НЕ добавляем кастомные оверлеи, чтобы не мешать нативному плееру
+    if (!isTV()) {
+        const overlay = document.createElement('div');
+        Object.assign(overlay.style, {
+            position: 'absolute',
+            inset: '0',
+            pointerEvents: 'none'
+        });
+
+        // Добавляем элементы управления эпизодами
+        const episodeControls = createEpisodeControls(title, modal, video, metadata);
+        episodeControls.style.pointerEvents = 'auto';
+        overlay.appendChild(episodeControls);
+
+        // Кнопка закрытия
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '✕';
+        Object.assign(closeBtn.style, {
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            zIndex: '2147483647',
+            width: '60px',
+            height: '60px',
+            background: 'rgba(200, 0, 0, 0.8)',
+            color: 'white',
+            border: '2px solid white',
+            borderRadius: '50%',
+            fontSize: '30px',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+        });
+
+        closeBtn.onclick = () => {
+            saveProgress();
+            modal.remove();
+        };
+
+        overlay.appendChild(closeBtn);
+        modal.append(video, overlay);
+    } else {
+        // Exclusive TV Mode: Только видео
+        modal.append(video);
+        // Добавляем подсказку про выход
+        const hint = document.createElement('div');
+        hint.textContent = 'Нажмите НАЗАД для выхода';
+        Object.assign(hint.style, {
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            background: 'rgba(0,0,0,0.5)',
+            color: '#fff',
+            padding: '10px',
+            zIndex: 20000,
+            pointerEvents: 'none',
+            fontSize: '14px',
+            borderRadius: '4px'
+        });
+        modal.appendChild(hint);
+        // Скрываем подсказку через 5 сек
+        setTimeout(() => hint.remove(), 5000);
+    }
 
     document.body.appendChild(modal);
 
@@ -184,113 +212,128 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
                     loader.classList.add('hidden');
                 }
 
-                // Инициализация Plyr
-                if (window.Plyr) {
-                    const player = new Plyr(video, {
-                        controls: [
-                            'play-large', 'play', 'progress', 'current-time',
-                            'duration', 'mute', 'volume', 'fullscreen'
-                        ],
-                        fullscreen: { enabled: true, iosNative: true }
-                    });
+                // Инициализация Native Player вместо Plyr для лучшей совместимости с ТВ
+                video.controls = true;
 
-                    // RESUME LOGIC
-                    if (metadata && (metadata.type === 'movie' || metadata.type === 'episode')) {
-                        const type = metadata.type;
-                        const id = type === 'movie' ? metadata.id : metadata.episodeId;
+                // Auto-Fullscreen logic (Only for TV)
+                // isTV defined in parent scope
+                const enterFullscreen = () => {
+                    if (!isTV()) return;
 
-                        if (id) {
-                            try {
-                                const progRes = await fetch(`/progress/${type}/${id}`);
-                                const progData = await progRes.json();
-                                const savedTime = progData.progress_seconds;
-
-                                if (savedTime > 10 && savedTime < (video.duration - 30)) {
-                                    // Make resume button
-                                    const resumeOverlay = document.createElement('div');
-                                    Object.assign(resumeOverlay.style, {
-                                        position: 'absolute',
-                                        inset: '0',
-                                        background: 'rgba(0,0,0,0.85)',
-                                        zIndex: '10020',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'white'
-                                    });
-
-                                    const timeStr = new Date(savedTime * 1000).toISOString().substr(11, 8).replace(/^00:/, '');
-
-                                    resumeOverlay.innerHTML = `
-                                        <h3 style="margin-bottom:20px">Продолжить просмотр?</h3>
-                                        <p style="margin-bottom:30px;color:#ccc">Вы остановились на ${timeStr}</p>
-                                        <div style="display:flex;gap:20px">
-                                            <button id="resume-yes" style="padding:10px 20px;background:#3498db;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Да, продолжить</button>
-                                            <button id="resume-no" style="padding:10px 20px;background:#555;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Начать сначала</button>
-                                        </div>
-                                    `;
-                                    modal.appendChild(resumeOverlay);
-
-                                    document.getElementById('resume-yes').onclick = () => {
-                                        video.currentTime = savedTime;
-                                        video.play();
-                                        resumeOverlay.remove();
-                                    };
-                                    document.getElementById('resume-no').onclick = () => {
-                                        video.currentTime = 0;
-                                        video.play();
-                                        resumeOverlay.remove();
-                                    };
-                                } else {
-                                    video.play();
-                                }
-                            } catch (e) {
-                                console.error('Error fetching progress', e);
-                                video.play();
-                            }
-                        } else { video.play(); }
-                    } else {
-                        // Auto-play if no metadata or no resume
-                        // But wait, Plyr might need interaction?
-                        // Usually handled by defaults.
+                    try {
+                        if (video.requestFullscreen) video.requestFullscreen();
+                        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+                        else if (video.msRequestFullscreen) video.msRequestFullscreen();
+                    } catch (err) {
+                        console.warn("Fullscreen request failed", err);
                     }
+                };
 
-                    // Save interval
-                    progressInterval = setInterval(saveProgress, 5000);
+                // RESUME LOGIC
+                if (metadata && (metadata.type === 'movie' || metadata.type === 'episode')) {
+                    const type = metadata.type;
+                    const id = type === 'movie' ? metadata.id : metadata.episodeId;
 
-                    // Добавляем обработчики событий для показа/скрытия элементов управления эпизодами
-                    video.addEventListener('play', () => {
-                        episodeControls.style.opacity = '0';
-                        episodeControls.style.pointerEvents = 'none';
-                    });
+                    if (id) {
+                        try {
+                            const progRes = await fetch(`/progress/${type}/${id}`);
+                            const progData = await progRes.json();
+                            const savedTime = progData.progress_seconds;
 
-                    video.addEventListener('pause', () => {
-                        saveProgress();
-                        episodeControls.style.opacity = '1';
-                        episodeControls.style.pointerEvents = 'auto';
-                    });
+                            if (savedTime > 10 && savedTime < (video.duration - 30)) {
+                                // Make resume button
+                                const resumeOverlay = document.createElement('div');
+                                Object.assign(resumeOverlay.style, {
+                                    position: 'absolute',
+                                    inset: '0',
+                                    background: 'rgba(0,0,0,0.85)',
+                                    zIndex: '10020',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white'
+                                });
 
-                    // Также скрываем элементы управления при перемотке
-                    video.addEventListener('seeking', () => {
-                        episodeControls.style.opacity = '0';
-                        episodeControls.style.pointerEvents = 'none';
-                    });
+                                const timeStr = new Date(savedTime * 1000).toISOString().substr(11, 8).replace(/^00:/, '');
 
-                    video.addEventListener('seeked', () => {
-                        // Возвращаем элементы управления через небольшую задержку после перемотки
-                        setTimeout(() => {
-                            if (!video.paused) {
-                                episodeControls.style.opacity = '0';
-                                episodeControls.style.pointerEvents = 'none';
+                                resumeOverlay.innerHTML = `
+                                    <h3 style="margin-bottom:20px">Продолжить просмотр?</h3>
+                                    <p style="margin-bottom:30px;color:#ccc">Вы остановились на ${timeStr}</p>
+                                    <div style="display:flex;gap:20px">
+                                        <button id="resume-yes" style="padding:10px 20px;background:#3498db;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Да, продолжить</button>
+                                        <button id="resume-no" style="padding:10px 20px;background:#555;border:none;border-radius:5px;color:white;font-size:16px;cursor:pointer">Начать сначала</button>
+                                    </div>
+                                `;
+                                modal.appendChild(resumeOverlay);
+
+                                // Focus 'Yes' button for TV
+                                requestAnimationFrame(() => document.getElementById('resume-yes')?.focus());
+
+                                document.getElementById('resume-yes').onclick = () => {
+                                    video.currentTime = savedTime;
+                                    video.play().then(enterFullscreen).catch(console.error);
+                                    resumeOverlay.remove();
+                                    video.focus();
+                                };
+                                document.getElementById('resume-no').onclick = () => {
+                                    video.currentTime = 0;
+                                    video.play().then(enterFullscreen).catch(console.error);
+                                    resumeOverlay.remove();
+                                    video.focus();
+                                };
                             } else {
-                                episodeControls.style.opacity = '1';
-                                episodeControls.style.pointerEvents = 'auto';
+                                video.play().then(enterFullscreen).catch(console.error);
+                                video.focus();
                             }
-                        }, 30);
-                    });
-
+                        } catch (e) {
+                            console.error('Error fetching progress', e);
+                            video.play().then(enterFullscreen).catch(console.error);
+                            video.focus();
+                        }
+                    } else {
+                        video.play().then(enterFullscreen).catch(console.error);
+                        video.focus();
+                    }
+                } else {
+                    video.play().then(enterFullscreen).catch(console.error);
+                    video.focus();
                 }
+
+                // Save interval
+                progressInterval = setInterval(saveProgress, 5000);
+
+                // Добавляем обработчики событий для показа/скрытия элементов управления эпизодами
+                video.addEventListener('play', () => {
+                    episodeControls.style.opacity = '0';
+                    episodeControls.style.pointerEvents = 'none';
+                });
+
+                video.addEventListener('pause', () => {
+                    saveProgress();
+                    episodeControls.style.opacity = '1';
+                    episodeControls.style.pointerEvents = 'auto';
+                });
+
+                // Также скрываем элементы управления при перемотке
+                video.addEventListener('seeking', () => {
+                    episodeControls.style.opacity = '0';
+                    episodeControls.style.pointerEvents = 'none';
+                });
+
+                video.addEventListener('seeked', () => {
+                    // Возвращаем элементы управления через небольшую задержку после перемотки
+                    setTimeout(() => {
+                        if (!video.paused) {
+                            episodeControls.style.opacity = '0';
+                            episodeControls.style.pointerEvents = 'none';
+                        } else {
+                            episodeControls.style.opacity = '1';
+                            episodeControls.style.pointerEvents = 'auto';
+                        }
+                    }, 30);
+                });
+
             }, { once: true });
 
             // Показываем лоадер при начале загрузки
@@ -347,7 +390,17 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     };
     document.addEventListener('keydown', keyHandler);
 
-    closeBtn.onclick = closeHandler; // Ensure click also uses same handler
+    // document keyHandler handles closure for both TV and Desktop (Esc/Back)
+
+    // Only attach click handler if button exists (non-TV mode)
+    // Variable closeBtn is not in scope here if we wrapped it in if(!isTV) block above. 
+    // Wait, in previous step I wrapped closeBtn creation in if(!isTV).
+    // So 'closeBtn' is not defined here! This will throw ReferenceError.
+
+    // We need to fix this reference error.
+    // Ideally, we shouldn't reference 'closeBtn' here at all.
+    // The click handler was allocated inside the if block in my instruction above.
+    // So we just remove this line.
 
     // Auto-focus video to enable Plyr shortcuts (arrows for seek/volume)
     // But we also have our overlay controls.

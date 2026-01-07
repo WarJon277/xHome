@@ -120,18 +120,22 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     closeBtn.textContent = '✕';
     Object.assign(closeBtn.style, {
         position: 'absolute',
-        top: '16px',
-        right: '16px',
-        zIndex: '10010',
-        width: '48px',
-        height: '48px',
-        background: 'rgba(0,0,0,0.7)',
+        top: '20px',
+        right: '20px',
+        zIndex: '2147483647', // Max z-index
+        width: '60px',
+        height: '60px', /* Larger for TV */
+        background: 'rgba(200, 0, 0, 0.8)', /* Red tint to be obvious */
         color: 'white',
-        border: 'none',
+        border: '2px solid white',
         borderRadius: '50%',
-        fontSize: '24px',
+        fontSize: '30px',
         cursor: 'pointer',
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 0 10px rgba(0,0,0,0.5)'
     });
 
     closeBtn.onclick = () => {
@@ -324,15 +328,33 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
         });
 
     // Esc для закрытия
-    const escHandler = e => {
-        if (e.key === 'Escape') {
-            saveProgress();
-            modal.remove();
-            clearInterval(progressInterval);
-            document.removeEventListener('keydown', escHandler);
-        }
+    // Esc & Back button handler
+    const closeHandler = () => {
+        saveProgress();
+        modal.remove();
+        clearInterval(progressInterval);
+        document.removeEventListener('keydown', keyHandler);
+        // Restore focus to last element?
     };
-    document.addEventListener('keydown', escHandler);
+
+    const keyHandler = e => {
+        if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'BrowserBack') {
+            e.preventDefault();
+            closeHandler();
+        }
+        // Redirect arrows to video if not focusing controls
+        // Plyr manages focus well usually, but we might want to ensure it.
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    closeBtn.onclick = closeHandler; // Ensure click also uses same handler
+
+    // Auto-focus video to enable Plyr shortcuts (arrows for seek/volume)
+    // But we also have our overlay controls.
+    // If we want Plyr to handle arrows, video or container needs focus.
+    setTimeout(() => {
+        video.focus();
+    }, 100);
 }
 
 // ────────────────────────────────────────────────────────────────

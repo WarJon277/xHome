@@ -1,5 +1,5 @@
 .card {
-    background: transparent;
+    background: var(--card-bg);
     backdrop-filter: blur(10px);
     padding: 0;
     /* Remove padding for consistent spacing */

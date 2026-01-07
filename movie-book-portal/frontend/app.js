@@ -28,6 +28,12 @@ window.setCurrentCategory = (category) => {
     import('./state.js').then(({ setCurrentCategory }) => {
         setCurrentCategory(category);
         window.currentCategory = category;
+
+        // Hide/Show Add button
+        const addBtn = document.getElementById('show-add');
+        if (addBtn) {
+            addBtn.style.display = category === 'photo' ? 'block' : 'none';
+        }
     });
 };
 
@@ -47,3 +53,13 @@ window.setEditingItem = (item) => {
 
 // Импортируем обработчики событий
 import './eventListeners.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const addBtn = document.getElementById('show-add');
+    // Hide by default if default category is not photo (it's usually movie)
+    // We can check state but calling setCurrentCategory logic is safer if we knew specific startup logic.
+    // simpler:
+    if (addBtn && (!window.currentCategory || window.currentCategory !== 'photo')) {
+        addBtn.style.display = 'none';
+    }
+});

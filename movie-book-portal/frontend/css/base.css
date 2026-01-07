@@ -1,14 +1,29 @@
+:root {
+    /* Default Dark Theme */
+    --bg-primary: #0a0a1a;
+    --bg-secondary: #1a1a2e;
+    /* gradient start */
+    --bg-tertiary: #535386;
+    /* gradient end */
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --accent-color: #4caf50;
+    --card-bg: rgba(30, 30, 30, 0.7);
+    --header-bg: rgba(18, 18, 28, 0.8);
+    --font-primary: 'Arial', sans-serif;
+}
+
 /* Адаптивные стили для портала фильмов и книг */
 * {
     box-sizing: border-box;
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: #0a0a1a;
-    background: linear-gradient(135deg, #1a1a2e 0%, #535386 100%);
+    font-family: var(--font-primary);
+    background: var(--bg-primary);
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     background-attachment: fixed;
-    color: #ffffff;
+    color: var(--text-primary);
     margin: 0;
     padding: 0;
     font-size: 16px;
@@ -31,10 +46,12 @@ body {
         background-attachment: scroll;
         /* Можно оставить градиент, но без fixed */
     }
-    
+
     .card {
-        background: rgba(35, 35, 60, 0.7);     /* более заметный полупрозрачный фон */
-        backdrop-filter: blur(8px);            /* чуть меньше радиус — легче рендерить */
+        background: rgba(35, 35, 60, 0.7);
+        /* более заметный полупрозрачный фон */
+        backdrop-filter: blur(8px);
+        /* чуть меньше радиус — легче рендерить */
     }
 }
 

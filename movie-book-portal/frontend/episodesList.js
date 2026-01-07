@@ -6,7 +6,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
     try {
         // Загружаем эпизоды для сериала
         const episodes = await fetchEpisodes(tvshowId);
-        
+
         // Создаем модальное окно для списка эпизодов
         const modal = document.createElement('div');
         modal.id = 'episodes-modal';
@@ -16,7 +16,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
             justify-content: center; z-index: 10000; padding: 20px;
             width: 100vw; height: 100vh; box-sizing: border-box;
         `;
-        
+
         const container = document.createElement('div');
         container.style.cssText = `
             background: #2c3e50;
@@ -28,7 +28,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
             overflow-y: auto;
             position: relative;
         `;
-        
+
         const title = document.createElement('h2');
         title.textContent = `Эпизоды: ${tvshowTitle}`;
         title.style.cssText = `
@@ -36,7 +36,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
             margin-top: 0;
             text-align: center;
         `;
-        
+
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '✕';
         closeBtn.style.cssText = `
@@ -45,7 +45,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
             font-size: 16px; cursor: pointer; z-index: 10001;
         `;
         closeBtn.onclick = () => modal.remove();
-        
+
         const episodesList = document.createElement('div');
         episodesList.style.cssText = `
             display: grid;
@@ -53,7 +53,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
             gap: 15px;
             margin-top: 20px;
         `;
-        
+
         if (episodes.length === 0) {
             const noEpisodes = document.createElement('p');
             noEpisodes.textContent = 'Нет загруженных эпизодов';
@@ -84,7 +84,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                 }
                 episodesBySeason[episode.season_number].push(episode);
             });
-            
+
             // Создаем карточки для каждого сезона
             Object.keys(episodesBySeason).sort((a, b) => parseInt(a) - parseInt(b)).forEach(seasonNum => {
                 const seasonDiv = document.createElement('div');
@@ -92,7 +92,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                     grid-column: 1 / -1;
                     margin-bottom: 20px;
                 `;
-                
+
                 const seasonTitle = document.createElement('h3');
                 seasonTitle.textContent = `Сезон ${seasonNum}`;
                 seasonTitle.style.cssText = `
@@ -102,14 +102,14 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                     padding-bottom: 5px;
                 `;
                 seasonDiv.appendChild(seasonTitle);
-                
+
                 const seasonEpisodes = document.createElement('div');
                 seasonEpisodes.style.cssText = `
                     display: flex;
                     flex-wrap: wrap;
                     gap: 10px;
                 `;
-                
+
                 episodesBySeason[seasonNum].sort((a, b) => a.episode_number - b.episode_number).forEach(episode => {
                     const episodeCard = document.createElement('div');
                     episodeCard.className = 'episode-card';
@@ -124,7 +124,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                     `;
                     episodeCard.onmouseover = () => episodeCard.style.background = '#3d566e';
                     episodeCard.onmouseout = () => episodeCard.style.background = '#34495e';
-                    
+
                     const episodeTitle = document.createElement('div');
                     episodeTitle.textContent = `Эпизод ${episode.episode_number}`;
                     episodeTitle.style.cssText = `
@@ -132,7 +132,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                         font-weight: bold;
                         margin-bottom: 5px;
                     `;
-                    
+
                     const episodeSubtitle = document.createElement('div');
                     episodeSubtitle.textContent = episode.title || `Эпизод ${episode.episode_number}`;
                     episodeSubtitle.style.cssText = `
@@ -142,29 +142,38 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                         overflow: hidden;
                         text-overflow: ellipsis;
                     `;
-                    
+
                     episodeCard.appendChild(episodeTitle);
                     episodeCard.appendChild(episodeSubtitle);
-                    
+
                     // Обработчик клика для воспроизведения эпизода
                     episodeCard.addEventListener('click', (e) => {
                         // Проверяем, был ли клик по кнопке редактирования, чтобы не открывать плеер
                         if (e.target.tagName === 'BUTTON') {
                             return;
                         }
-                        
+
                         if (episode.file_path) {
                             // Закрываем модальное окно эпизодов перед открытием плеера
                             const episodesModal = document.getElementById('episodes-modal');
                             if (episodesModal) {
                                 episodesModal.remove();
                             }
-                            openVideoPlayer(episode.file_path, `${tvshowTitle} - S${episode.season_number}E${episode.episode_number} - ${episode.title || `Эпизод ${episode.episode_number}`}`);
+                            openVideoPlayer(
+                                episode.file_path,
+                                `${tvshowTitle} - S${episode.season_number}E${episode.episode_number} - ${episode.title || `Эпизод ${episode.episode_number}`}`,
+                                {
+                                    tvshowId: tvshowId,
+                                    seasonNumber: episode.season_number,
+                                    episodeNumber: episode.episode_number,
+                                    episodeTitle: episode.title || `Эпизод ${episode.episode_number}`
+                                }
+                            );
                         } else {
                             alert(`Файл для этого эпизода ещё не загружен`);
                         }
                     });
-                    
+
                     // Создаем контейнер для кнопок действия
                     const actionButtons = document.createElement('div');
                     actionButtons.style.cssText = `
@@ -172,7 +181,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                         gap: 5px;
                         margin-top: 8px;
                     `;
-                    
+
                     // Кнопка редактирования эпизода
                     const editBtn = document.createElement('button');
                     editBtn.textContent = '✏';
@@ -191,7 +200,7 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                         e.stopPropagation(); // Останавливаем всплытие, чтобы не вызвать проигрывание
                         editEpisode(episode, tvshowId);
                     };
-                    
+
                     // Кнопка удаления эпизода
                     const deleteBtn = document.createElement('button');
                     deleteBtn.textContent = '🗑';
@@ -212,19 +221,19 @@ export async function showEpisodesList(tvshowId, tvshowTitle) {
                             deleteEpisodeById(episode.id, episodeCard, tvshowId);
                         }
                     };
-                    
+
                     actionButtons.appendChild(editBtn);
                     actionButtons.appendChild(deleteBtn);
                     episodeCard.appendChild(actionButtons);
-                    
+
                     seasonEpisodes.appendChild(episodeCard);
                 });
-                
+
                 seasonDiv.appendChild(seasonEpisodes);
                 episodesList.appendChild(seasonDiv);
             });
         }
-        
+
         container.appendChild(closeBtn);
         container.appendChild(title);
         container.appendChild(episodesList);
@@ -245,7 +254,7 @@ async function editEpisode(episode, tvshowId) {
         display: flex; align-items: center; justify-content: center;
         z-index: 10001; padding: 20px; box-sizing: border-box;
     `;
-    
+
     const container = document.createElement('div');
     container.style.cssText = `
         background: #2c3e50;
@@ -255,7 +264,7 @@ async function editEpisode(episode, tvshowId) {
         max-width: 500px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     `;
-    
+
     const title = document.createElement('h3');
     title.textContent = `Редактировать эпизод: ${episode.title || `Эпизод ${episode.episode_number}`}`;
     title.style.cssText = `
@@ -263,14 +272,14 @@ async function editEpisode(episode, tvshowId) {
         margin-top: 0;
         text-align: center;
     `;
-    
+
     const form = document.createElement('form');
     form.style.cssText = `
         display: flex;
         flex-direction: column;
         gap: 15px;
     `;
-    
+
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
     titleInput.value = episode.title || `Эпизод ${episode.episode_number}`;
@@ -282,7 +291,7 @@ async function editEpisode(episode, tvshowId) {
         background: #34495e;
         color: white;
     `;
-    
+
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'video/*,.mp4,.avi,.mov,.mkv,.wmv,.flv,.webm';
@@ -293,18 +302,18 @@ async function editEpisode(episode, tvshowId) {
         background: #34495e;
         color: white;
     `;
-    
+
     const fileLabel = document.createElement('label');
     fileLabel.textContent = 'Заменить файл эпизода (необязательно):';
     fileLabel.style.color = 'white';
-    
+
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = `
         display: flex;
         gap: 10px;
         margin-top: 15px;
     `;
-    
+
     const saveBtn = document.createElement('button');
     saveBtn.type = 'submit';
     saveBtn.textContent = 'Сохранить';
@@ -317,7 +326,7 @@ async function editEpisode(episode, tvshowId) {
         border-radius: 4px;
         cursor: pointer;
     `;
-    
+
     const cancelBtn = document.createElement('button');
     cancelBtn.type = 'button';
     cancelBtn.textContent = 'Отмена';
@@ -331,19 +340,19 @@ async function editEpisode(episode, tvshowId) {
         cursor: pointer;
     `;
     cancelBtn.onclick = () => modal.remove();
-    
+
     form.appendChild(titleInput);
     form.appendChild(fileLabel);
     form.appendChild(fileInput);
     buttonContainer.appendChild(saveBtn);
     buttonContainer.appendChild(cancelBtn);
     form.appendChild(buttonContainer);
-    
+
     container.appendChild(title);
     container.appendChild(form);
     modal.appendChild(container);
     document.body.appendChild(modal);
-    
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         try {
@@ -357,7 +366,7 @@ async function editEpisode(episode, tvshowId) {
             };
 
             await updateEpisode(episode.id, updatedData);
-            
+
             // Если выбран файл, загружаем его
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
@@ -369,7 +378,7 @@ async function editEpisode(episode, tvshowId) {
 
             // Закрываем модальное окно
             modal.remove();
-            
+
             // Перезагружаем модальное окно с обновленными данными
             const episodesModal = document.getElementById('episodes-modal');
             // Получаем заголовок сериала из заголовка модального окна перед его удалением

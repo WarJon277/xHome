@@ -7,7 +7,14 @@ import { showEpisodesList } from './episodesList.js';
  * @param {string} filePath - путь к видеофайлу
  * @param {string} title - заголовок видео (используется для определения эпизода)
  */
-export function openVideoPlayer(filePath, title = '') {
+
+/**
+ * Открывает полноэкранный видеоплеер в модальном окне
+ * @param {string} filePath - путь к видеофайлу
+ * @param {string} title - заголовок видео
+ * @param {object|null} metadata - метаданные эпизода { tvshowId, seasonNumber, episodeNumber, episodeTitle }
+ */
+export function openVideoPlayer(filePath, title = '', metadata = null) {
     if (!filePath) {
         alert('Путь к видеофайлу не указан');
         return;
@@ -16,8 +23,8 @@ export function openVideoPlayer(filePath, title = '') {
     // Нормализация пути
     let videoSrc = filePath;
     if (!videoSrc.startsWith('/')) {
-        videoSrc = videoSrc.startsWith('uploads/') 
-            ? `/${videoSrc}` 
+        videoSrc = videoSrc.startsWith('uploads/')
+            ? `/${videoSrc}`
             : `/uploads/${videoSrc}`;
     }
 
@@ -42,7 +49,7 @@ export function openVideoPlayer(filePath, title = '') {
         <div class="video-loader-text">Загрузка видео...</div>
     `;
     modal.appendChild(loader);
-    
+
     // Ensure loader is visible initially
     requestAnimationFrame(() => {
         if (loader && loader.classList.contains('hidden')) {
@@ -75,7 +82,8 @@ export function openVideoPlayer(filePath, title = '') {
     });
 
     // Добавляем элементы управления эпизодами (они должны быть кликабельными)
-    const episodeControls = createEpisodeControls(title, modal, video);
+    // Pass metadata directly
+    const episodeControls = createEpisodeControls(title, modal, video, metadata);
     episodeControls.style.pointerEvents = 'auto';  // делаем элементы управления кликабельными
     overlay.appendChild(episodeControls);
 
@@ -129,7 +137,7 @@ export function openVideoPlayer(filePath, title = '') {
     fetch(videoSrc, { method: 'HEAD' })
         .then(res => {
             if (!res.ok) throw new Error(`Видео не найдено: ${res.status}`);
-            
+
             video.src = videoSrc;
             video.load();
 
@@ -140,7 +148,7 @@ export function openVideoPlayer(filePath, title = '') {
                 if (!minimumLoaderDisplay) {
                     loader.classList.add('hidden');
                 }
-                
+
                 // Инициализация Plyr
                 if (window.Plyr) {
                     const player = new Plyr(video, {
@@ -150,24 +158,24 @@ export function openVideoPlayer(filePath, title = '') {
                         ],
                         fullscreen: { enabled: true, iosNative: true }
                     });
-                    
+
                     // Добавляем обработчики событий для показа/скрытия элементов управления эпизодами
                     video.addEventListener('play', () => {
                         episodeControls.style.opacity = '0';
                         episodeControls.style.pointerEvents = 'none';
                     });
-                    
+
                     video.addEventListener('pause', () => {
                         episodeControls.style.opacity = '1';
                         episodeControls.style.pointerEvents = 'auto';
                     });
-                    
+
                     // Также скрываем элементы управления при перемотке
                     video.addEventListener('seeking', () => {
                         episodeControls.style.opacity = '0';
                         episodeControls.style.pointerEvents = 'none';
                     });
-                    
+
                     video.addEventListener('seeked', () => {
                         // Возвращаем элементы управления через небольшую задержку после перемотки
                         setTimeout(() => {
@@ -180,17 +188,17 @@ export function openVideoPlayer(filePath, title = '') {
                             }
                         }, 30);
                     });
-                    
+
                 }
             }, { once: true });
-            
+
             // Показываем лоадер при начале загрузки
             video.addEventListener('loadstart', () => {
                 if (!minimumLoaderDisplay) {
                     loader.classList.remove('hidden');
                 }
             });
-            
+
             // Скрываем лоадер при начале воспроизведения
             video.addEventListener('playing', () => {
                 // Only hide if minimum display time has passed
@@ -198,12 +206,12 @@ export function openVideoPlayer(filePath, title = '') {
                     loader.classList.add('hidden');
                 }
             });
-            
+
             // Показываем лоадер при ожидании данных
             video.addEventListener('waiting', () => {
                 loader.classList.remove('hidden');
             });
-            
+
             // Скрываем лоадер при приостановке ожидания
             video.addEventListener('canplay', () => {
                 // Only hide if minimum display time has passed
@@ -253,24 +261,25 @@ function createCloseButton() {
         -webkit-backdrop-filter: blur(6px);
         transition: all 0.18s ease;
     `;
-    
+
     btn.onmouseenter = () => (btn.style.background = 'rgba(220,20,60,0.85)');
     btn.onmouseleave = () => (btn.style.background = 'rgba(0,0,0,0.7)');
-    
+
     return btn;
 }
 
-function createEpisodeControls(title, modal, video) {
-    // Проверяем, является ли видео эпизодом сериала (содержит S##E## в названии)
-    const isEpisode = /S(\d+)E(\d+)/i.test(title);
-    
+function createEpisodeControls(title, modal, video, metadata) {
+    // metadata = { tvshowId, seasonNumber, episodeNumber, episodeTitle }
+    // Если метаданных нет, пробуем старый способ (но мы хотим перевести всё на метаданные)
+    const isEpisode = metadata || /S(\d+)E(\d+)/i.test(title);
+
     // Если это не эпизод сериала, не создаем элементы управления эпизодами
     if (!isEpisode) {
         const container = document.createElement('div');
-        container.style.display = 'none'; // Скрываем контейнер, если это не эпизод
+        container.style.display = 'none'; // Скрываем контейнер
         return container;
     }
-    
+
     const container = document.createElement('div');
     container.style.cssText = `
         position: absolute;
@@ -299,13 +308,13 @@ function createEpisodeControls(title, modal, video) {
         max-width: 160px;
         margin: 5px;
     `;
-    
+
     // Дополнительные стили для мобильных устройств
     if (window.innerWidth <= 768) {
-        container.style.top = '8px';
-        container.style.left = '8px';
-        container.style.right = '8px';
-        container.style.gap = '6px';
+        container.style.top = '10px';
+        container.style.left = '10px';
+        container.style.right = '10px';
+        container.style.gap = '8px';
     }
 
     const prevBtn = document.createElement('button');
@@ -320,35 +329,15 @@ function createEpisodeControls(title, modal, video) {
     listBtn.textContent = 'Список эпизодов';
     listBtn.style.cssText = btnStyle;
 
-    // Функция для извлечения информации о текущем эпизоде из заголовка
-    function extractEpisodeInfo(title) {
-        // Регулярное выражение для поиска S(сезон)E(эпизод)
-        const match = title.match(/S(\d+)E(\d+)/i);
-        if (match) {
-            return {
-                season: parseInt(match[1]),
-                episode: parseInt(match[2])
-            };
-        }
-        return null;
-    }
-    
-    // Получаем ID сериала и информацию о текущем эпизоде
-    let currentTvshowId = null;
-    let currentEpisodeInfo = null;
-    
-    // Инициализация при создании элемента
-    extractTvshowIdFromTitle(title).then(tvshowId => {
-        if (tvshowId) {
-            currentTvshowId = tvshowId;
-            currentEpisodeInfo = extractEpisodeInfo(title);
-        }
-    });
+    // Используем предоставленные метаданные или пытаемся извлечь (fallback)
+    const tvshowId = metadata?.tvshowId;
+    const currentSeason = metadata?.seasonNumber;
+    const currentEpisode = metadata?.episodeNumber;
 
     // Функция для получения списка эпизодов
-    async function getEpisodes(tvshowId) {
+    async function getEpisodes(tid) {
         try {
-            const episodes = await fetchEpisodes(tvshowId);
+            const episodes = await fetchEpisodes(tid);
             // Группируем эпизоды по сезонам и сортируем
             const episodesBySeason = {};
             episodes.forEach(ep => {
@@ -357,12 +346,12 @@ function createEpisodeControls(title, modal, video) {
                 }
                 episodesBySeason[ep.season_number].push(ep);
             });
-            
+
             // Сортируем эпизоды в каждом сезоне
             Object.keys(episodesBySeason).forEach(season => {
                 episodesBySeason[season].sort((a, b) => a.episode_number - b.episode_number);
             });
-            
+
             return episodesBySeason;
         } catch (error) {
             console.error('Ошибка при получении списка эпизодов:', error);
@@ -372,30 +361,29 @@ function createEpisodeControls(title, modal, video) {
 
     // Функция для перехода к следующему эпизоду
     async function goToNextEpisode() {
-        if (!currentTvshowId || !currentEpisodeInfo) return;
-        
-        const episodesBySeason = await getEpisodes(currentTvshowId);
+        if (!tvshowId) return;
+
+        const episodesBySeason = await getEpisodes(tvshowId);
         const seasons = Object.keys(episodesBySeason).map(Number).sort((a, b) => a - b);
-        
-        let nextEpisode = null;
-        
-        // Ищем следующий эпизод
+
+        let nextEp = null;
+
+        // Find next logic
+        // ... (Similar logic, simplified) ...
         for (let i = 0; i < seasons.length; i++) {
             const seasonNum = seasons[i];
             const seasonEpisodes = episodesBySeason[seasonNum];
-            
-            if (seasonNum === currentEpisodeInfo.season) {
+
+            if (seasonNum === currentSeason) {
                 // Ищем в текущем сезоне
                 for (let j = 0; j < seasonEpisodes.length; j++) {
-                    if (seasonEpisodes[j].episode_number === currentEpisodeInfo.episode) {
-                        // Нашли текущий эпизод, проверяем следующий
+                    if (seasonEpisodes[j].episode_number === currentEpisode) {
                         if (j + 1 < seasonEpisodes.length) {
-                            nextEpisode = seasonEpisodes[j + 1];
+                            nextEp = seasonEpisodes[j + 1];
                         } else {
-                            // Если это последний эпизод в сезоне, ищем первый в следующем сезоне
+                            // First of next season
                             if (i + 1 < seasons.length) {
-                                const nextSeason = seasons[i + 1];
-                                nextEpisode = episodesBySeason[nextSeason][0];
+                                nextEp = episodesBySeason[seasons[i + 1]][0];
                             }
                         }
                         break;
@@ -404,14 +392,21 @@ function createEpisodeControls(title, modal, video) {
                 break;
             }
         }
-        
-        if (nextEpisode && nextEpisode.file_path) {
-            // Закрываем текущий модальный элемент
+
+        if (nextEp && nextEp.file_path) {
             modal.remove();
-            // Открываем следующий эпизод
             setTimeout(() => {
-                openVideoPlayer(nextEpisode.file_path, `${extractShowName(title)} - S${nextEpisode.season_number}E${nextEpisode.episode_number} - ${nextEpisode.title || `Эпизод ${nextEpisode.episode_number}`}`);
-            }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
+                openVideoPlayer(
+                    nextEp.file_path,
+                    `${title.split(' - ')[0]} - S${nextEp.season_number}E${nextEp.episode_number} - ${nextEp.title}`,
+                    {
+                        tvshowId: tvshowId,
+                        seasonNumber: nextEp.season_number,
+                        episodeNumber: nextEp.episode_number,
+                        episodeTitle: nextEp.title
+                    }
+                );
+            }, 100);
         } else {
             alert('Следующий эпизод не найден');
         }
@@ -419,31 +414,28 @@ function createEpisodeControls(title, modal, video) {
 
     // Функция для перехода к предыдущему эпизоду
     async function goToPrevEpisode() {
-        if (!currentTvshowId || !currentEpisodeInfo) return;
-        
-        const episodesBySeason = await getEpisodes(currentTvshowId);
+        if (!tvshowId) return;
+
+        const episodesBySeason = await getEpisodes(tvshowId);
         const seasons = Object.keys(episodesBySeason).map(Number).sort((a, b) => a - b);
-        
-        let prevEpisode = null;
-        
-        // Ищем предыдущий эпизод
+
+        let prevEp = null;
+
         for (let i = seasons.length - 1; i >= 0; i--) {
             const seasonNum = seasons[i];
             const seasonEpisodes = episodesBySeason[seasonNum];
-            
-            if (seasonNum === currentEpisodeInfo.season) {
-                // Ищем в текущем сезоне
+
+            if (seasonNum === currentSeason) {
                 for (let j = seasonEpisodes.length - 1; j >= 0; j--) {
-                    if (seasonEpisodes[j].episode_number === currentEpisodeInfo.episode) {
-                        // Нашли текущий эпизод, проверяем предыдущий
+                    if (seasonEpisodes[j].episode_number === currentEpisode) {
                         if (j - 1 >= 0) {
-                            prevEpisode = seasonEpisodes[j - 1];
+                            prevEp = seasonEpisodes[j - 1];
                         } else {
-                            // Если это первый эпизод в сезоне, ищем последний в предыдущем сезоне
+                            // Last of previous season
                             if (i - 1 >= 0) {
-                                const prevSeason = seasons[i - 1];
-                                const prevSeasonEpisodes = episodesBySeason[prevSeason];
-                                prevEpisode = prevSeasonEpisodes[prevSeasonEpisodes.length - 1];
+                                const prevSeas = seasons[i - 1];
+                                const prevSeasEps = episodesBySeason[prevSeas];
+                                prevEp = prevSeasEps[prevSeasEps.length - 1];
                             }
                         }
                         break;
@@ -452,14 +444,21 @@ function createEpisodeControls(title, modal, video) {
                 break;
             }
         }
-        
-        if (prevEpisode && prevEpisode.file_path) {
-            // Закрываем текущий модальный элемент
+
+        if (prevEp && prevEp.file_path) {
             modal.remove();
-            // Открываем предыдущий эпизод
             setTimeout(() => {
-                openVideoPlayer(prevEpisode.file_path, `${extractShowName(title)} - S${prevEpisode.season_number}E${prevEpisode.episode_number} - ${prevEpisode.title || `Эпизод ${prevEpisode.episode_number}`}`);
-            }, 100); // Добавляем небольшую задержку для корректного закрытия предыдущего модального окна
+                openVideoPlayer(
+                    prevEp.file_path,
+                    `${title.split(' - ')[0]} - S${prevEp.season_number}E${prevEp.episode_number} - ${prevEp.title}`,
+                    {
+                        tvshowId: tvshowId,
+                        seasonNumber: prevEp.season_number,
+                        episodeNumber: prevEp.episode_number,
+                        episodeTitle: prevEp.title
+                    }
+                );
+            }, 100);
         } else {
             alert('Предыдущий эпизод не найден');
         }
@@ -468,82 +467,55 @@ function createEpisodeControls(title, modal, video) {
     // Обновляем обработчики после инициализации
     // Функция для обработки переключения эпизода с защитой от быстрых кликов
     const handleEpisodeSwitch = async (switchFunction) => {
-        // Убедимся, что данные инициализированы
-        if (!currentTvshowId) {
-            const tvshowId = await extractTvshowIdFromTitle(title);
-            if (tvshowId) {
-                currentTvshowId = tvshowId;
-            }
-        }
-        if (!currentEpisodeInfo) {
-            currentEpisodeInfo = extractEpisodeInfo(title);
-        }
-        
         // Добавляем небольшую задержку для предотвращения быстрых кликов
         prevBtn.disabled = true;
         nextBtn.disabled = true;
-        
+
         setTimeout(() => {
             prevBtn.disabled = false;
             nextBtn.disabled = false;
         }, 800);
-        
+
         switchFunction();
     };
-    
+
     prevBtn.onclick = () => handleEpisodeSwitch(goToPrevEpisode);
     nextBtn.onclick = () => handleEpisodeSwitch(goToNextEpisode);
-    
+
     // Добавляем touch события для мобильных устройств
-    prevBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        prevBtn.classList.add('pressed');
-    });
-    
-    prevBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        setTimeout(() => {
-            prevBtn.classList.remove('pressed');
-        }, 150);
-    });
-    
-    prevBtn.addEventListener('touchcancel', (e) => {
-        e.preventDefault();
-        prevBtn.classList.remove('pressed');
-    });
-    
-    nextBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        nextBtn.classList.add('pressed');
-    });
-    
-    nextBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        setTimeout(() => {
-            nextBtn.classList.remove('pressed');
-        }, 150);
-    });
-    
-    nextBtn.addEventListener('touchcancel', (e) => {
-        e.preventDefault();
-        nextBtn.classList.remove('pressed');
-    });
-    
+    const addTouch = (btn) => {
+        btn.addEventListener('touchstart', (e) => {
+            // e.preventDefault(); // Don't prevent default everywhere or click might not fire
+            btn.classList.add('pressed');
+        });
+        btn.addEventListener('touchend', (e) => {
+            // e.preventDefault();
+            setTimeout(() => btn.classList.remove('pressed'), 150);
+        });
+    };
+    addTouch(prevBtn);
+    addTouch(nextBtn);
+    addTouch(listBtn);
+
     // Добавляем стили для состояния нажатия кнопок
-    const style = document.createElement('style');
-    style.textContent = `
-        button.pressed {
-            background: rgba(50, 50, 0.9) !important;
-            transform: scale(0.95);
-        }
-    `;
-    document.head.appendChild(style);
+    if (!document.getElementById('pressed-style')) {
+        const style = document.createElement('style');
+        style.id = 'pressed-style';
+        style.textContent = `
+            button.pressed {
+                background: rgba(50, 50, 150, 0.9) !important;
+                transform: scale(0.95);
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
     listBtn.onclick = async () => {
-        const tvshowId = await extractTvshowIdFromTitle(title);
         if (tvshowId) {
             modal.remove();
-            showEpisodesList(tvshowId, extractShowName(title));
+            showEpisodesList(tvshowId, title.split(' - ')[0] || 'TV Show');
+        } else {
+            alert("Не удалось определить ID сериала");
         }
     };
 

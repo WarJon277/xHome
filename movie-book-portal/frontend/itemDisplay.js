@@ -19,7 +19,7 @@ export async function loadItems() {
             galleryLoadingIndicator.style.display = 'block';
         }
     }
-    
+
     showLoading(true);
     try {
         let items;
@@ -50,7 +50,7 @@ export async function loadItems() {
         showError('Ошибка загрузки списка');
     } finally {
         showLoading(false);
-        
+
         // Скрываем индикатор загрузки для галереи
         if (state.currentCategory === 'photo' && window.location.pathname.includes('gallery.html')) {
             const galleryLoadingIndicator = document.getElementById('gallery-loading-indicator');
@@ -196,7 +196,7 @@ export function displayItems(items) {
             if (state.currentCategory === 'movie') {
                 if (item.file_path) {
                     // Экранирование уже не нужно — передаём напрямую
-                    openVideoPlayer(item.file_path, item.title || 'Без названия');
+                    openVideoPlayer(item.file_path, item.title || 'Без названия', null);
                 } else {
                     alert(`Видеофайл для этого фильма ещё не загружен`);
                 }
@@ -258,7 +258,7 @@ export function displayItems(items) {
                     const stateModule = await import('./state.js');
                     const currentFolder = stateModule.getCurrentFolder();
                     const fullPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
-                    
+
                     if (typeof window.showConfirm === 'function') {
                         window.showConfirm('Удаление папки', `Вы уверены, что хотите удалить папку "${item.name}" и всё её содержимое?`, async () => {
                             try {
@@ -293,12 +293,12 @@ export function displayItems(items) {
                     const currentFolder = stateModule.getCurrentFolder();
                     // Формируем новый путь
                     const newPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
-                    
+
                     // Обновляем состояние
                     stateModule.setCurrentFolder(newPath);
                     window.currentFolder = newPath;
                     if (window.state) window.state.currentFolder = newPath;
-                    
+
                     await itemDisplayModule.loadItems();
                 };
             } else {
@@ -328,38 +328,13 @@ export function displayItems(items) {
             const descEl = document.createElement('p');
             descEl.textContent = truncateDescription(item.description || 'Нет описания', 100);
 
-            // Добавляем элементы в правильном порядке: сначала изображение, затем текст
             card.appendChild(img);
             card.appendChild(titleEl);
             card.appendChild(infoEl);
             card.appendChild(metaEl);
             card.appendChild(descEl);
 
-            const actions = document.createElement('div');
-            actions.className = 'card-actions';
-
-            const editBtn = document.createElement('button');
-            editBtn.className = 'edit-btn';
-            editBtn.textContent = 'Редактировать';
-            editBtn.onclick = () => editItem(item.id);
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-btn';
-            deleteBtn.textContent = 'Удалить';
-            deleteBtn.onclick = async () => {
-                // Проверяем, на какой странице мы находимся, чтобы вызвать правильную функцию удаления
-                if (state.currentCategory === 'photo') {
-                    await deletePhoto(item.id);
-                } else {
-                    await deleteItem(item.id);
-                }
-                // Перезагружаем элементы после удаления
-                await loadItems();
-            };
-
-            actions.appendChild(editBtn);
-            actions.appendChild(deleteBtn);
-            card.appendChild(actions);
+            // Actions removed for non-gallery items as per requirements
         }
 
         grid.appendChild(card);

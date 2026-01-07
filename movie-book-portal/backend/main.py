@@ -10,7 +10,7 @@ from database_books import create_books_tables
 from database_tvshows import create_tvshows_tables
 from database_gallery import create_gallery_tables
 
-from routers import movies, books, tvshows, gallery
+from routers import movies, books, tvshows, gallery, admin
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -66,8 +66,13 @@ async def gallery_page():
 async def reader_page():
     return FileResponse(os.path.join(FRONTEND_PATH, "reader.html"))
 
+@app.get("/admin")
+async def admin_page():
+    return FileResponse(os.path.join(FRONTEND_PATH, "admin.html"))
+
 # Подключение роутеров
 app.include_router(movies.router)
 app.include_router(books.router)
 app.include_router(tvshows.router)
 app.include_router(gallery.router)
+app.include_router(admin.router)

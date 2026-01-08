@@ -53,7 +53,7 @@ export default function KaleidoscopeViewer() {
             {loading ? (
                 <div className="text-gray-400 text-center">Загрузка...</div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                     {kaleidoscopes.length === 0 && <div className="col-span-full text-center text-gray-500">Нет калейдоскопов</div>}
                     {kaleidoscopes.map(k => {
                         const cover = k.cover_path || (k.items && k.items[0] ? k.items[0].photo_path : null);
@@ -180,6 +180,7 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
             <div className="w-full h-full relative">
                 {/* Outgoing Slide (Current active, will fade out/move when transitioning) */}
                 <div
+                    key={`out-${activeItem?.id || activeItem?.photo_path}`}
                     className={`absolute inset-0 w-full h-full flex items-center justify-center transition-container ${isTransitioning ? 'slide-exit' : 'slide-active'}`}
                     style={{ zIndex: 1 }}
                 >
@@ -191,6 +192,7 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
 
                 {/* Incoming Slide (Next item, fades in/moves in) */}
                 <div
+                    key={`in-${nextItem?.id || nextItem?.photo_path}`}
                     className={`absolute inset-0 w-full h-full flex items-center justify-center transition-container ${isTransitioning ? `slide-enter-${effect}` : 'slide-hidden'}`}
                     style={{ zIndex: 2 }}
                 >

@@ -66,8 +66,45 @@ def get_kaleidoscope(k_id: int, db: Session = Depends(get_db_kaleidoscope)):
         "music_path": k.music_path,
         "cover_path": k.cover_path,
         "created_at": k.created_at,
+        "created_at": k.created_at,
         "items": items
     }
+
+@router.put("/{k_id}")
+def update_kaleidoscope(k_id: int, k_data: KaleidoscopeCreate, db: Session = Depends(get_db_kaleidoscope)):
+    k = db.query(Kaleidoscope).filter(Kaleidoscope.id == k_id).first()
+    if not k:
+        raise HTTPException(status_code=404, detail="Kaleidoscope not found")
+    
+    try:
+        # Update fields
+        k.title = k_data.title
+        k.description = k_data.description
+        if k_data.music_path is not None:
+             k.music_path = k_data.music_path
+        if k_data.cover_path is not None:
+             k.cover_path = k_data.cover_path
+        
+        # Update items: Delete all and recreate
+        # This is simple and effective for small lists.
+        db.query(KaleidoscopeItem).filter(KaleidoscopeItem.kaleidoscope_id == k_id).delete()
+        
+        for item in k_data.items:
+            new_item = KaleidoscopeItem(
+                kaleidoscope_id=k.id,
+                photo_path=item.photo_path,
+                duration=item.duration,
+                order=item.order,
+                transition_effect=item.transition_effect
+            )
+            db.add(new_item)
+            
+        db.commit()
+        db.refresh(k)
+        return {"message": "Kaleidoscope updated successfully", "id": k.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{k_id}")
 def delete_kaleidoscope(k_id: int, db: Session = Depends(get_db_kaleidoscope)):

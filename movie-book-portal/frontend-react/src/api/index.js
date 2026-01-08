@@ -107,6 +107,11 @@ export const createKaleidoscope = (data) => request('/kaleidoscopes/', {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
 });
+export const updateKaleidoscope = (id, data) => request(`/kaleidoscopes/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
 export const deleteKaleidoscope = (id) => fetch(`${API_BASE}/kaleidoscopes/${id}`, { method: 'DELETE' });
 export const uploadKaleidoscopeMusic = (file, onProgress) =>
     uploadFile('/kaleidoscopes/upload_music', file, 'file', {}, onProgress);

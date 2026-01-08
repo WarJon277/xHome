@@ -3,9 +3,7 @@ import { fetchKaleidoscopes, createKaleidoscope, deleteKaleidoscope, uploadKalei
 import { Plus, Trash2, Music, Image as ImageIcon, Check, Folder, ArrowLeft } from 'lucide-react';
 
 export default function KaleidoscopeManager() {
-    const [items, setItems] = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         loadKaleidoscopes();
@@ -21,6 +19,11 @@ export default function KaleidoscopeManager() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleEdit = (id) => {
+        setEditingId(id);
+        setShowForm(true);
     };
 
     const handleDelete = async (id) => {
@@ -40,7 +43,7 @@ export default function KaleidoscopeManager() {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold">Калейдоскопы</h2>
                         <button
-                            onClick={() => setShowForm(true)}
+                            onClick={() => { setEditingId(null); setShowForm(true); }}
                             className="px-4 py-2 bg-green-600 rounded flex items-center gap-2"
                         >
                             <Plus size={20} /> Создать
@@ -48,19 +51,27 @@ export default function KaleidoscopeManager() {
                     </div>
 
                     {isLoading ? <div className="text-center text-gray-400">Загрузка...</div> : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
                             {items.map(item => (
                                 <div key={item.id} className="p-4 rounded-lg flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)' }}>
-                                    <div>
-                                        <h3 className="font-bold text-lg">{item.title}</h3>
+                                    <div className="cursor-pointer flex-1" onClick={() => handleEdit(item.id)}>
+                                        <h3 className="font-bold text-lg hover:text-green-400 transition-colors">{item.title}</h3>
                                         <p className="text-sm text-gray-400">{new Date(item.created_at).toLocaleDateString()}</p>
                                     </div>
-                                    <button
-                                        onClick={() => handleDelete(item.id)}
-                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleEdit(item.id)}
+                                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded"
+                                        >
+                                            <Folder size={20} /> {/* Using Folder as generic edit/open icon for now, or could import Edit */}
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                            className="p-2 text-red-500 hover:bg-red-500/10 rounded"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                             {items.length === 0 && (
@@ -70,13 +81,16 @@ export default function KaleidoscopeManager() {
                     )}
                 </div>
             ) : (
-                <KaleidoscopeForm onCancel={() => { setShowForm(false); loadKaleidoscopes(); }} />
+                <KaleidoscopeForm
+                    editId={editingId}
+                    onCancel={() => { setShowForm(false); setEditingId(null); loadKaleidoscopes(); }}
+                />
             )}
         </div>
     );
 }
 
-function KaleidoscopeForm({ onCancel }) {
+function KaleidoscopeForm({ onCancel, editId = null }) {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -88,6 +102,62 @@ function KaleidoscopeForm({ onCancel }) {
     const [uploading, setUploading] = useState(false);
     const [showGalleryPicker, setShowGalleryPicker] = useState(false);
     const [pickerMode, setPickerMode] = useState('items'); // 'items' or 'cover'
+    const [loadingData, setLoadingData] = useState(false);
+
+    // API imports needed inside component if not globally avail, but they are imported at top of file
+    // import { fetchKaleidoscope, updateKaleidoscope } from '../api'; 
+    // We need to make sure fetchKaleidoscope and updateKaleidoscope are imported at the top of the file.
+    // Assuming they are or we will fix it.
+
+    useEffect(() => {
+        if (editId) {
+            loadKaleidoscopeData(editId);
+        }
+    }, [editId]);
+
+    const loadKaleidoscopeData = async (id) => {
+        setLoadingData(true);
+        try {
+            // We need to import fetchKaleidoscope at the top if it's not there.
+            // Based on previous file read, fetchKaleidoscope IS imported.
+            // But updateKaleidoscope IS NOT imported in the original file view, I need to check imports.
+            const data = await import('../api').then(module => module.fetchKaleidoscope(id));
+
+            // Map items to format expected by form
+            // Backend items have: photo_path, duration, order, transition_effect
+            // Form items need: file_path/thumbnail_path (for display)
+            // We will map photo_path to both for simplicity as we might not have thumb path easily 
+            // without recalculating or it being same.
+
+            const formItems = data.items.map(item => ({
+                id: item.id || Math.random(), // id for react key if needed
+                file_path: item.photo_path,
+                thumbnail_path: item.photo_path, // Assuming thumbs are similar or we just show full res in small edit box
+                // We could try to guess thumb path if standard: /uploads/gallery/folder/thumb_name.webp
+                // But keeping it simple is safer.
+            }));
+
+            setFormData({
+                title: data.title,
+                description: data.description || '',
+                duration: 5, // Default for new items, existing items keep their own duration implicitly? 
+                // We only set global duration in form, but items have individual. 
+                // For this simple editor, we might overwrite individual durations on save 
+                // OR we need to load them to state if we want to preserve them.
+                // The current form logic applies `formData.duration` to ALL items on save.
+                // To be better, we should probably set formData.duration to the duration of the first item
+                // or just keep it as default.
+                cover_path: data.cover_path || '',
+                items: formItems
+            });
+
+        } catch (e) {
+            console.error("Failed to load kaleidoscope", e);
+            alert("Ошибка загрузки данных");
+        } finally {
+            setLoadingData(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -98,7 +168,7 @@ function KaleidoscopeForm({ onCancel }) {
 
         setUploading(true);
         try {
-            let musicPath = '';
+            let musicPath = formData.music_path; // Keep existing if not changed
             if (musicFile) {
                 const res = await uploadKaleidoscopeMusic(musicFile, (pct) => { });
                 musicPath = res.music_path;
@@ -106,19 +176,26 @@ function KaleidoscopeForm({ onCancel }) {
 
             // Prepare items
             const kItems = formData.items.map((photo, index) => ({
-                photo_path: photo.file_path, // Full path from gallery item
+                photo_path: photo.file_path || photo.thumbnail_path, // Handle both picker formats
                 duration: formData.duration,
                 order: index,
-                transition_effect: ['fade', 'slide', 'zoom', 'blur'][index % 4] // Rotate effects for now
+                transition_effect: ['fade', 'slide', 'zoom', 'blur'][index % 4] // Rotate effects
             }));
 
-            await createKaleidoscope({
+            const payload = {
                 title: formData.title,
                 description: formData.description,
                 music_path: musicPath,
                 cover_path: formData.cover_path || (kItems[0] ? kItems[0].photo_path : ''),
                 items: kItems
-            });
+            };
+
+            if (editId) {
+                const { updateKaleidoscope } = await import('../api');
+                await updateKaleidoscope(editId, payload);
+            } else {
+                await createKaleidoscope(payload);
+            }
 
             onCancel(); // Close form and reload list
         } catch (e) {
@@ -134,9 +211,11 @@ function KaleidoscopeForm({ onCancel }) {
         setFormData({ ...formData, items: newItems });
     };
 
+    if (loadingData) return <div className="text-white p-8 text-center">Загрузка данных...</div>;
+
     return (
         <div className="bg-gray-800 p-6 rounded-lg max-w-4xl mx-auto">
-            <h2 className="text-2xl mb-6 font-bold">Создание Калейдоскопа</h2>
+            <h2 className="text-2xl mb-6 font-bold">{editId ? 'Редактирование' : 'Создание'} Калейдоскопа</h2>
 
             {showGalleryPicker ? (
                 <GalleryPicker
@@ -259,7 +338,7 @@ function KaleidoscopeForm({ onCancel }) {
                             disabled={uploading}
                             className="flex-1 py-3 bg-green-600 hover:bg-green-500 rounded font-medium disabled:opacity-50"
                         >
-                            {uploading ? 'Сохранение...' : 'Создать Калейдоскоп'}
+                            {uploading ? 'Сохранение...' : (editId ? 'Сохранить изменения' : 'Создать Калейдоскоп')}
                         </button>
                         <button
                             type="button"

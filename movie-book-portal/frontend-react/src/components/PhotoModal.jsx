@@ -57,6 +57,11 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
         return `/uploads/${path}`;
     };
 
+    // Early return if item is not provided
+    if (!item) {
+        return null;
+    }
+
     const imageUrl = safeUrl(item.file_path);
 
     return (

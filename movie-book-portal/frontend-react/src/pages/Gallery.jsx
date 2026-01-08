@@ -3,7 +3,7 @@ import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoT
 import {
     Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
     ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
-    PlayCircle, Edit
+    PlayCircle, Edit, Move
 } from 'lucide-react';
 import KaleidoscopeViewer from '../components/KaleidoscopeViewer';
 import PhotoModal from '../components/PhotoModal';
@@ -434,7 +434,7 @@ export default function GalleryPage() {
                     {/* Photo Modal */}
                     {selectedPhoto && (
                         <PhotoModal
-                            photo={selectedPhoto}
+                            item={selectedPhoto}
                             onClose={closePhotoModal}
                             onNext={() => navigatePhoto(1)}
                             onPrev={() => navigatePhoto(-1)}

@@ -241,7 +241,7 @@ export default function GalleryPage() {
             {loading ? (
                 <div className="text-center text-gray-500 mt-10">Загрузка...</div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
                     {items.map(item => {
                         const isFolder = item.type === 'folder';
                         const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;

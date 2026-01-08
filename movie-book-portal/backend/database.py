@@ -33,6 +33,11 @@ class Book(Base):
     rating = Column(Float)
     description = Column(String, nullable=True)
 
+class Settings(Base):
+    __tablename__ = "settings"
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String)
+
 def get_db():
     db = SessionLocal()
     try:

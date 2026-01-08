@@ -7,7 +7,8 @@ import {
     updateMovie, updateBook, updateTvshow,
     deleteMovie, deleteBook, deleteTvshow,
     uploadMovieFile, uploadTvshowFile, uploadEpisodeFile,
-    createEpisode
+    createEpisode,
+    fetchTheme, updateTheme, fetchStats
 } from '../api';
 
 export default function AdminPage() {
@@ -49,6 +50,20 @@ export default function AdminPage() {
 
     useEffect(() => {
         loadStats();
+        // Sync local state with API theme
+        fetchTheme()
+            .then(theme => {
+                if (theme && Object.keys(theme).length > 0) {
+                    setThemeColors(theme);
+                }
+            })
+            .catch(err => {
+                console.warn('Failed to load theme from API, using defaults/localStorage', err);
+                const savedTheme = localStorage.getItem('appTheme');
+                if (savedTheme) {
+                    try { setThemeColors(JSON.parse(savedTheme)); } catch (e) { }
+                }
+            });
     }, []);
 
     useEffect(() => {
@@ -59,17 +74,8 @@ export default function AdminPage() {
 
     const loadStats = async () => {
         try {
-            const [movies, books, tvshows] = await Promise.all([
-                fetchMovies(),
-                fetchBooks(),
-                fetchTvshows()
-            ]);
-            setStats({
-                movies: movies.length,
-                books: books.length,
-                tvshows: tvshows.length,
-                photos: 0 // TODO: Add gallery count
-            });
+            const data = await fetchStats();
+            setStats(data);
         } catch (e) {
             console.error('Failed to load stats:', e);
         }
@@ -285,18 +291,21 @@ export default function AdminPage() {
         };
 
         if (presets[preset]) {
-            setThemeColors(presets[preset]);
+            const newTheme = presets[preset];
+            setThemeColors(newTheme);
             // Apply to document root
-            Object.entries(presets[preset]).forEach(([key, value]) => {
+            Object.entries(newTheme).forEach(([key, value]) => {
                 document.documentElement.style.setProperty(key, value);
             });
             // Apply gradient background to body
-            if (presets[preset]['--background-color'] && presets[preset]['--bg-secondary']) {
-                document.body.style.background = `linear-gradient(135deg, ${presets[preset]['--background-color']} 0%, ${presets[preset]['--bg-secondary']} 100%)`;
+            if (newTheme['--background-color']) {
+                const bg2 = newTheme['--bg-secondary'] || newTheme['--background-color'];
+                document.body.style.background = `linear-gradient(135deg, ${newTheme['--background-color']} 0%, ${bg2} 100%)`;
                 document.body.style.backgroundAttachment = 'fixed';
             }
-            // Save to localStorage
-            localStorage.setItem('appTheme', JSON.stringify(presets[preset]));
+            // Save to API (and local storage as backup)
+            updateTheme(newTheme).catch(console.error);
+            localStorage.setItem('appTheme', JSON.stringify(newTheme));
         }
     };
 
@@ -497,6 +506,7 @@ export default function AdminPage() {
                     themeColors={themeColors}
                     setThemeColors={setThemeColors}
                     applyPreset={applyThemePreset}
+                    updateThemeAPI={updateTheme}
                 />
             )}
         </div>
@@ -636,7 +646,7 @@ function ContentForm({
     );
 }
 
-function ThemeSettings({ themeColors, setThemeColors, applyPreset }) {
+function ThemeSettings({ themeColors, setThemeColors, applyPreset, updateThemeAPI }) {
     return (
         <div className="max-w-2xl">
             <div className="mb-6">
@@ -663,6 +673,16 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset }) {
                                 const newColors = { ...themeColors, [key]: e.target.value };
                                 setThemeColors(newColors);
                                 document.documentElement.style.setProperty(key, e.target.value);
+                                // Save individual change to API and localStorage
+                                updateThemeAPI(newColors).catch(console.error);
+                                localStorage.setItem('appTheme', JSON.stringify(newColors));
+
+                                // Special case for body background gradient if these specific keys change
+                                if (key === '--background-color' || key === '--bg-secondary') {
+                                    const bg2 = newColors['--bg-secondary'] || newColors['--background-color'];
+                                    document.body.style.background = `linear-gradient(135deg, ${newColors['--background-color']} 0%, ${bg2} 100%)`;
+                                    document.body.style.backgroundAttachment = 'fixed';
+                                }
                             }}
                             className="w-12 h-8 sm:w-16 sm:h-10 cursor-pointer"
                         />

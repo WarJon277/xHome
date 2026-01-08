@@ -25,9 +25,16 @@
     }
 }
 
-@media (max-width: 767px) {
+@media (min-width: 481px) and (max-width: 767px) {
     .media-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .media-grid {
+        grid-template-columns: 1fr;
         gap: 1rem;
     }
 }

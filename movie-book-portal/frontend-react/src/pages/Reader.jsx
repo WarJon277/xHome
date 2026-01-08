@@ -265,10 +265,10 @@ export default function Reader() {
 
             {/* Footer */}
             <footer
-                className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 border-t shadow-lg flex-shrink-0 gap-3"
+                className="flex flex-row items-center justify-between p-2 sm:p-4 border-t shadow-lg flex-shrink-0 gap-2 sm:gap-4"
                 style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
             >
-                <div className="flex items-center justify-between w-full sm:hidden mb-2">
+                <div className="hidden sm:block flex items-center justify-between w-full sm:hidden mb-2">
                     <div className="text-xs font-bold">
                         {currentPage} / {totalPages}
                     </div>
@@ -283,14 +283,14 @@ export default function Reader() {
                 <button
                     onClick={handlePrev}
                     disabled={currentPage <= 1}
-                    className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold transition-all active:scale-95 w-full sm:w-auto"
+                    className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all active:scale-95 flex-1 sm:flex-none sm:w-auto"
                     style={{
                         backgroundColor: currentPage <= 1 ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.1)',
                         opacity: currentPage <= 1 ? 0.3 : 1,
                         cursor: currentPage <= 1 ? 'not-allowed' : 'pointer'
                     }}
                 >
-                    <ChevronLeft size={20} className="sm:w-6 sm:h-6" /> <span className="text-sm sm:text-base">Назад</span>
+                    <ChevronLeft size={18} className="sm:w-6 sm:h-6" /> <span className="text-xs sm:text-base">Назад</span>
                 </button>
 
                 <div className="hidden sm:flex flex-col items-center">
@@ -308,14 +308,14 @@ export default function Reader() {
                 <button
                     onClick={handleNext}
                     disabled={currentPage >= totalPages}
-                    className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold transition-all active:scale-95 w-full sm:w-auto"
+                    className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all active:scale-95 flex-1 sm:flex-none sm:w-auto"
                     style={{
                         backgroundColor: currentPage >= totalPages ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.1)',
                         opacity: currentPage >= totalPages ? 0.3 : 1,
                         cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer'
                     }}
                 >
-                    <span className="text-sm sm:text-base">Вперед</span> <ChevronRight size={20} className="sm:w-6 sm:h-6" />
+                    <span className="text-xs sm:text-base">Вперед</span> <ChevronRight size={18} className="sm:w-6 sm:h-6" />
                 </button>
             </footer>
         </div>

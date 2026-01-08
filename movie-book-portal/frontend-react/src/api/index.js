@@ -160,3 +160,13 @@ export const moveFolder = (folderPath, targetFolder) => {
     formData.append('target_folder', targetFolderValue);
     return fetch(`${API_BASE}/gallery/move_folder`, { method: 'POST', body: formData }).then(r => r.json());
 };
+
+// --- SETTINGS / THEME ---
+export const fetchTheme = () => request('/admin/theme');
+export const updateTheme = (settings) => request('/admin/theme', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings })
+});
+export const resetTheme = () => request('/admin/theme/reset', { method: 'POST' });
+export const fetchStats = () => request('/admin/stats');

@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { Home, Film, Tv, Image, Book, Settings, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTvNavigation } from './hooks/useTvNavigation';
 import MoviesPage from './pages/Movies';
 import GalleryPage from './pages/Gallery';
@@ -9,6 +9,7 @@ import TvShowDetails from './pages/TvShowDetails';
 import BooksPage from './pages/Books';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
+import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
 
 // Redirect home to movies
@@ -22,6 +23,35 @@ function App() {
 
   // Enable TV navigation globally
   useTvNavigation(true);
+
+  // Load and apply theme on start
+  useEffect(() => {
+    const applyTheme = (theme) => {
+      Object.entries(theme).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+      });
+      // Special case for body background gradient
+      if (theme['--background-color']) {
+        const bg2 = theme['--bg-secondary'] || theme['--background-color'];
+        document.body.style.background = `linear-gradient(135deg, ${theme['--background-color']} 0%, ${bg2} 100%)`;
+        document.body.style.backgroundAttachment = 'fixed';
+      }
+    };
+
+    // 1. Try API
+    fetchTheme()
+      .then(applyTheme)
+      .catch(err => {
+        console.warn('Failed to fetch theme from API, falling back to localStorage', err);
+        // 2. Fallback to localStorage
+        const savedTheme = localStorage.getItem('appTheme');
+        if (savedTheme) {
+          try {
+            applyTheme(JSON.parse(savedTheme));
+          } catch (e) { console.error('Failed to parse localStorage theme', e); }
+        }
+      });
+  }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 

@@ -31,7 +31,7 @@ export default function BooksPage() {
     };
 
     return (
-        <div className="p-6 pb-24">
+        <div className="p-4 sm:p-6 pb-24">
             <header className="mb-6 flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                     <Book className="text-green-500" /> Книги

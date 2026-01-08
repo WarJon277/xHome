@@ -184,32 +184,32 @@ export default function Reader() {
         >
             {/* Header */}
             <header
-                className="flex items-center justify-between p-4 border-b shadow-md flex-shrink-0"
+                className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 border-b shadow-md flex-shrink-0 gap-3"
                 style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
             >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                         onClick={() => navigate('/books')}
                         className="p-2 rounded-full hover:bg-black/10 transition-colors"
                         style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                     >
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
                     </button>
-                    <div>
-                        <h1 className="font-bold text-lg">{book.title}</h1>
-                        <p className="text-xs opacity-60">{book.author || 'Автор неизвестен'}</p>
+                    <div className="truncate">
+                        <h1 className="font-bold text-sm sm:text-lg truncate">{book.title}</h1>
+                        <p className="text-[10px] sm:text-xs opacity-60 truncate">{book.author || 'Автор неизвестен'}</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 w-full sm:w-auto">
                     {/* Font Size */}
-                    <div className="flex items-center gap-2 bg-black/5 rounded-lg p-1">
-                        <button onClick={() => setFontSize(s => Math.max(12, s - 2))} className="p-2 hover:bg-black/10 rounded">
-                            <ZoomOut size={20} />
+                    <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1">
+                        <button onClick={() => setFontSize(s => Math.max(12, s - 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded">
+                            <ZoomOut size={18} className="sm:w-5 sm:h-5" />
                         </button>
-                        <span className="text-sm font-bold w-10 text-center">{fontSize}</span>
-                        <button onClick={() => setFontSize(s => Math.min(40, s + 2))} className="p-2 hover:bg-black/10 rounded">
-                            <ZoomIn size={20} />
+                        <span className="text-xs sm:text-sm font-bold w-6 sm:w-10 text-center">{fontSize}</span>
+                        <button onClick={() => setFontSize(s => Math.min(40, s + 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded">
+                            <ZoomIn size={18} className="sm:w-5 sm:h-5" />
                         </button>
                     </div>
 
@@ -217,21 +217,21 @@ export default function Reader() {
                     <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1">
                         <button
                             onClick={() => setTheme('light')}
-                            className={`p-2 rounded transition-all ${theme === 'light' ? 'bg-white shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'light' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
-                            <Sun size={20} />
+                            <Sun size={18} className="sm:w-5 sm:h-5" />
                         </button>
                         <button
                             onClick={() => setTheme('sepia')}
-                            className={`p-2 rounded transition-all ${theme === 'sepia' ? 'bg-white shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'sepia' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
-                            <Coffee size={20} />
+                            <Coffee size={18} className="sm:w-5 sm:h-5" />
                         </button>
                         <button
                             onClick={() => setTheme('night')}
-                            className={`p-2 rounded transition-all ${theme === 'night' ? 'bg-white shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'night' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
-                            <Moon size={20} />
+                            <Moon size={18} className="sm:w-5 sm:h-5" />
                         </button>
                     </div>
                 </div>
@@ -240,7 +240,7 @@ export default function Reader() {
             {/* Content */}
             <main
                 ref={contentRef}
-                className="flex-1 overflow-y-auto px-8 py-8"
+                className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-8"
                 style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: '1.7',
@@ -265,23 +265,35 @@ export default function Reader() {
 
             {/* Footer */}
             <footer
-                className="flex items-center justify-between p-4 border-t shadow-lg flex-shrink-0"
+                className="flex flex-col sm:flex-row items-center justify-between p-3 sm:p-4 border-t shadow-lg flex-shrink-0 gap-3"
                 style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
             >
+                <div className="flex items-center justify-between w-full sm:hidden mb-2">
+                    <div className="text-xs font-bold">
+                        {currentPage} / {totalPages}
+                    </div>
+                    <div className="flex-1 mx-4 h-1 bg-black/10 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-blue-500"
+                            style={{ width: `${(currentPage / totalPages) * 100}%` }}
+                        ></div>
+                    </div>
+                </div>
+
                 <button
                     onClick={handlePrev}
                     disabled={currentPage <= 1}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all active:scale-95"
+                    className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold transition-all active:scale-95 w-full sm:w-auto"
                     style={{
                         backgroundColor: currentPage <= 1 ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.1)',
                         opacity: currentPage <= 1 ? 0.3 : 1,
                         cursor: currentPage <= 1 ? 'not-allowed' : 'pointer'
                     }}
                 >
-                    <ChevronLeft size={24} /> Назад
+                    <ChevronLeft size={20} className="sm:w-6 sm:h-6" /> <span className="text-sm sm:text-base">Назад</span>
                 </button>
 
-                <div className="flex flex-col items-center">
+                <div className="hidden sm:flex flex-col items-center">
                     <div className="text-sm font-bold mb-2">
                         Страница {currentPage} из {totalPages}
                     </div>
@@ -296,14 +308,14 @@ export default function Reader() {
                 <button
                     onClick={handleNext}
                     disabled={currentPage >= totalPages}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all active:scale-95"
+                    className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold transition-all active:scale-95 w-full sm:w-auto"
                     style={{
                         backgroundColor: currentPage >= totalPages ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.1)',
                         opacity: currentPage >= totalPages ? 0.3 : 1,
                         cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer'
                     }}
                 >
-                    Вперед <ChevronRight size={24} />
+                    <span className="text-sm sm:text-base">Вперед</span> <ChevronRight size={20} className="sm:w-6 sm:h-6" />
                 </button>
             </footer>
         </div>

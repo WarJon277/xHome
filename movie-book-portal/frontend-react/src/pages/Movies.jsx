@@ -34,7 +34,7 @@ export default function MoviesPage() {
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
             {/* Player Modal */}
             {selectedMovie && (
                 <Player

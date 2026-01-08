@@ -180,14 +180,14 @@ export default function GalleryPage() {
         if (!path) return null;
         path = path.replace(/\\/g, '/');
         if (path.startsWith('http')) return path;
-        if (path.startsWith('/uploads/')) return path;
-        if (path.startsWith('uploads/')) return `/${path}`;
+        if (path.startsWith('/uploads/') || path.startsWith('/static/')) return path;
+        if (path.startsWith('uploads/') || path.startsWith('static/')) return `/${path}`;
         if (path.startsWith('/')) return `/uploads${path}`;
         return `/uploads/${path}`;
     };
 
     return (
-        <div className="p-6 relative min-h-screen pb-24">
+        <div className="p-4 sm:p-6 relative min-h-screen pb-24">
             {/* Hidden File Input */}
             <input
                 type="file"
@@ -214,7 +214,7 @@ export default function GalleryPage() {
                 </div>
 
                 {/* Breadcrumbs */}
-                <div className="text-gray-400 text-sm flex items-center gap-2 bg-card p-2 rounded px-4 inline-block">
+                <div className="text-gray-400 text-sm flex flex-wrap items-center gap-2 bg-card p-2 rounded px-4 inline-flex max-w-full">
                     <span
                         className={`cursor-pointer hover:text-white ${!currentFolder ? 'text-white' : ''}`}
                         onClick={() => setCurrentFolder("")}
@@ -244,7 +244,7 @@ export default function GalleryPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {items.map(item => {
                         const isFolder = item.type === 'folder';
-                        const imageUrl = !isFolder ? getImageUrl(item.file_path || item.thumbnail_path) : null;
+                        const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
 
                         return (
                             <div
@@ -324,22 +324,20 @@ export default function GalleryPage() {
             )}
 
             {/* Floating Action Buttons (FABs) */}
-            <div className="fixed bottom-8 right-8 flex flex-col gap-4">
+            <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-3 sm:gap-4">
                 <button
                     onClick={handleCreateFolder}
-                    className="p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
+                    className="p-3 sm:p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
                     title="Создать папку"
                 >
-                    <Folder size={24} />
-                    <span className="sr-only">New Folder</span>
+                    <Folder size={20} className="sm:w-6 sm:h-6" />
                 </button>
                 <button
                     onClick={handleUploadClick}
-                    className="p-4 bg-primary hover:bg-red-700 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
+                    className="p-3 sm:p-4 bg-primary hover:bg-red-700 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
                     title="Загрузить фото"
                 >
-                    <Upload size={24} />
-                    <span className="sr-only">Upload Photo</span>
+                    <Upload size={20} className="sm:w-6 sm:h-6" />
                 </button>
             </div>
         </div>

@@ -5,18 +5,19 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(true);
     const [showControls, setShowControls] = useState(true);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const controlsTimeoutRef = useRef(null);
+    const progressRef = useRef(null);
 
     // Normalize path
     const getVideoUrl = () => {
-        // Priority 1: Direct src prop
         if (src) {
             let path = src;
             path = path.replace(/\\/g, '/');
             return path;
         }
 
-        // Priority 2: Extract from item
         if (!item) return '';
 
         let path = item.file_path || item.path;
@@ -25,7 +26,6 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         path = path.replace(/\\/g, '/');
         if (path.startsWith('http')) return path;
 
-        // Ensure strictly one /uploads prefix
         if (path.startsWith('/uploads/')) return path;
         if (path.startsWith('uploads/')) return `/${path}`;
 
@@ -35,22 +35,42 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const videoUrl = getVideoUrl();
 
     useEffect(() => {
-        // Auto-play on mount
+        // Auto-play on mount and focus video for TV remotes
         if (videoRef.current) {
             videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
+            videoRef.current.focus();
         }
 
         const handleKeyDown = (e) => {
-            if (e.key === 'Escape') onClose();
+            let handled = false;
+
+            if (e.key === 'Escape') {
+                onClose();
+                handled = true;
+            }
             if (e.key === ' ' || e.key === 'Enter') {
                 togglePlay();
+                handled = true;
+            }
+            if (e.key === 'ArrowRight') {
+                seek(10);
+                handled = true;
+            }
+            if (e.key === 'ArrowLeft') {
+                seek(-10);
+                handled = true;
+            }
+
+            if (handled) {
+                e.preventDefault();
+                e.stopPropagation();
             }
             showControlsTemporarily();
         };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+        window.addEventListener('keydown', handleKeyDown, true); // Use capture to priority
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [duration, isPlaying]);
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -62,6 +82,29 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 setIsPlaying(false);
             }
         }
+    };
+
+    const seek = (amount) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration, videoRef.current.currentTime + amount));
+            setCurrentTime(videoRef.current.currentTime);
+            showControlsTemporarily();
+        }
+    };
+
+    const handleProgressClick = (e) => {
+        if (progressRef.current && videoRef.current) {
+            const rect = progressRef.current.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            videoRef.current.currentTime = pos * videoRef.current.duration;
+            showControlsTemporarily();
+        }
+    };
+
+    const formatTime = (time) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
 
     const showControlsTemporarily = () => {
@@ -78,45 +121,64 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+            className="fixed inset-0 z-50 bg-black flex items-center justify-center font-sans overflow-hidden"
             onMouseMove={handleMouseMove}
         >
             <video
                 ref={videoRef}
                 src={videoUrl}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain outline-none"
+                tabIndex={-1}
                 onClick={togglePlay}
+                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
             />
 
             {/* Overlay Controls */}
-            <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 pointer-events-none flex flex-col justify-between p-8 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 pointer-events-none flex flex-col justify-between p-6 sm:p-10 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
 
                 {/* Header */}
                 <div className="flex items-center justify-between pointer-events-auto">
-                    <button onClick={onClose} className="p-2 text-white hover:bg-white/20 rounded-full">
-                        <ChevronLeft size={40} />
+                    <button onClick={onClose} className="p-3 text-white hover:bg-white/20 rounded-full transition-colors">
+                        <ChevronLeft size={48} />
                     </button>
-                    <h2 className="text-2xl font-bold text-white shadow-black drop-shadow-md">
-                        {title}
-                    </h2>
-                    <div className="w-12"></div>
+                    <div className="text-center flex-1 mx-4">
+                        <h2 className="text-xl sm:text-3xl font-bold text-white drop-shadow-lg truncate">
+                            {title}
+                        </h2>
+                    </div>
+                    <div className="w-16"></div>
                 </div>
 
-                {/* Center Play Button */}
+                {/* Center Play Button (only pulse if paused) */}
                 {!isPlaying && (
                     <div className="self-center pointer-events-auto">
-                        <button onClick={togglePlay} className="p-6 bg-red-600 rounded-full text-white hover:bg-red-700 hover:scale-110 transition-transform">
-                            <Play fill="currentColor" size={48} />
+                        <button onClick={togglePlay} className="p-8 bg-red-600 rounded-full text-white hover:bg-red-700 hover:scale-110 transition-all shadow-2xl">
+                            <Play fill="currentColor" size={64} />
                         </button>
                     </div>
                 )}
 
-                {/* Footer Controls (Scrubber placeholder) */}
-                <div className="w-full bg-white/10 h-2 rounded-full mt-auto mb-8 pointer-events-auto relative cursor-pointer">
-                    <div
-                        className="bg-red-600 h-full rounded-full"
-                        style={{ width: '0%' }} // TODO: bind to currentTime
-                    ></div>
+                {/* Footer Controls */}
+                <div className="w-full pointer-events-auto mt-auto flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                        <span className="text-white text-sm sm:text-lg font-medium min-w-[60px]">{formatTime(currentTime)}</span>
+                        <div
+                            ref={progressRef}
+                            onClick={handleProgressClick}
+                            className="flex-1 h-2 sm:h-3 bg-white/20 rounded-full overflow-hidden cursor-pointer relative group"
+                        >
+                            <div
+                                className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
+                                style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                            >
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover:scale-100 transition-transform shadow-md" />
+                            </div>
+                        </div>
+                        <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>
+                    </div>
                 </div>
             </div>
         </div>

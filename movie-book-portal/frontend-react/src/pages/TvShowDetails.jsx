@@ -59,30 +59,31 @@ export default function TvShowDetails() {
     };
 
     return (
-        <div className="min-h-screen bg-[#141414] text-white p-6 pb-24 relative">
+        <div className="min-h-screen bg-[#141414] text-white p-4 sm:p-6 pb-24 relative">
             <button
                 onClick={() => navigate('/tvshows')}
-                className="absolute top-6 left-6 z-10 p-2 bg-black/50 rounded-full hover:bg-white/20 transition-colors"
+                className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 p-2 bg-black/50 rounded-full hover:bg-white/20 transition-colors"
+                style={{ marginTop: 'env(safe-area-inset-top)' }}
             >
-                <ArrowLeft size={24} />
+                <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
             </button>
 
             {/* Hero Section */}
-            <div className="relative w-full h-[50vh] rounded-2xl overflow-hidden mb-8 shadow-2xl">
+            <div className="relative w-full h-[40vh] sm:h-[50vh] rounded-2xl overflow-hidden mb-6 sm:mb-8 shadow-2xl">
                 <img
                     src={getImageUrl(show.backdrop_path || show.poster_path)}
                     className="w-full h-full object-cover"
                     alt={show.title}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent"></div>
-                <div className="absolute bottom-0 left-0 p-8 w-full max-w-4xl">
-                    <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-lg">{show.title}</h1>
-                    <div className="flex items-center gap-4 text-sm md:text-base text-gray-300 mb-4">
-                        <span className="flex items-center gap-1"><Calendar size={16} /> {show.release_date?.split('-')[0]}</span>
-                        <span className="flex items-center gap-1 text-yellow-500"><Star size={16} fill="currentColor" /> {show.rating || 'N/A'}</span>
+                <div className="absolute bottom-0 left-0 p-4 sm:p-8 w-full max-w-4xl">
+                    <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold mb-2 sm:mb-4 drop-shadow-lg">{show.title}</h1>
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-base text-gray-300 mb-2 sm:mb-4">
+                        <span className="flex items-center gap-1"><Calendar size={14} className="sm:w-4 sm:h-4" /> {show.release_date?.split('-')[0]}</span>
+                        <span className="flex items-center gap-1 text-yellow-500"><Star size={14} fill="currentColor" className="sm:w-4 sm:h-4" /> {show.rating || 'N/A'}</span>
                         <span className="bg-white/10 px-2 py-0.5 rounded text-white">{show.genre}</span>
                     </div>
-                    <p className="text-gray-300 line-clamp-3 text-lg">{show.description}</p>
+                    <p className="text-gray-300 line-clamp-2 sm:line-clamp-3 text-sm sm:text-lg opacity-90">{show.description}</p>
                 </div>
             </div>
 
@@ -99,21 +100,21 @@ export default function TvShowDetails() {
                                     onClick={() => setSelectedEpisode(ep)}
                                 >
                                     {/* Thumbnail */}
-                                    <div className="w-32 h-24 bg-black flex-shrink-0 relative overflow-hidden">
+                                    <div className="w-24 sm:w-32 h-20 sm:h-24 bg-black flex-shrink-0 relative overflow-hidden">
                                         {ep.thumbnail_path ? (
                                             <img src={getImageUrl(ep.thumbnail_path)} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-600">No Img</div>
+                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">No Img</div>
                                         )}
                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                                            <Play size={24} fill="currentColor" />
+                                            <Play size={20} fill="currentColor" className="sm:w-6 sm:h-6" />
                                         </div>
                                     </div>
 
                                     {/* Info */}
-                                    <div className="p-3 flex flex-col justify-center min-w-0">
-                                        <h3 className="font-medium text-gray-200 truncate">{ep.episode_number}. {ep.title}</h3>
-                                        <p className="text-sm text-gray-500 line-clamp-2">{ep.description || 'No description'}</p>
+                                    <div className="p-2 sm:p-3 flex flex-col justify-center min-w-0">
+                                        <h3 className="font-medium text-sm sm:text-base text-gray-200 truncate">{ep.episode_number}. {ep.title}</h3>
+                                        <p className="text-[10px] sm:text-sm text-gray-500 line-clamp-1 sm:line-clamp-2">{ep.description || 'No description'}</p>
                                     </div>
                                 </div>
                             ))}

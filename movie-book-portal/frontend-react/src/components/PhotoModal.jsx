@@ -51,18 +51,18 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
             {onPrev && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onPrev(); }}
-                    className="absolute left-4 text-white/50 hover:text-white z-40 p-4 rounded-full hover:bg-white/5 transition-all"
+                    className="absolute left-2 sm:left-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all"
                 >
-                    <ChevronLeft size={48} />
+                    <ChevronLeft size={32} className="sm:w-12 sm:h-12" />
                 </button>
             )}
 
             {onNext && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onNext(); }}
-                    className="absolute right-4 text-white/50 hover:text-white z-40 p-4 rounded-full hover:bg-white/5 transition-all"
+                    className="absolute right-2 sm:right-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all"
                 >
-                    <ChevronRight size={48} />
+                    <ChevronRight size={32} className="sm:w-12 sm:h-12" />
                 </button>
             )}
 
@@ -77,10 +77,10 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
             </div>
 
             {/* Footer / Controls */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
-                <div className="text-white">
-                    <h2 className="text-xl font-bold">{item.title || item.name}</h2>
-                    <p className="text-sm text-gray-400">
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
+                <div className="text-white truncate pr-4">
+                    <h2 className="text-lg sm:text-xl font-bold truncate">{item.title || item.name}</h2>
+                    <p className="text-xs sm:text-sm text-gray-400">
                         {new Date(item.modified * 1000).toLocaleString()}
                     </p>
                 </div>

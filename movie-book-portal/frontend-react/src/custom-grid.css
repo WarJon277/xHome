@@ -28,5 +28,6 @@
 @media (max-width: 767px) {
     .media-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
     }
 }

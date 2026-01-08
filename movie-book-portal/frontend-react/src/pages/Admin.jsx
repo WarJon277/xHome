@@ -301,9 +301,9 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-white p-8">
+        <div className="min-h-screen bg-background text-white p-4 sm:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/')}
@@ -311,15 +311,15 @@ export default function AdminPage() {
                     >
                         <ArrowLeft size={24} />
                     </button>
-                    <h1 className="text-3xl font-bold">Админ-панель</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold">Админ-панель</h1>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-gray-700 mb-6">
+            <div className="flex gap-2 sm:gap-4 border-b border-gray-700 mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
                 <button
                     onClick={() => setActiveTab('dashboard')}
-                    className={`px-6 py-3 font-medium transition-colors ${activeTab === 'dashboard'
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'dashboard'
                         ? 'border-b-2 border-primary text-primary'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -328,7 +328,7 @@ export default function AdminPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('content')}
-                    className={`px-6 py-3 font-medium transition-colors ${activeTab === 'content'
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'content'
                         ? 'border-b-2 border-primary text-primary'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -337,7 +337,7 @@ export default function AdminPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('themes')}
-                    className={`px-6 py-3 font-medium transition-colors ${activeTab === 'themes'
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'themes'
                         ? 'border-b-2 border-primary text-primary'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -361,76 +361,111 @@ export default function AdminPage() {
                 <div>
                     {!showForm ? (
                         <>
-                            <div className="flex gap-4 mb-6">
-                                <button
-                                    onClick={() => setContentType('movies')}
-                                    className={`px-4 py-2 rounded ${contentType === 'movies' ? 'bg-primary' : 'bg-gray-700'
-                                        }`}
-                                >
-                                    Фильмы
-                                </button>
-                                <button
-                                    onClick={() => setContentType('books')}
-                                    className={`px-4 py-2 rounded ${contentType === 'books' ? 'bg-primary' : 'bg-gray-700'
-                                        }`}
-                                >
-                                    Книги
-                                </button>
-                                <button
-                                    onClick={() => setContentType('tvshows')}
-                                    className={`px-4 py-2 rounded ${contentType === 'tvshows' ? 'bg-primary' : 'bg-gray-700'
-                                        }`}
-                                >
-                                    Сериалы
-                                </button>
+                            <div className="flex flex-wrap gap-4 mb-6 items-center">
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setContentType('movies')}
+                                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded text-sm sm:text-base ${contentType === 'movies' ? 'bg-primary' : 'bg-gray-700'
+                                            }`}
+                                    >
+                                        Фильмы
+                                    </button>
+                                    <button
+                                        onClick={() => setContentType('books')}
+                                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded text-sm sm:text-base ${contentType === 'books' ? 'bg-primary' : 'bg-gray-700'
+                                            }`}
+                                    >
+                                        Книги
+                                    </button>
+                                    <button
+                                        onClick={() => setContentType('tvshows')}
+                                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded text-sm sm:text-base ${contentType === 'tvshows' ? 'bg-primary' : 'bg-gray-700'
+                                            }`}
+                                    >
+                                        Сериалы
+                                    </button>
+                                </div>
                                 <button
                                     onClick={() => setShowForm(true)}
-                                    className="ml-auto px-4 py-2 bg-green-600 rounded flex items-center gap-2"
+                                    className="ml-auto px-4 py-2 bg-green-600 rounded flex items-center gap-2 text-sm sm:text-base"
                                 >
-                                    <Plus size={20} /> Добавить
+                                    <Plus size={20} /> <span className="hidden sm:inline">Добавить</span>
                                 </button>
                             </div>
 
                             <div className="bg-card-background rounded-lg overflow-hidden">
-                                <table className="w-full">
-                                    <thead className="bg-gray-800">
-                                        <tr>
-                                            <th className="p-4 text-left">ID</th>
-                                            <th className="p-4 text-left">Название</th>
-                                            <th className="p-4 text-left">Действия</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.length === 0 ? (
+                                {/* Desktop Table */}
+                                <div className="hidden md:block">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-800">
                                             <tr>
-                                                <td colSpan="3" className="p-8 text-center text-gray-400">
-                                                    Нет элементов
-                                                </td>
+                                                <th className="p-4 text-left">ID</th>
+                                                <th className="p-4 text-left">Название</th>
+                                                <th className="p-4 text-left">Действия</th>
                                             </tr>
-                                        ) : (
-                                            items.map(item => (
-                                                <tr key={item.id} className="border-b border-gray-700">
-                                                    <td className="p-4">{item.id}</td>
-                                                    <td className="p-4">{item.title}</td>
-                                                    <td className="p-4 flex gap-2">
-                                                        <button
-                                                            onClick={() => handleEdit(item)}
-                                                            className="p-2 bg-yellow-600 rounded hover:bg-yellow-700"
-                                                        >
-                                                            <Edit size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(item.id)}
-                                                            className="p-2 bg-red-600 rounded hover:bg-red-700"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                        </thead>
+                                        <tbody>
+                                            {items.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="3" className="p-8 text-center text-gray-400">
+                                                        Нет элементов
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            ) : (
+                                                items.map(item => (
+                                                    <tr key={item.id} className="border-b border-gray-700">
+                                                        <td className="p-4">{item.id}</td>
+                                                        <td className="p-4">{item.title}</td>
+                                                        <td className="p-4 flex gap-2">
+                                                            <button
+                                                                onClick={() => handleEdit(item)}
+                                                                className="p-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(item.id)}
+                                                                className="p-2 bg-red-600 rounded hover:bg-red-700"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile List */}
+                                <div className="md:hidden">
+                                    {items.length === 0 ? (
+                                        <div className="p-8 text-center text-gray-400">Нет элементов</div>
+                                    ) : (
+                                        items.map(item => (
+                                            <div key={item.id} className="p-4 border-b border-gray-700 flex justify-between items-center">
+                                                <div className="truncate pr-4">
+                                                    <div className="text-xs text-gray-500">ID: {item.id}</div>
+                                                    <div className="font-medium truncate">{item.title}</div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(item)}
+                                                        className="p-2 bg-yellow-600 rounded"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="p-2 bg-red-600 rounded"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         </>
                     ) : (
@@ -484,7 +519,7 @@ function ContentForm({
     isUploading, uploadProgress, editingId
 }) {
     return (
-        <form onSubmit={onSubmit} className="bg-card-background p-6 rounded-lg max-w-2xl">
+        <form onSubmit={onSubmit} className="bg-card-background p-4 sm:p-6 rounded-lg max-w-2xl">
             <h2 className="text-2xl mb-6">{editingId ? 'Редактирование' : 'Добавить новый элемент'}</h2>
 
             <input
@@ -617,10 +652,10 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset }) {
                 </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {Object.entries(themeColors).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-4 bg-card-background p-4 rounded">
-                        <label className="flex-1">{key}</label>
+                        <label className="flex-1 text-sm sm:text-base">{key}</label>
                         <input
                             type="color"
                             value={value}
@@ -629,7 +664,7 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset }) {
                                 setThemeColors(newColors);
                                 document.documentElement.style.setProperty(key, e.target.value);
                             }}
-                            className="w-16 h-10 cursor-pointer"
+                            className="w-12 h-8 sm:w-16 sm:h-10 cursor-pointer"
                         />
                     </div>
                 ))}

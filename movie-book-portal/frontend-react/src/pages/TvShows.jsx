@@ -26,7 +26,7 @@ export default function TvShowsPage() {
     };
 
     return (
-        <div className="p-6 pb-24">
+        <div className="p-4 sm:p-6 pb-24">
             <header className="mb-6 flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                     <Tv className="text-purple-500" /> Сериалы

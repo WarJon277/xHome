@@ -170,10 +170,16 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
         window.addEventListener('keydown', handleKeyDown, true); // Use capture to priority
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        window.addEventListener('popstate', handlePopState);
+
+        // Delay adding listener to avoid catching our own history.back() from strict mode cleanup
+        const timer = setTimeout(() => {
+            window.addEventListener('popstate', handlePopState);
+        }, 100);
+
         document.body.style.overflow = 'hidden';
 
         return () => {
+            clearTimeout(timer);
             window.removeEventListener('keydown', handleKeyDown, true);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             window.removeEventListener('popstate', handlePopState);

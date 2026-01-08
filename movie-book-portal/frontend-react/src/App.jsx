@@ -95,7 +95,7 @@ function App() {
 
         {/* Mobile Header */}
         <header className="mobile-header">
-          <span className="font-bold text-xl text-red-600">MediaPortal</span>
+          <span className="font-bold text-xl text-red-600">Портал дома</span>
           <button onClick={toggleMenu} className="p-2">
             {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
@@ -105,7 +105,7 @@ function App() {
         <nav className={`sidebar ${isMenuOpen ? 'open' : ''}`}>
           <div className="mb-8 pl-4">
             <h1 className="text-red-600 text-2xl font-bold">
-              MediaPortal
+              Портал дома
             </h1>
           </div>
 

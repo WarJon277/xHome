@@ -136,6 +136,22 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 keyCode === 179 || keyCode === 19 || keyCode === 415 || keyCode === 32 || keyCode === 13;
 
             if (isPlayPause) {
+                // IMPORTANT: If user is pressing Enter/Space on a focused button, let the button handle it.
+                // Do not hijack it for Play/Pause.
+                const active = document.activeElement;
+                const isInteractive = active && (
+                    active.tagName === 'BUTTON' ||
+                    active.tagName === 'A' ||
+                    active.tagName === 'INPUT' ||
+                    active.getAttribute('role') === 'button'
+                );
+                const isGenericKey = key === ' ' || key === 'Enter' || keyCode === 32 || keyCode === 13;
+
+                if (isInteractive && isGenericKey) {
+                    // Let default browser behavior (click) happen
+                    return;
+                }
+
                 togglePlay();
                 handled = true;
             }

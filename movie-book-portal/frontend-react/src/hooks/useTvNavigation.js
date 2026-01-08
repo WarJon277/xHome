@@ -62,59 +62,72 @@ export function useTvNavigation(enabled = true) {
                 };
 
                 // Find candidates in the direction of movement
-                const candidates = focusable.filter((el, idx) => {
-                    if (idx === currentIndex) return false;
+                const activeContainer = active.closest('.sidebar') || active.closest('.main-content') || active.closest('main') || active.closest('nav');
+
+                const candidates = focusable.map(el => {
+                    if (el === active) return null;
 
                     const rect = el.getBoundingClientRect();
-                    const margin = 50; // Tolerance for alignment
+                    const margin = 20; // Reduced margin for more precise check
 
+                    let isCandidate = false;
                     switch (e.key) {
                         case 'ArrowRight':
-                            return rect.left >= currentRect.right - margin;
+                            isCandidate = rect.left >= currentRect.right - margin;
+                            break;
                         case 'ArrowLeft':
-                            return rect.right <= currentRect.left + margin;
+                            isCandidate = rect.right <= currentRect.left + margin;
+                            break;
                         case 'ArrowDown':
-                            return rect.top >= currentRect.bottom - margin;
+                            isCandidate = rect.top >= currentRect.bottom - margin;
+                            break;
                         case 'ArrowUp':
-                            return rect.bottom <= currentRect.top + margin;
-                        default:
-                            return false;
+                            isCandidate = rect.bottom <= currentRect.top + margin;
+                            break;
                     }
-                });
+
+                    if (!isCandidate) return null;
+
+                    const rectCenter = {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2
+                    };
+
+                    // Calculate distance
+                    let dist = Math.hypot(rectCenter.x - currentCenter.x, rectCenter.y - currentCenter.y);
+
+                    // PENALTY: If candidate is in a different major container, add massive distance penalty
+                    const elContainer = el.closest('.sidebar') || el.closest('.main-content') || el.closest('main') || el.closest('nav');
+                    if (activeContainer && elContainer && activeContainer !== elContainer) {
+                        dist += 2000; // Large penalty for jumping between sidebar and main
+                    }
+
+                    // PREFERENCE: Elements that are more "aligned" in the direction of movement get a bonus
+                    const dx = Math.abs(rectCenter.x - currentCenter.x);
+                    const dy = Math.abs(rectCenter.y - currentCenter.y);
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        dist += dx * 2; // Penalize horizontal offset when moving vertically
+                    } else {
+                        dist += dy * 2; // Penalize vertical offset when moving horizontally
+                    }
+
+                    return { el, dist };
+                }).filter(Boolean);
 
                 if (candidates.length > 0) {
-                    // Find closest candidate
-                    let closest = candidates[0];
-                    let minDist = Infinity;
-
-                    candidates.forEach(el => {
-                        const rect = el.getBoundingClientRect();
-                        const center = {
-                            x: rect.left + rect.width / 2,
-                            y: rect.top + rect.height / 2
-                        };
-                        const dist = Math.hypot(
-                            center.x - currentCenter.x,
-                            center.y - currentCenter.y
-                        );
-                        if (dist < minDist) {
-                            minDist = dist;
-                            closest = el;
-                        }
-                    });
+                    // Find closest candidate by distance (with penalties applied)
+                    candidates.sort((a, b) => a.dist - b.dist);
+                    const closest = candidates[0].el;
 
                     if (closest) {
                         e.preventDefault();
                         closest.focus();
 
-                        // Intelligent scroll: only scroll the closest scrollable parent
-                        // to avoid global window scrolling when navigating sidebars
                         const scrollOptions = {
                             behavior: 'smooth',
                             block: 'nearest',
                             inline: 'nearest'
                         };
-
                         closest.scrollIntoView(scrollOptions);
                     }
                 }

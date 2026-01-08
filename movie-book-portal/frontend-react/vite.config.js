@@ -18,6 +18,7 @@ export default defineConfig({
       '/genres': { target: 'http://localhost:5055', changeOrigin: true },
       '/progress': { target: 'http://localhost:5055', changeOrigin: true },
       '/scan': { target: 'http://localhost:5055', changeOrigin: true },
+      '/admin': { target: 'http://localhost:5055', changeOrigin: true },
       '/delete_file': { target: 'http://localhost:5055', changeOrigin: true },
       '/delete_folder': { target: 'http://localhost:5055', changeOrigin: true },
 

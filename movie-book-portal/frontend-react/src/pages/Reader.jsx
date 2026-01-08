@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchBook, fetchBookPage } from '../api';
-import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee } from 'lucide-react';
+import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
+import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw } from 'lucide-react';
 
 export default function Reader() {
     const { id } = useParams();
@@ -11,30 +11,50 @@ export default function Reader() {
     const [pageContent, setPageContent] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [fontSize, setFontSize] = useState(20);
-    const [theme, setTheme] = useState('sepia');
+    const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('reader-font-size')) || 20);
+    const [theme, setTheme] = useState(() => localStorage.getItem('reader-theme') || 'sepia');
     const [error, setError] = useState(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const contentRef = useRef(null);
 
     useEffect(() => {
         const loadMetadata = async () => {
             try {
-                console.log('=== Loading book metadata, ID:', id);
                 const data = await fetchBook(id);
-                console.log('Book metadata received:', data);
                 setBook(data);
                 if (data.total_pages) {
-                    console.log('Setting total pages:', data.total_pages);
                     setTotalPages(data.total_pages);
                 }
+
+                // Load Progress
+                try {
+                    const prog = await fetchProgress('book', id);
+                    if (prog && prog.progress_seconds > 0) {
+                        const savedPage = Math.floor(prog.progress_seconds);
+                        if (savedPage > 0 && savedPage <= (data.total_pages || 9999)) {
+                            setCurrentPage(savedPage);
+                        }
+                    }
+                } catch (e) { console.warn("Could not load progress", e); }
+                setIsInitialLoad(false);
             } catch (e) {
-                console.error("Failed to load book metadata:", e);
                 setError(`Ошибка загрузки книги: ${e.message}`);
             }
         };
         loadMetadata();
     }, [id]);
+
+    useEffect(() => {
+        if (!isInitialLoad && id) {
+            saveProgress('book', id, currentPage).catch(console.error);
+        }
+    }, [currentPage, id, isInitialLoad]);
+
+    useEffect(() => {
+        localStorage.setItem('reader-font-size', fontSize);
+        localStorage.setItem('reader-theme', theme);
+    }, [fontSize, theme]);
 
     useEffect(() => {
         if (!book) {

@@ -19,6 +19,8 @@ export default function AdminPage() {
     // Content Management State
     const [contentType, setContentType] = useState('movies'); // movies, books, tvshows
     const [items, setItems] = useState([]);
+    const [isLoadingItems, setIsLoadingItems] = useState(false);
+    const [loadError, setLoadError] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -83,6 +85,8 @@ export default function AdminPage() {
     };
 
     const loadContent = async () => {
+        setIsLoadingItems(true);
+        setLoadError(null);
         try {
             let data;
             switch (contentType) {
@@ -95,11 +99,24 @@ export default function AdminPage() {
                 case 'tvshows':
                     data = await fetchTvshows();
                     break;
+                default:
+                    data = [];
             }
-            setItems(data || []);
+
+            // Ensure data is an array
+            if (Array.isArray(data)) {
+                setItems(data);
+            } else {
+                console.warn('Expected array for content, got:', typeof data);
+                setItems([]);
+                setLoadError('Неверный формат данных от сервера');
+            }
         } catch (e) {
             console.error('Failed to load content:', e);
+            setLoadError(`Ошибка загрузки: ${e.message}`);
             setItems([]);
+        } finally {
+            setIsLoadingItems(false);
         }
     };
 
@@ -401,78 +418,93 @@ export default function AdminPage() {
                             </div>
 
                             <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--card-bg)' }}>
-                                {/* Desktop Table */}
-                                <div className="hidden md:block">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-800">
-                                            <tr>
-                                                <th className="p-4 text-left">ID</th>
-                                                <th className="p-4 text-left">Название</th>
-                                                <th className="p-4 text-left">Действия</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                {loadError && (
+                                    <div className="p-4 bg-red-900/30 border border-red-500/50 text-red-200 text-center">
+                                        {loadError}
+                                        <button onClick={loadContent} className="ml-4 underline">Повторить</button>
+                                    </div>
+                                )}
+
+                                {isLoadingItems && (
+                                    <div className="p-8 text-center text-gray-400">Загрузка...</div>
+                                )}
+
+                                {!isLoadingItems && !loadError && (
+                                    <>
+                                        {/* Desktop Table */}
+                                        <div className="hidden md:block">
+                                            <table className="w-full">
+                                                <thead className="bg-gray-800">
+                                                    <tr>
+                                                        <th className="p-4 text-left">ID</th>
+                                                        <th className="p-4 text-left">Название</th>
+                                                        <th className="p-4 text-left">Действия</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {items.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="3" className="p-8 text-center text-gray-400">
+                                                                Нет элементов
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        items.map(item => (
+                                                            <tr key={item.id} className="border-b border-gray-700">
+                                                                <td className="p-4">{item.id}</td>
+                                                                <td className="p-4">{item.title}</td>
+                                                                <td className="p-4 flex gap-2">
+                                                                    <button
+                                                                        onClick={() => handleEdit(item)}
+                                                                        className="p-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                                                                    >
+                                                                        <Edit size={16} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(item.id)}
+                                                                        className="p-2 bg-red-600 rounded hover:bg-red-700"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Mobile List */}
+                                        <div className="md:hidden">
                                             {items.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="3" className="p-8 text-center text-gray-400">
-                                                        Нет элементов
-                                                    </td>
-                                                </tr>
+                                                <div className="p-8 text-center text-gray-400">Нет элементов</div>
                                             ) : (
                                                 items.map(item => (
-                                                    <tr key={item.id} className="border-b border-gray-700">
-                                                        <td className="p-4">{item.id}</td>
-                                                        <td className="p-4">{item.title}</td>
-                                                        <td className="p-4 flex gap-2">
+                                                    <div key={item.id} className="p-4 border-b border-gray-700 flex justify-between items-center">
+                                                        <div className="truncate pr-4">
+                                                            <div className="text-xs text-gray-500">ID: {item.id}</div>
+                                                            <div className="font-medium truncate">{item.title}</div>
+                                                        </div>
+                                                        <div className="flex gap-2">
                                                             <button
                                                                 onClick={() => handleEdit(item)}
-                                                                className="p-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                                                                className="p-2 bg-yellow-600 rounded"
                                                             >
                                                                 <Edit size={16} />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDelete(item.id)}
-                                                                className="p-2 bg-red-600 rounded hover:bg-red-700"
+                                                                className="p-2 bg-red-600 rounded"
                                                             >
                                                                 <Trash2 size={16} />
                                                             </button>
-                                                        </td>
-                                                    </tr>
+                                                        </div>
+                                                    </div>
                                                 ))
                                             )}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* Mobile List */}
-                                <div className="md:hidden">
-                                    {items.length === 0 ? (
-                                        <div className="p-8 text-center text-gray-400">Нет элементов</div>
-                                    ) : (
-                                        items.map(item => (
-                                            <div key={item.id} className="p-4 border-b border-gray-700 flex justify-between items-center">
-                                                <div className="truncate pr-4">
-                                                    <div className="text-xs text-gray-500">ID: {item.id}</div>
-                                                    <div className="font-medium truncate">{item.title}</div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleEdit(item)}
-                                                        className="p-2 bg-yellow-600 rounded"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="p-2 bg-red-600 rounded"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </>
                     ) : (

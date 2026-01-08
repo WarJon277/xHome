@@ -53,7 +53,7 @@ export default function KaleidoscopeViewer() {
             {loading ? (
                 <div className="text-gray-400 text-center">Загрузка...</div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
                     {kaleidoscopes.length === 0 && <div className="col-span-full text-center text-gray-500">Нет калейдоскопов</div>}
                     {kaleidoscopes.map(k => {
                         const cover = k.cover_path || (k.items && k.items[0] ? k.items[0].photo_path : null);
@@ -62,7 +62,7 @@ export default function KaleidoscopeViewer() {
                             <div
                                 key={k.id}
                                 onClick={() => handlePlay(k.id)}
-                                className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-700 hover:border-green-500 group shadow-lg"
+                                className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-700 hover:border-green-500 group shadow-lg"
                             >
                                 {cover ? (
                                     <img src={cover} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -178,7 +178,7 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
 
             {/* Slides Container */}
             <div className="w-full h-full relative">
-                {/* Outgoing Slide (Current active, will fade out/move when transitioning) */}
+                {/* Outgoing Slide */}
                 <div
                     key={`out-${activeItem?.id || activeItem?.photo_path}`}
                     className={`absolute inset-0 w-full h-full flex items-center justify-center transition-container ${isTransitioning ? 'slide-exit' : 'slide-active'}`}
@@ -190,21 +190,19 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
                     />
                 </div>
 
-                {/* Incoming Slide (Next item, fades in/moves in) */}
+                {/* Incoming Slide */}
                 <div
                     key={`in-${nextItem?.id || nextItem?.photo_path}`}
-                    className={`absolute inset-0 w-full h-full flex items-center justify-center transition-container ${isTransitioning ? `slide-enter-${effect}` : 'slide-hidden'}`}
+                    className={`absolute inset-0 w-full h-full flex items-center justify-center transition-container ${isTransitioning ? 'slide-enter-active' : 'slide-hidden'}`}
                     style={{ zIndex: 2 }}
                 >
-                    <img
-                        src={nextItem?.photo_path}
-                        className="max-w-full max-h-full object-contain shadow-2xl"
-                    />
+                    <SlideRenderer item={nextItem} effect={effect} isTransitioning={isTransitioning} />
                 </div>
             </div>
 
-            {/* Background blur effect */}
+            {/* Background blur... */}
             <div className="absolute inset-0 -z-10 bg-black">
+                {/* ... (keep background logic same or simplified) ... */}
                 <div
                     className="absolute inset-0 opacity-30 blur-3xl scale-110 transition-all duration-[2000ms]"
                     style={{
@@ -223,6 +221,100 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
                 />
             </div>
         </div>
+    );
+}
+
+function SlideRenderer({ item, effect, isTransitioning }) {
+    if (!item) return null;
+
+    const src = item.photo_path;
+
+    if (effect === 'converge') {
+        // 4 Quadrants flying in
+        return (
+            <div className="relative w-full h-full max-w-full max-h-full aspect-square md:aspect-video mx-auto flex flex-wrap content-center justify-center">
+                {/* Imagine the image as 2x2 grid. We us clip-paths to show parts. 
+                     Note: "object-contain" makes this hard because dimensions vary. 
+                     We will use background-image for consistency in fragments. 
+                 */}
+                <div className="w-full h-full relative flex flex-wrap">
+                    {[0, 1, 2, 3].map(i => {
+                        const x = i % 2;
+                        const y = Math.floor(i / 2);
+                        // Clip path for each quadrant: 
+                        // 0 (TL): 0 0, 50% 0, 50% 50%, 0 50%
+                        const top = y * 50;
+                        const left = x * 50;
+                        const clip = `polygon(${left}% ${top}%, ${left + 50}% ${top}%, ${left + 50}% ${top + 50}%, ${left}% ${top + 50}%)`;
+
+                        // Initial offset for animation
+                        const startX = x === 0 ? '-50%' : '50%';
+                        const startY = y === 0 ? '-50%' : '50%';
+                        const transform = isTransitioning ? 'translate(0,0)' : `translate(${startX}, ${startY})`;
+                        const opacity = isTransitioning ? 1 : 0;
+
+                        return (
+                            <div
+                                key={i}
+                                className="absolute inset-0 w-full h-full bg-no-repeat bg-contain bg-center transition-all duration-1000 ease-out"
+                                style={{
+                                    backgroundImage: `url(${src})`,
+                                    clipPath: clip,
+                                    transform: transform,
+                                    opacity: opacity
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    }
+
+    if (effect === 'mosaic') {
+        // 3x3 Grid fading in randomly
+        // We need stable randomness or just fixed pattern. Let's do fixed checkerboard-ish pattern.
+        return (
+            <div className="w-full h-full relative">
+                {Array.from({ length: 9 }).map((_, i) => {
+                    const cols = 3;
+                    const x = (i % cols) * (100 / cols);
+                    const y = Math.floor(i / cols) * (100 / cols);
+                    const size = 100 / cols;
+
+                    const clip = `polygon(${x}% ${y}%, ${x + size}% ${y}%, ${x + size}% ${y + size}%, ${x}% ${y + size}%)`;
+
+                    // Delay based on index
+                    const delay = (i * 100) + 'ms';
+
+                    return (
+                        <div
+                            key={i}
+                            className={`absolute inset-0 w-full h-full bg-no-repeat bg-contain bg-center transition-all duration-500`}
+                            style={{
+                                backgroundImage: `url(${src})`,
+                                clipPath: clip,
+                                opacity: isTransitioning ? 1 : 0,
+                                transform: isTransitioning ? 'scale(1)' : 'scale(0.8)',
+                                transitionDelay: delay
+                            }}
+                        />
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // Default: Simple IMG with CSS class transition
+    // Need to handle the class inside here or wrapper? 
+    // Wrapper passed `slide-enter-active` but that's just a placeholder if we do custom stuff.
+    // Actually the wrapper has `slide-enter-${effect}`.
+    // If we use standard effects, we return img.
+    return (
+        <img
+            src={src}
+            className={`max-w-full max-h-full object-contain shadow-2xl ${isTransitioning ? `slide-enter-${effect}` : 'opacity-0'}`}
+        />
     );
 }
 

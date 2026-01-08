@@ -3,6 +3,9 @@ import { fetchKaleidoscopes, createKaleidoscope, deleteKaleidoscope, uploadKalei
 import { Plus, Trash2, Music, Image as ImageIcon, Check, Folder, ArrowLeft } from 'lucide-react';
 
 export default function KaleidoscopeManager() {
+    const [items, setItems] = useState([]);
+    const [showForm, setShowForm] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
@@ -179,7 +182,7 @@ function KaleidoscopeForm({ onCancel, editId = null }) {
                 photo_path: photo.file_path || photo.thumbnail_path, // Handle both picker formats
                 duration: formData.duration,
                 order: index,
-                transition_effect: ['fade', 'slide', 'zoom', 'blur'][index % 4] // Rotate effects
+                transition_effect: ['fade', 'zoom', 'blur', 'rotate', 'flip', 'slide-up', 'slide-down', 'kenburns', 'converge', 'mosaic'][index % 11] // Rotate effects
             }));
 
             const payload = {

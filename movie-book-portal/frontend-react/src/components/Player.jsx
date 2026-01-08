@@ -325,10 +325,10 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             )}
 
             {/* Overlay Controls */}
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 pointer-events-none flex flex-col justify-between p-6 sm:p-10 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 flex flex-col justify-between p-6 sm:p-10 ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
 
                 {/* Header */}
-                <div className="flex items-center justify-between pointer-events-auto">
+                <div className="flex items-center justify-between">
                     <button
                         onClick={onClose}
                         className="p-3 text-white hover:bg-white/20 rounded-full transition-colors tv-focusable"
@@ -345,7 +345,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                     <div className="w-16"></div>
                 </div>
 
-                {/* Center Play Button (only pulse if paused) */}
+                {/* Center Play Button - ALWAYS focusable even when controls hidden */}
                 {!isPlaying && (
                     <div className="self-center pointer-events-auto">
                         <button
@@ -353,6 +353,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             className="p-8 bg-red-600 rounded-full text-white hover:bg-red-700 hover:scale-110 transition-all shadow-2xl tv-focusable"
                             data-tv-clickable="true"
                             tabIndex={0}
+                            autoFocus
                         >
                             <Play fill="currentColor" size={64} />
                         </button>

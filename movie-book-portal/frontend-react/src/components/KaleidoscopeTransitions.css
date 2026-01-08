@@ -180,17 +180,21 @@
     }
 }
 
-/* Smooth zoom animation for all slides */
+/* Smooth zoom animation for all slides - GPU accelerated for better TV performance */
 @keyframes kaleidoscope-zoom {
-    from {
-        transform: scale(1);
+    0% {
+        transform: scale3d(1, 1, 1);
     }
 
-    to {
-        transform: scale(1.55);
+    100% {
+        transform: scale3d(1.55, 1.55, 1);
     }
 }
 
 .kaleidoscope-zoom-animation {
     animation: kaleidoscope-zoom 8s ease-in-out infinite alternate;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }

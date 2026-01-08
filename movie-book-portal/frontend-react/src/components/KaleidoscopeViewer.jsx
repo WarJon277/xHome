@@ -114,6 +114,31 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [effect, setEffect] = useState('fade');
 
+    // Hide sidebar for fullscreen TV experience
+    useEffect(() => {
+        const sidebar = document.querySelector('nav');
+        if (sidebar) {
+            sidebar.style.display = 'none';
+        }
+
+        // Handle keyboard for TV remote
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009 || e.keyCode === 461) {
+                e.preventDefault();
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            if (sidebar) {
+                sidebar.style.display = '';
+            }
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [onClose]);
+
     useEffect(() => {
         if (kaleidoscope.music_path) {
             audioRef.current = new Audio(kaleidoscope.music_path);

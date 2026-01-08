@@ -1,6 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, moveFolder, renameFolder } from '../api';
-import { Image as ImageIcon, Folder, ArrowLeft, Plus, Upload, Trash, X, Move, Edit } from 'lucide-react';
+import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, fetchKaleidoscopes } from '../api';
+import {
+    Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
+    ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
+    PlayCircle, Edit
+} from 'lucide-react';
+import KaleidoscopeViewer from '../components/KaleidoscopeViewer';
 import PhotoModal from '../components/PhotoModal';
 import ContextMenu from '../components/ContextMenu';
 import MoveModal from '../components/MoveModal';
@@ -8,13 +13,16 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
 
 export default function GalleryPage() {
+    // State
     const [items, setItems] = useState([]);
-    const [currentFolder, setCurrentFolder] = useState("");
+    const [currentPath, setCurrentPath] = useState(''); // Empty string = root
+    const [viewMode, setViewMode] = useState('photos'); // 'photos' or 'kaleidoscopes'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Modal State
-    const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
+    const [selectedPhoto, setSelectedPhoto] = useState(null); // Changed from selectedPhotoIndex
     const [confirmModal, setConfirmModal] = useState(null);
     const [inputModal, setInputModal] = useState(null);
 
@@ -74,44 +82,40 @@ export default function GalleryPage() {
     };
 
     useEffect(() => {
-        loadItems(currentFolder);
-    }, [currentFolder]);
+        if (viewMode === 'photos') {
+            loadItems(currentPath);
+        }
+    }, [currentPath, viewMode, refreshTrigger]); // Added viewMode and refreshTrigger
 
     const handleFolderClick = (folderName) => {
-        const newPath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
-        setCurrentFolder(newPath);
+        const newPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+        setCurrentPath(newPath);
     };
 
     const handleBack = () => {
-        if (!currentFolder) return;
-        const parts = currentFolder.split('/');
+        if (!currentPath) return;
+        const parts = currentPath.split('/');
         parts.pop();
-        setCurrentFolder(parts.join('/'));
+        setCurrentPath(parts.join('/'));
     };
 
     const handlePhotoClick = (item) => {
-        const index = items.findIndex(i => i.id === item.id);
-        setSelectedPhotoIndex(index);
+        setSelectedPhoto(item);
     };
 
-    const closePhotoModal = () => setSelectedPhotoIndex(null);
+    const closePhotoModal = () => setSelectedPhoto(null);
 
-    const handleNextPhoto = () => {
-        if (selectedPhotoIndex === null) return;
-        let nextIndex = selectedPhotoIndex + 1;
-        while (nextIndex < items.length && items[nextIndex].type === 'folder') {
-            nextIndex++;
-        }
-        if (nextIndex < items.length) setSelectedPhotoIndex(nextIndex);
-    };
+    const navigatePhoto = (direction) => {
+        if (!selectedPhoto) return;
 
-    const handlePrevPhoto = () => {
-        if (selectedPhotoIndex === null) return;
-        let prevIndex = selectedPhotoIndex - 1;
-        while (prevIndex >= 0 && items[prevIndex].type === 'folder') {
-            prevIndex--;
+        const photoItems = items.filter(item => item.type !== 'folder');
+        const currentIndex = photoItems.findIndex(item => item.id === selectedPhoto.id);
+
+        let nextIndex = currentIndex + direction;
+
+        if (nextIndex >= 0 && nextIndex < photoItems.length) {
+            setSelectedPhoto(photoItems[nextIndex]);
         }
-        if (prevIndex >= 0) setSelectedPhotoIndex(prevIndex);
     };
 
     // --- Context Menu ---
@@ -129,7 +133,7 @@ export default function GalleryPage() {
     const handleDelete = (item) => {
         setConfirmModal({
             title: "Удаление",
-            message: `Вы уверены, что хотите удалить "${item.name}"? Это действие необратимо.`,
+            message: `Вы уверены, что хотите удалить "${item.name || item.title}"? Это действие необратимо.`,
             isDanger: true,
             confirmLabel: "Удалить",
             onConfirm: () => performDelete(item)
@@ -139,15 +143,15 @@ export default function GalleryPage() {
     const performDelete = async (item) => {
         try {
             if (item.type === 'folder') {
-                const fullPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+                const fullPath = currentPath ? `${currentPath}/${item.name}` : item.name;
                 await deleteFolder(fullPath);
             } else {
                 await deletePhoto(item.id);
             }
-            if (selectedPhotoIndex !== null && items[selectedPhotoIndex]?.id === item.id) {
+            if (selectedPhoto && selectedPhoto.id === item.id) {
                 closePhotoModal();
             }
-            loadItems(currentFolder);
+            setRefreshTrigger(prev => prev + 1); // Trigger refresh
         } catch (err) {
             console.error(err);
             setConfirmModal({
@@ -175,8 +179,8 @@ export default function GalleryPage() {
     const performCreateFolder = async (name) => {
         if (!name) return;
         try {
-            await createPhotoFolder({ title: name, path: currentFolder });
-            loadItems(currentFolder);
+            await createPhotoFolder({ title: name, path: currentPath });
+            setRefreshTrigger(prev => prev + 1); // Trigger refresh
             setInputModal(null);
         } catch (err) {
             setConfirmModal({
@@ -206,9 +210,9 @@ export default function GalleryPage() {
         }
         try {
             // Construct relative path to folder
-            const folderPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+            const folderPath = currentPath ? `${currentPath}/${item.name}` : item.name;
             await renameFolder(folderPath, newName);
-            loadItems(currentFolder);
+            setRefreshTrigger(prev => prev + 1); // Trigger refresh
             setInputModal(null);
         } catch (err) {
             setConfirmModal({
@@ -231,7 +235,7 @@ export default function GalleryPage() {
                 } else {
                     await movePhoto(item.path || item.file_path, targetFolder);
                 }
-                loadItems(currentFolder);
+                setRefreshTrigger(prev => prev + 1); // Trigger refresh
             } catch (err) {
                 console.error(err);
                 setConfirmModal({
@@ -258,11 +262,11 @@ export default function GalleryPage() {
 
         try {
             for (let i = 0; i < files.length; i++) {
-                await uploadPhotoToFolder(currentFolder, files[i], (progress) => {
+                await uploadPhotoToFolder(currentPath, files[i], (progress) => {
                     console.log(`Upload ${files[i].name}: ${progress}%`);
                 });
             }
-            loadItems(currentFolder);
+            setRefreshTrigger(prev => prev + 1); // Trigger refresh
         } catch (err) {
             setConfirmModal({
                 title: "Ошибка",
@@ -306,123 +310,147 @@ export default function GalleryPage() {
                 className="hidden"
             />
 
-            <header className="mb-6">
-                <div className="flex items-center gap-4 mb-2">
-                    {currentFolder && (
-                        <button
-                            onClick={handleBack}
-                            className="p-2 rounded-full hover:opacity-80 transition-colors"
-                            style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
-                        >
-                            <ArrowLeft size={20} />
-                        </button>
-                    )}
-                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <ImageIcon className="text-yellow-500" /> Галерея
-                    </h1>
-                </div>
+            {/* Tabs */}
+            <div className="flex gap-4 mb-6 border-b border-gray-800 pb-2">
+                <button
+                    onClick={() => setViewMode('photos')}
+                    className={`text-lg font-bold pb-2 px-2 transition-colors ${viewMode === 'photos' ? 'text-green-500 border-b-2 border-green-500' : 'text-gray-400 hover:text-white'}`}
+                >
+                    Фотографии
+                </button>
+                <button
+                    onClick={() => setViewMode('kaleidoscopes')}
+                    className={`text-lg font-bold pb-2 px-2 transition-colors ${viewMode === 'kaleidoscopes' ? 'text-green-500 border-b-2 border-green-500' : 'text-gray-400 hover:text-white'}`}
+                >
+                    Калейдоскопы
+                </button>
+            </div>
 
-                {/* Breadcrumbs */}
-                <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
-                    <span
-                        className={`cursor-pointer hover:opacity-80 ${!currentFolder ? 'font-bold' : ''}`}
-                        style={{ color: !currentFolder ? 'var(--text-primary)' : 'var(--text-secondary)' }}
-                        onClick={() => setCurrentFolder("")}
-                    >
-                        Root
-                    </span>
-                    {currentFolder.split('/').filter(Boolean).map((part, index, arr) => {
-                        const path = arr.slice(0, index + 1).join('/');
-                        return (
-                            <span key={path} className="flex items-center gap-2">
-                                <span>/</span>
-                                <span
-                                    className={`cursor-pointer hover:text-white ${index === arr.length - 1 ? 'text-white font-semibold' : ''}`}
-                                    onClick={() => setCurrentFolder(path)}
-                                >
-                                    {part}
-                                </span>
-                            </span>
-                        );
-                    })}
-                </div>
-            </header>
-
-            {loading ? (
-                <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+            {viewMode === 'kaleidoscopes' ? (
+                <KaleidoscopeViewer />
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
-                    {items.map(item => {
-                        const isFolder = item.type === 'folder';
-                        const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
+                <>
+                    <header className="mb-6">
+                        <div className="flex items-center gap-4 mb-2">
+                            {currentPath && (
+                                <button
+                                    onClick={handleBack}
+                                    className="p-2 rounded-full hover:opacity-80 transition-colors"
+                                    style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                                >
+                                    <ArrowLeft size={20} />
+                                </button>
+                            )}
+                            <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                <ImageIcon className="text-yellow-500" /> Галерея
+                            </h1>
+                        </div>
 
-                        return (
-                            <div
-                                key={item.id || item.name}
-                                className={`
-                                    relative aspect-square rounded-lg overflow-hidden cursor-pointer
-                                    hover:scale-105 transition-transform border border-gray-800
-                                    flex flex-col items-center justify-center p-4 group tv-focusable
-                                `}
-                                style={{ backgroundColor: 'var(--card-bg)' }}
-                                tabIndex={0}
-                                data-tv-clickable="true"
-                                onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
-                                onContextMenu={(e) => handleRightClick(e, item)}
-                                onTouchStart={(e) => handleTouchStart(e, item)}
-                                onTouchEnd={handleTouchEnd}
-                                onTouchMove={handleTouchEnd}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
-                                }}
+                        {/* Breadcrumbs */}
+                        <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
+                            <span
+                                className={`cursor-pointer hover:opacity-80 ${!currentPath ? 'font-bold' : ''}`}
+                                style={{ color: !currentPath ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                                onClick={() => setCurrentPath("")}
                             >
-                                {isFolder ? (
-                                    <>
-                                        <Folder size={64} className="text-blue-500 mb-2" fill="currentColor" />
-                                        <span className="text-center text-sm font-medium text-white truncate w-full px-2">
-                                            {item.name}
+                                Root
+                            </span>
+                            {currentPath.split('/').filter(Boolean).map((part, index, arr) => {
+                                const path = arr.slice(0, index + 1).join('/');
+                                return (
+                                    <span key={path} className="flex items-center gap-2">
+                                        <span>/</span>
+                                        <span
+                                            className={`cursor-pointer hover:text-white ${index === arr.length - 1 ? 'text-white font-semibold' : ''}`}
+                                            onClick={() => setCurrentPath(path)}
+                                        >
+                                            {part}
                                         </span>
-                                    </>
-                                ) : (
-                                    <>
-                                        {imageUrl ? (
-                                            <img
-                                                src={imageUrl}
-                                                className="absolute inset-0 w-full h-full object-cover"
-                                                alt={item.title}
-                                                loading="lazy"
-                                            />
-                                        ) : (
-                                            <div className="text-gray-600">No Image</div>
-                                        )}
-                                        {/* Hover Info */}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                                            <span className="text-white text-xs truncate w-full">{item.title}</span>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    </header>
 
-            {/* Photo Modal */}
-            {selectedPhotoIndex !== null && items[selectedPhotoIndex] && (
-                <PhotoModal
-                    item={items[selectedPhotoIndex]}
-                    onClose={closePhotoModal}
-                    onNext={handleNextPhoto}
-                    onPrev={handlePrevPhoto}
-                    onDelete={handleDelete}
-                />
+                    {loading ? (
+                        <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
+                            {items.map(item => {
+                                const isFolder = item.type === 'folder';
+                                const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
+
+                                return (
+                                    <div
+                                        key={item.id || item.name}
+                                        className={`
+                                            relative aspect-square rounded-lg overflow-hidden cursor-pointer
+                                            hover:scale-105 transition-transform border border-gray-800
+                                            flex flex-col items-center justify-center p-4 group tv-focusable
+                                        `}
+                                        style={{ backgroundColor: 'var(--card-bg)' }}
+                                        tabIndex={0}
+                                        data-tv-clickable="true"
+                                        onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
+                                        onContextMenu={(e) => handleRightClick(e, item)}
+                                        onTouchStart={(e) => handleTouchStart(e, item)}
+                                        onTouchEnd={handleTouchEnd}
+                                        onTouchMove={handleTouchEnd}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
+                                        }}
+                                    >
+                                        {isFolder ? (
+                                            <>
+                                                <Folder size={64} className="text-blue-500 mb-2" fill="currentColor" />
+                                                <span className="text-center text-sm font-medium text-white truncate w-full px-2">
+                                                    {item.name}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {imageUrl ? (
+                                                    <img
+                                                        src={imageUrl}
+                                                        className="absolute inset-0 w-full h-full object-cover"
+                                                        alt={item.title}
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <div className="text-gray-600">No Image</div>
+                                                )}
+                                                {/* Hover Info */}
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                                    <span className="text-white text-xs truncate w-full">{item.title}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Photo Modal */}
+                    {selectedPhoto && (
+                        <PhotoModal
+                            photo={selectedPhoto}
+                            onClose={closePhotoModal}
+                            onNext={() => navigatePhoto(1)}
+                            onPrev={() => navigatePhoto(-1)}
+                            hasNext={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) < items.filter(item => item.type !== 'folder').length - 1}
+                            hasPrev={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) > 0}
+                            onDelete={handleDelete}
+                        />
+                    )}
+                </>
             )}
 
             {/* Move Modal */}
             {moveItem && (
                 <MoveModal
                     item={moveItem}
-                    currentPath={currentFolder}
+                    currentPath={currentPath}
                     onClose={() => setMoveItem(null)}
                     onMove={handleMoveAction}
                 />

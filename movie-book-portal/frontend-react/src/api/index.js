@@ -99,6 +99,18 @@ export const renameFolder = (folderPath, newName) => request('/gallery/rename_fo
     body: JSON.stringify({ folder_path: folderPath, new_name: newName })
 });
 
+// --- KALEIDOSCOPES ---
+export const fetchKaleidoscopes = () => request('/kaleidoscopes/');
+export const fetchKaleidoscope = (id) => request(`/kaleidoscopes/${id}`);
+export const createKaleidoscope = (data) => request('/kaleidoscopes/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+export const deleteKaleidoscope = (id) => fetch(`${API_BASE}/kaleidoscopes/${id}`, { method: 'DELETE' });
+export const uploadKaleidoscopeMusic = (file, onProgress) =>
+    uploadFile('/kaleidoscopes/upload_music', file, 'file', {}, onProgress);
+
 
 // --- FILE UPLOADS (Native XHR for Progress) ---
 // Kept for compatibility, though React apps often use libraries like logic inside useEffect

@@ -54,10 +54,29 @@ class BookCreate(BaseModel):
         "populate_by_name": True,
     }
 
+
 class PhotoCreate(BaseModel):
     title: str
     description: Optional[str] = None
     category: Optional[str] = "general"
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
+class KaleidoscopeItemCreate(BaseModel):
+    photo_path: str
+    duration: Optional[float] = 5.0
+    order: Optional[int] = 0
+    transition_effect: Optional[str] = "fade"
+
+class KaleidoscopeCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    music_path: Optional[str] = None
+    cover_path: Optional[str] = None
+    items: list[KaleidoscopeItemCreate]
 
     model_config = {
         "extra": "ignore",

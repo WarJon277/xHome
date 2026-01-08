@@ -21,6 +21,7 @@ export default defineConfig({
       '/admin': { target: 'http://localhost:5055', changeOrigin: true },
       '/delete_file': { target: 'http://localhost:5055', changeOrigin: true },
       '/delete_folder': { target: 'http://localhost:5055', changeOrigin: true },
+      '/kaleidoscopes': { target: 'http://localhost:5055', changeOrigin: true },
 
       // Static Files
       '/uploads': { target: 'http://localhost:5055', changeOrigin: true },

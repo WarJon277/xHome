@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { fetchMovies } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import { Play } from 'lucide-react';
 import Player from '../components/Player';
+import GenreFilter from '../components/GenreFilter';
 
 export default function MoviesPage() {
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedMovie, setSelectedMovie] = useState(null);
+    const [selectedGenre, setSelectedGenre] = useState('Все');
 
     useEffect(() => {
         const loadData = async () => {
@@ -26,6 +28,26 @@ export default function MoviesPage() {
         loadData();
     }, []);
 
+    const genres = useMemo(() => {
+        const allGenres = new Set();
+        movies.forEach(movie => {
+            if (movie.genre) {
+                // Handle comma separated genres if any "Action, Scifi"
+                movie.genre.split(',').forEach(g => allGenres.add(g.trim()));
+            }
+        });
+        return Array.from(allGenres).sort();
+    }, [movies]);
+
+    const filteredMovies = useMemo(() => {
+        if (selectedGenre === 'Все') return movies;
+        return movies.filter(movie => {
+            if (!movie.genre) return false;
+            const movieGenres = movie.genre.split(',').map(g => g.trim());
+            return movieGenres.includes(selectedGenre);
+        });
+    }, [movies, selectedGenre]);
+
     const handlePlay = (movie) => {
         setSelectedMovie(movie);
     };
@@ -34,7 +56,7 @@ export default function MoviesPage() {
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (
-        <div className="p-4 sm:p-6">
+        <div className="p-4 sm:p-6 pb-24">
             {/* Player Modal */}
             {selectedMovie && (
                 <Player
@@ -48,12 +70,18 @@ export default function MoviesPage() {
                     <Play className="text-red-500" /> Фильмы
                 </h1>
                 <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {movies.length} titles
+                    {filteredMovies.length} titles
                 </div>
             </header>
 
+            <GenreFilter
+                genres={genres}
+                selectedGenre={selectedGenre}
+                onSelect={setSelectedGenre}
+            />
+
             <div className="media-grid">
-                {movies.map(movie => (
+                {filteredMovies.map(movie => (
                     <MediaCard
                         key={movie.id}
                         item={movie}

@@ -10,6 +10,7 @@ import {
     createEpisode,
     fetchTheme, updateTheme, resetTheme, fetchStats, uploadBookFile
 } from '../api';
+import KaleidoscopeManager from '../components/KaleidoscopeManager';
 
 export default function AdminPage() {
     const navigate = useNavigate();
@@ -412,6 +413,15 @@ export default function AdminPage() {
                 >
                     Оформление
                 </button>
+                <button
+                    onClick={() => setActiveTab('kaleidoscopes')}
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'kaleidoscopes'
+                        ? 'border-b-2 border-primary text-primary'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                >
+                    Калейдоскопы
+                </button>
             </div>
 
             {/* Dashboard Tab */}
@@ -551,6 +561,11 @@ export default function AdminPage() {
                     applyPreset={applyThemePreset}
                     updateThemeAPI={updateTheme}
                 />
+            )}
+
+            {/* Kaleidoscopes Tab */}
+            {activeTab === 'kaleidoscopes' && (
+                <KaleidoscopeManager />
             )}
         </div>
     );

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchBooks } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import '../custom-grid.css';
 import { Book } from 'lucide-react';
+import GenreFilter from '../components/GenreFilter';
 
 export default function BooksPage() {
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedGenre, setSelectedGenre] = useState('Все');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -26,6 +28,26 @@ export default function BooksPage() {
         }
     };
 
+    const genres = useMemo(() => {
+        const allGenres = new Set();
+        books.forEach(book => {
+            if (book.genre) {
+                book.genre.split(',').forEach(g => allGenres.add(g.trim()));
+            }
+        });
+        return Array.from(allGenres).sort();
+    }, [books]);
+
+    const filteredBooks = useMemo(() => {
+        if (selectedGenre === 'Все') return books;
+        return books.filter(book => {
+            if (!book.genre) return false;
+            const itemGenres = book.genre.split(',').map(g => g.trim());
+            return itemGenres.includes(selectedGenre);
+        });
+    }, [books, selectedGenre]);
+
+
     const handleOpenBook = (book) => {
         navigate(`/books/${book.id}`);
     };
@@ -37,15 +59,21 @@ export default function BooksPage() {
                     <Book className="text-green-500" /> Книги
                 </h1>
                 <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {books.length} books
+                    {filteredBooks.length} books
                 </div>
             </header>
+
+            <GenreFilter
+                genres={genres}
+                selectedGenre={selectedGenre}
+                onSelect={setSelectedGenre}
+            />
 
             {loading ? (
                 <div className="text-center text-gray-500 mt-10">Загрузка...</div>
             ) : (
                 <div className="media-grid">
-                    {books.map(book => (
+                    {filteredBooks.map(book => (
                         <MediaCard
                             key={book.id}
                             item={book}

@@ -1,0 +1,76 @@
+/* KaleidoscopeTransitions.css */
+
+.transition-container {
+    transition: all 1s ease-in-out;
+}
+
+.slide-active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.slide-exit {
+    opacity: 0;
+    transform: scale(1.1);
+}
+
+.slide-hidden {
+    opacity: 0;
+}
+
+/* FADE */
+.slide-enter-fade {
+    opacity: 1;
+}
+
+/* ZOOM */
+.slide-enter-zoom {
+    opacity: 1;
+    animation: zoomIn 1s forwards;
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* SLIDE */
+.slide-enter-slide {
+    opacity: 1;
+    animation: slideIn 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* BLUR */
+.slide-enter-blur {
+    opacity: 1;
+    animation: blurIn 1s forwards;
+}
+
+@keyframes blurIn {
+    from {
+        filter: blur(20px);
+        opacity: 0;
+    }
+
+    to {
+        filter: blur(0);
+        opacity: 1;
+    }
+}

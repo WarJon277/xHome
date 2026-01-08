@@ -11,7 +11,11 @@ from database_tvshows import create_tvshows_tables
 from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 
-from routers import movies, books, tvshows, gallery, admin, progress
+from database_gallery import create_gallery_tables
+from database_progress import create_progress_tables
+from database_kaleidoscope import create_kaleidoscope_tables
+
+from routers import movies, books, tvshows, gallery, admin, progress, kaleidoscopes
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -34,7 +38,9 @@ os.makedirs(UPLOADS_PATH, exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "books"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "movies"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "tvshows"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_PATH, "tvshows"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "gallery"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_PATH, "kaleidoscopes_music"), exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
@@ -54,6 +60,7 @@ create_books_tables()
 create_tvshows_tables()
 create_gallery_tables()
 create_progress_tables()
+create_kaleidoscope_tables()
 
 # Основные маршруты для фронтенда
 @app.get("/")
@@ -79,3 +86,4 @@ app.include_router(tvshows.router)
 app.include_router(gallery.router)
 app.include_router(admin.router)
 app.include_router(progress.router)
+app.include_router(kaleidoscopes.router)

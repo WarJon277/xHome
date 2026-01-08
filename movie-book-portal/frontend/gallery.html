@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/static/css/grid.css">
     <link rel="stylesheet" href="/static/css/cards.css">
     <link rel="stylesheet" href="/static/css/gallery.css">
+    <link rel="stylesheet" href="/static/css/kaleidoscopes.css">
     <link rel="stylesheet" href="/static/css/modals.css">
     <link rel="stylesheet" href="/static/css/fab.css">
     <link rel="stylesheet" href="/static/css/photo_modal.css">
@@ -23,26 +24,28 @@
         overflow-y: auto;
         margin: 15px 0;
     }
-    
+
     .folder-selection-item {
         padding: 10px 15px;
         cursor: pointer;
         color: #e0e0e0;
         border-radius: 6px;
         margin-bottom: 5px;
-        background-color: rgba(70, 130, 180, 0.3); /* Changed from light gray to steel blue */
+        background-color: rgba(70, 130, 180, 0.3);
+        /* Changed from light gray to steel blue */
         transition: background-color 0.2s;
     }
-    
+
     .folder-selection-item:hover {
-        background-color: rgba(70, 130, 180, 0.5); /* Slightly darker on hover */
+        background-color: rgba(70, 130, 180, 0.5);
+        /* Slightly darker on hover */
     }
 </style>
 
 <body>
     <!-- Индикатор загрузки галереи -->
     <div id="gallery-loading-indicator" class="gallery-loading" style="display: none;"></div>
-    
+
     <header>
         <div class="header-container">
             <h1>Галерея фото</h1>
@@ -76,6 +79,10 @@
     </header>
 
     <main>
+        <div class="kaleidoscope-tabs">
+            <button id="tab-gallery" class="tab-btn active">Фото</button>
+            <button id="tab-kaleidoscope" class="tab-btn">Калейдоскоп</button>
+        </div>
         <!-- Форма добавления/редактирования -->
         <section id="add-form" style="display: none;">
             <h2 id="form-title">Добавить новое фото</h2>
@@ -140,6 +147,10 @@
         <section id="photos-grid">
             <!-- Фото карточки будут вставляться сюда через JS -->
         </section>
+
+        <section id="kaleidoscope-container" class="gallery-grid" style="display: none;">
+            <!-- Kaleidoscopes injected by JS -->
+        </section>
     </main>
 
     <script type="module" src="/static/api.js"></script>
@@ -152,6 +163,7 @@
     <script type="module" src="/static/eventListeners.js"></script>
     <script type="module" src="/static/app.js"></script>
     <script type="module" src="/static/photoModal.js"></script>
+    <script type="module" src="/static/kaleidoscopes.js"></script>
 
     <!-- Scripts for functionality -->
     <script type="module">
@@ -163,12 +175,12 @@
                 const genreSelectorsModule = await import('/static/genreSelectors.js');
                 const utilsModule = await import('/static/utils.js');
                 const itemDisplayModule = await import('/static/itemDisplay.js');
-                
+
                 // Устанавливаем категорию на 'photo' при загрузке страницы галереи
                 stateModule.setCurrentCategory('photo');
                 stateModule.setCurrentGenre('Все');
                 stateModule.setCurrentFolder(''); // Начинаем с корневой папки
-                
+
                 // Обновляем глобальные переменные для совместимости
                 window.currentCategory = 'photo';
                 window.currentGenre = 'Все';
@@ -178,13 +190,13 @@
                     window.state.currentGenre = 'Все';
                     window.state.currentFolder = '';
                 }
-                
+
                 // Обновляем интерфейс и загружаем фото
                 genreSelectorsModule.updateGenreSelect();
                 genreSelectorsModule.updateGenreSelectInForm();
                 utilsModule.updateFormLabels();
                 await itemDisplayModule.loadItems(); // загружаем фото с ожиданием
-                
+
                 // Добавляем обработчики для кнопок управления папками
                 const createFolderBtn = document.getElementById('create-folder-btn');
                 const backToParentBtn = document.getElementById('back-to-parent-btn');
@@ -221,24 +233,24 @@
                                 const apiModule = await import('/static/api.js');
                                 const itemDisplayModule = await import('/static/itemDisplay.js');
                                 const stateModule = await import('/static/state.js');
-                                
+
                                 const currentFolder = stateModule.getCurrentFolder();
-                                
+
                                 // Передаем путь к текущей папке, если она не корневая
                                 const photoData = { title: folderName };
                                 if (currentFolder) {
                                     photoData.path = currentFolder;
                                 }
-                                
+
                                 await apiModule.createPhoto(photoData);
                                 await itemDisplayModule.loadItems(); // перезагружаем содержимое
-                                
+
                                 // Восстанавливаем предыдущую папку, если она была сохранена
                                 if (window.previousFolderForCreate) {
                                     stateModule.setCurrentFolder(window.previousFolderForCreate);
                                     delete window.previousFolderForCreate;
                                 }
-                                
+
                                 closeModal();
                             } catch (error) {
                                 console.error('Ошибка при создании папки:', error);
@@ -280,7 +292,7 @@
                     if (folderParam !== null) {
                         // Декодируем параметр папки из URL
                         const folderPath = decodeURIComponent(folderParam);
-                        
+
                         // Обновляем состояние приложения
                         stateModule.setCurrentFolder(folderPath);
                         window.currentFolder = folderPath;
@@ -293,12 +305,12 @@
                     }
                 }
 
-        // Обработчик события popstate для кнопки "назад" в браузере
-        window.addEventListener('popstate', async (event) => {
-            // При нажатии кнопки "назад" в браузере переходим на главную страницу
-            // Это отличает поведение кнопки "назад" в галерее от кнопки "назад" в браузере
-            window.location.href = '/';
-        });
+                // Обработчик события popstate для кнопки "назад" в браузере
+                window.addEventListener('popstate', async (event) => {
+                    // При нажатии кнопки "назад" в браузере переходим на главную страницу
+                    // Это отличает поведение кнопки "назад" в галерее от кнопки "назад" в браузере
+                    window.location.href = '/';
+                });
 
                 // Обработчик перед закрытием/покиданием страницы
                 window.addEventListener('beforeunload', () => {
@@ -326,18 +338,18 @@
                         const stateModule = await import('/static/state.js');
                         const itemDisplayModule = await import('/static/itemDisplay.js');
                         let currentFolder = stateModule.getCurrentFolder();
-                        
+
                         // Получаем родительскую папку
                         let newFolder = '';
                         if (currentFolder && currentFolder.includes('/')) {
                             newFolder = currentFolder.substring(0, currentFolder.lastIndexOf('/'));
                         }
-                        
+
                         // Обновляем состояние
                         stateModule.setCurrentFolder(newFolder);
                         window.currentFolder = newFolder;
                         if (window.state) window.state.currentFolder = newFolder;
-                        
+
                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
                     });
                 }
@@ -346,12 +358,12 @@
                     breadcrumbHome.addEventListener('click', async () => {
                         const stateModule = await import('/static/state.js');
                         const itemDisplayModule = await import('/static/itemDisplay.js');
-                        
+
                         // Обновляем состояние
                         stateModule.setCurrentFolder('');
                         window.currentFolder = '';
                         if (window.state) window.state.currentFolder = '';
-                        
+
                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
                     });
                 }
@@ -374,13 +386,13 @@
                     const stateModule = await import('/static/state.js');
                     const currentFolder = stateModule.getCurrentFolder();
                     const breadcrumbPathEl = document.getElementById('breadcrumb-path');
-                    
+
                     if (!breadcrumbPathEl) return;
-                    
+
                     if (currentFolder) {
                         const pathParts = currentFolder.split('/');
                         let pathHtml = '';
-                        
+
                         pathParts.forEach((part, index) => {
                             if (index === pathParts.length - 1) {
                                 // Последняя часть - текущая папка
@@ -391,21 +403,21 @@
                                 pathHtml += `<span class="breadcrumb-part" data-path="${parentPath}">${part}</span> / `;
                             }
                         });
-                        
+
                         breadcrumbPathEl.innerHTML = pathHtml;
-                        
+
                         // Добавляем обработчики для частей пути
                         document.querySelectorAll('.breadcrumb-part').forEach(part => {
                             part.addEventListener('click', async (e) => {
                                 const stateModule = await import('/static/state.js');
                                 const itemDisplayModule = await import('/static/itemDisplay.js');
                                 const path = e.target.getAttribute('data-path');
-                                
+
                                 // Обновляем состояние
                                 stateModule.setCurrentFolder(path);
                                 window.currentFolder = path;
                                 if (window.state) window.state.currentFolder = path;
-                                
+
                                 await itemDisplayModule.loadItems();
                             });
                         });
@@ -666,26 +678,26 @@
                         contextMenu.querySelector('[data-action="move"]')?.addEventListener('click', async (event) => {
                             event.stopPropagation();
                             contextMenu.remove();
-                            
+
                             const photoPath = event.target.closest('.context-menu-item').getAttribute('data-path');
-                            
+
                             // Показываем модальное окно выбора папки
                             const modal = document.getElementById('folder-selection-modal');
                             const folderList = document.getElementById('folder-selection-list');
-                            
+
                             if (!modal || !folderList) return;
-                            
+
                             // Загружаем список папок
                             const apiModule = await import('/static/api.js');
                             const stateModule = await import('/static/state.js');
                             const currentFolder = stateModule.getCurrentFolder();
-                            
+
                             const contents = await apiModule.fetchPhotos(currentFolder);
                             const folders = contents.filter(item => item.type === 'folder');
-                            
+
                             // Очищаем и заполняем список папок
                             folderList.innerHTML = '';
-                            
+
                             // Добавляем возможность перемещения в родительскую папку (..), если мы не в корне
                             if (currentFolder) {
                                 const parentFolderItem = document.createElement('div');
@@ -704,7 +716,7 @@
                                         if (currentFolder && currentFolder.includes('/')) {
                                             targetPath = currentFolder.substring(0, currentFolder.lastIndexOf('/'));
                                         }
-                                        
+
                                         await apiModule.movePhoto(photoPath, targetPath || ""); // Передаем пустую строку для корня
                                         const itemDisplayModule = await import('/static/itemDisplay.js');
                                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
@@ -716,7 +728,7 @@
                                 };
                                 folderList.appendChild(parentFolderItem);
                             }
-                            
+
                             if (folders.length === 0) {
                                 // Если нет подпапок, просто покажем сообщение
                                 if (!currentFolder) {
@@ -738,7 +750,7 @@
                                         try {
                                             // Если текущая папка не корневая, добавляем её к пути
                                             const targetPath = currentFolder ? `${currentFolder}/${folder.name}` : folder.name;
-                                            
+
                                             await apiModule.movePhoto(photoPath, targetPath);
                                             const itemDisplayModule = await import('/static/itemDisplay.js');
                                             await itemDisplayModule.loadItems(); // перезагружаем содержимое
@@ -751,10 +763,10 @@
                                     folderList.appendChild(folderItem);
                                 });
                             }
-                            
+
                             // Показываем модальное окно
                             modal.style.display = 'flex';
-                            
+
                             // Обработчик отмены
                             const cancelBtn = document.getElementById('cancel-folder-selection');
                             if (cancelBtn) {
@@ -797,18 +809,18 @@
                             event.stopPropagation();
                             contextMenu.remove();
                             const folderName = event.target.closest('.context-menu-item').getAttribute('data-name');
-                            
+
                             // Сохраняем текущую папку, чтобы восстановить её после создания новой папки
                             const stateModule = await import('/static/state.js');
                             const currentFolder = stateModule.getCurrentFolder();
                             window.previousFolderForCreate = currentFolder;
-                            
+
                             // Устанавливаем целевую папку как родительскую для новой папки
                             const targetFolder = currentFolder ? `${currentFolder}/${folderName}` : folderName;
-                            
+
                             // Временно устанавливаем текущую папку для создания новой внутри неё
                             stateModule.setCurrentFolder(targetFolder);
-                            
+
                             // Вызываем функцию создания папки
                             if (typeof window.triggerCreateFolder === 'function') {
                                 window.triggerCreateFolder();
@@ -819,26 +831,26 @@
                         contextMenu.querySelector('[data-action="move-folder"]')?.addEventListener('click', async (event) => {
                             event.stopPropagation();
                             contextMenu.remove();
-                            
+
                             const folderName = event.target.closest('.context-menu-item').getAttribute('data-name');
-                            
+
                             // Показываем модальное окно выбора папки
                             const modal = document.getElementById('folder-selection-modal');
                             const folderList = document.getElementById('folder-selection-list');
-                            
+
                             if (!modal || !folderList) return;
-                            
+
                             // Загружаем список папок
                             const apiModule = await import('/static/api.js');
                             const stateModule = await import('/static/state.js');
                             const currentFolder = stateModule.getCurrentFolder();
-                            
+
                             const contents = await apiModule.fetchPhotos(currentFolder);
                             const folders = contents.filter(item => item.type === 'folder' && item.name !== folderName); // Исключаем саму перемещаемую папку
-                            
+
                             // Очищаем и заполняем список папок
                             folderList.innerHTML = '';
-                            
+
                             // Добавляем возможность перемещения в родительскую папку (..), если мы не в корне
                             if (currentFolder) {
                                 const parentFolderItem = document.createElement('div');
@@ -859,7 +871,7 @@
                                         }
                                         // Если текущая папка не корневая, добавляем её к пути
                                         const sourcePath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
-                                        
+
                                         await apiModule.moveFolder(sourcePath, targetPath || ""); // Передаем пустую строку для корня
                                         const itemDisplayModule = await import('/static/itemDisplay.js');
                                         await itemDisplayModule.loadItems(); // перезагружаем содержимое
@@ -871,7 +883,7 @@
                                 };
                                 folderList.appendChild(parentFolderItem);
                             }
-                            
+
                             if (folders.length === 0) {
                                 // Если нет других подпапок, просто покажем сообщение
                                 if (!currentFolder) {
@@ -894,7 +906,7 @@
                                             // Если текущая папка не корневая, добавляем её к пути
                                             const sourcePath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
                                             const targetPath = currentFolder ? `${currentFolder}/${folder.name}` : folder.name;
-                                            
+
                                             await apiModule.moveFolder(sourcePath, targetPath);
                                             const itemDisplayModule = await import('/static/itemDisplay.js');
                                             await itemDisplayModule.loadItems(); // перезагружаем содержимое
@@ -907,10 +919,10 @@
                                     folderList.appendChild(folderItem);
                                 });
                             }
-                            
+
                             // Показываем модальное окно
                             modal.style.display = 'flex';
-                            
+
                             // Обработчик отмены
                             const cancelBtn = document.getElementById('cancel-folder-selection');
                             if (cancelBtn) {
@@ -927,24 +939,24 @@
                             event.stopPropagation();
                             contextMenu.remove();
                             const folderName = event.target.closest('.context-menu-item').getAttribute('data-name');
-                            
+
                             const renameModal = document.getElementById('rename-folder-modal');
                             const renameInput = document.getElementById('rename-folder-input');
                             const submitBtn = document.getElementById('rename-folder-submit');
                             const cancelBtn = document.getElementById('cancel-rename-folder');
-                            
+
                             if (!renameModal || !renameInput) return;
-                            
+
                             // Устанавливаем текущее имя папки в поле ввода
                             renameInput.value = folderName;
                             renameInput.focus();
-                            
+
                             // Функция закрытия модального окна
                             const closeModal = () => {
                                 renameModal.style.display = 'none';
                                 cleanup();
                             };
-                            
+
                             // Функция переименования
                             const handleRename = async () => {
                                 const newName = renameInput.value.trim();
@@ -954,17 +966,17 @@
                                         const stateModule = await import('/static/state.js');
                                         const itemDisplayModule = await import('/static/itemDisplay.js');
                                         const currentFolder = stateModule.getCurrentFolder();
-                                        
+
                                         // Получаем полный путь к текущей папке
                                         const oldPath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
-                                        
+
                                         // Создаем новую папку с новым именем
                                         const newFolderData = { title: newName };
                                         if (currentFolder) {
                                             newFolderData.path = currentFolder;
                                         }
                                         await apiModule.createPhoto(newFolderData);
-                                        
+
                                         // Перемещаем содержимое старой папки в новую
                                         const contents = await apiModule.fetchPhotos(oldPath);
                                         for (const item of contents) {
@@ -978,10 +990,10 @@
                                                 await apiModule.movePhoto(item.file_path || item.path, targetPath);
                                             }
                                         }
-                                        
+
                                         // Удаляем старую папку
                                         await apiModule.deleteFolder(oldPath);
-                                        
+
                                         await itemDisplayModule.loadItems();
                                         closeModal();
                                     } catch (error) {
@@ -993,27 +1005,27 @@
                                     closeModal();
                                 }
                             };
-                            
+
                             // Обработчики событий
                             const onKeyDown = (e) => {
                                 if (e.key === 'Enter') handleRename();
                                 if (e.key === 'Escape') closeModal();
                             };
-                            
+
                             const onOverlayClick = (e) => {
                                 if (e.target === renameModal) closeModal();
                             };
-                            
+
                             const cleanup = () => {
                                 submitBtn.removeEventListener('click', handleRename);
                                 cancelBtn.removeEventListener('click', closeModal);
                                 window.removeEventListener('keydown', onKeyDown);
                                 renameModal.removeEventListener('click', onOverlayClick);
                             };
-                            
+
                             // Показываем модальное окно
                             renameModal.style.display = 'flex';
-                            
+
                             submitBtn.addEventListener('click', handleRename);
                             cancelBtn.addEventListener('click', closeModal);
                             window.addEventListener('keydown', onKeyDown);

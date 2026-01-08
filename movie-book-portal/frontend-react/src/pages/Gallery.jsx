@@ -22,6 +22,29 @@ export default function GalleryPage() {
 
     // Upload Refs
     const fileInputRef = useRef(null);
+    const longPressTimer = useRef(null);
+
+    const handleTouchStart = (e, item) => {
+        const touch = e.touches[0];
+        const clientX = touch.clientX;
+        const clientY = touch.clientY;
+
+        longPressTimer.current = setTimeout(() => {
+            setContextMenu({
+                x: clientX,
+                y: clientY,
+                item: item
+            });
+            if (navigator.vibrate) navigator.vibrate(50);
+        }, 600);
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     const loadItems = async (folder = "") => {
         try {
@@ -269,6 +292,9 @@ export default function GalleryPage() {
                                 data-tv-clickable="true"
                                 onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
                                 onContextMenu={(e) => handleRightClick(e, item)}
+                                onTouchStart={(e) => handleTouchStart(e, item)}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchMove={handleTouchEnd}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
                                 }}

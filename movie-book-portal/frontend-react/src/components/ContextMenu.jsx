@@ -9,9 +9,18 @@ export default function ContextMenu({ x, y, options, onClose }) {
                 onClose();
             }
         };
-        // Bind to mousedown to catch clicks anywhere
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+
+        // Delay attaching listener to avoid immediate close from the event that opened it
+        const timer = setTimeout(() => {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }, 100);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, [onClose]);
 
     // Adjust position if it flows off screen
@@ -34,7 +43,7 @@ export default function ContextMenu({ x, y, options, onClose }) {
     return (
         <div
             ref={menuRef}
-            className="fixed z-50 min-w-[160px] bg-[#2a2a2a] border border-gray-700 rounded-lg shadow-xl py-2 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+            className="fixed z-[999999] min-w-[160px] bg-[#2a2a2a] border border-gray-700 rounded-lg shadow-xl py-2 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
             style={style}
         >
             {options.map((option, index) => (

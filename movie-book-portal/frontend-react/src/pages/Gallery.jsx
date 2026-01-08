@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, moveFolder } from '../api';
-import { Image as ImageIcon, Folder, ArrowLeft, Plus, Upload, Trash, X, Move } from 'lucide-react';
+import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, moveFolder, renameFolder } from '../api';
+import { Image as ImageIcon, Folder, ArrowLeft, Plus, Upload, Trash, X, Move, Edit } from 'lucide-react';
 import PhotoModal from '../components/PhotoModal';
 import ContextMenu from '../components/ContextMenu';
 import MoveModal from '../components/MoveModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import InputModal from '../components/InputModal';
 
 export default function GalleryPage() {
     const [items, setItems] = useState([]);
@@ -13,6 +15,8 @@ export default function GalleryPage() {
 
     // Modal State
     const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const [inputModal, setInputModal] = useState(null);
 
     // Context Menu State
     const [contextMenu, setContextMenu] = useState(null);
@@ -24,6 +28,7 @@ export default function GalleryPage() {
     const fileInputRef = useRef(null);
     const longPressTimer = useRef(null);
 
+    // ... (touch handlers mostly same)
     const handleTouchStart = (e, item) => {
         const touch = e.touches[0];
         const clientX = touch.clientX;
@@ -119,9 +124,19 @@ export default function GalleryPage() {
         });
     };
 
-    const handleDelete = async (item) => {
-        if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+    // --- Actions ---
 
+    const handleDelete = (item) => {
+        setConfirmModal({
+            title: "Удаление",
+            message: `Вы уверены, что хотите удалить "${item.name}"? Это действие необратимо.`,
+            isDanger: true,
+            confirmLabel: "Удалить",
+            onConfirm: () => performDelete(item)
+        });
+    };
+
+    const performDelete = async (item) => {
         try {
             if (item.type === 'folder') {
                 const fullPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
@@ -134,7 +149,74 @@ export default function GalleryPage() {
             }
             loadItems(currentFolder);
         } catch (err) {
-            alert("Failed to delete item");
+            console.error(err);
+            setConfirmModal({
+                title: "Ошибка",
+                message: "Не удалось удалить элемент. Возможно, он уже удален.",
+                isDanger: false,
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmModal(null)
+            });
+            return; // Don't close modal yet if we want to show error? Actually, let's close and show error modal
+        }
+        setConfirmModal(null);
+    };
+
+    const handleCreateFolder = () => {
+        setInputModal({
+            title: "Новая папка",
+            placeholder: "Название папки",
+            initialValue: "",
+            confirmLabel: "Создать",
+            onConfirm: performCreateFolder
+        });
+    };
+
+    const performCreateFolder = async (name) => {
+        if (!name) return;
+        try {
+            await createPhotoFolder({ title: name, path: currentFolder });
+            loadItems(currentFolder);
+            setInputModal(null);
+        } catch (err) {
+            setConfirmModal({
+                title: "Ошибка",
+                message: "Ошибка при создании папки.",
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmModal(null)
+            });
+        }
+    };
+
+    const handleRename = (item) => {
+        if (item.type !== 'folder') return; // Only rename folders for now as requested
+        setInputModal({
+            title: "Переименовать папку",
+            placeholder: "Новое название",
+            initialValue: item.name,
+            confirmLabel: "Сохранить",
+            onConfirm: (newName) => performRename(item, newName)
+        });
+    };
+
+    const performRename = async (item, newName) => {
+        if (!newName || newName === item.name) {
+            setInputModal(null);
+            return;
+        }
+        try {
+            // Construct relative path to folder
+            const folderPath = currentFolder ? `${currentFolder}/${item.name}` : item.name;
+            await renameFolder(folderPath, newName);
+            loadItems(currentFolder);
+            setInputModal(null);
+        } catch (err) {
+            setConfirmModal({
+                title: "Ошибка",
+                message: "Не удалось переименовать папку. " + (err.message || ""),
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmModal(null)
+            });
         }
     };
 
@@ -145,18 +227,19 @@ export default function GalleryPage() {
         const performMove = async () => {
             try {
                 if (item.type === 'folder') {
-                    // Item.path usually includes current folder structure if logic holds 
-                    // But in loadItems we set path as full relative path? 
-                    // Let's rely on item.path which we expect from API or construct it 
-                    // API returns 'path' field.
-                    await moveFolder(item.path || item.name, targetFolder); // fallback to name if path missing (for root)
+                    await moveFolder(item.path || item.name, targetFolder);
                 } else {
                     await movePhoto(item.path || item.file_path, targetFolder);
                 }
                 loadItems(currentFolder);
             } catch (err) {
                 console.error(err);
-                alert("Ошибка при перемещении: " + err.message);
+                setConfirmModal({
+                    title: "Ошибка",
+                    message: "Ошибка при перемещении: " + err.message,
+                    confirmLabel: "OK",
+                    onConfirm: () => setConfirmModal(null)
+                });
             } finally {
                 setMoveItem(null);
             }
@@ -164,17 +247,6 @@ export default function GalleryPage() {
         performMove();
     };
 
-    // --- Actions ---
-    const handleCreateFolder = async () => {
-        const name = prompt("Введите название новой папки:");
-        if (!name) return;
-        try {
-            await createPhotoFolder({ title: name, path: currentFolder });
-            loadItems(currentFolder);
-        } catch (err) {
-            alert("Ошибка при создании папки");
-        }
-    };
 
     const handleUploadClick = () => {
         fileInputRef.current.click();
@@ -192,7 +264,12 @@ export default function GalleryPage() {
             }
             loadItems(currentFolder);
         } catch (err) {
-            alert("Ошибка загрузки файла");
+            setConfirmModal({
+                title: "Ошибка",
+                message: "Ошибка загрузки файла",
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmModal(null)
+            });
         } finally {
             e.target.value = null;
         }
@@ -359,9 +436,35 @@ export default function GalleryPage() {
                     onClose={() => setContextMenu(null)}
                     options={[
                         { label: "Открыть", onClick: () => contextMenu.item.type === 'folder' ? handleFolderClick(contextMenu.item.name) : handlePhotoClick(contextMenu.item), icon: <Upload size={16} /> },
+                        // Show "Rename" only for folders
+                        ...(contextMenu.item.type === 'folder' ? [{ label: "Переименовать", onClick: () => handleRename(contextMenu.item), icon: <Edit size={16} /> }] : []),
                         { label: "Переместить", onClick: () => setMoveItem(contextMenu.item), icon: <Move size={16} /> },
                         { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
                     ]}
+                />
+            )}
+
+            {/* CONFIRMATION MODAL */}
+            {confirmModal && (
+                <ConfirmationModal
+                    title={confirmModal.title}
+                    message={confirmModal.message}
+                    onClose={() => setConfirmModal(null)}
+                    onConfirm={confirmModal.onConfirm}
+                    confirmLabel={confirmModal.confirmLabel}
+                    isDanger={confirmModal.isDanger}
+                />
+            )}
+
+            {/* INPUT MODAL */}
+            {inputModal && (
+                <InputModal
+                    title={inputModal.title}
+                    initialValue={inputModal.initialValue}
+                    placeholder={inputModal.placeholder}
+                    confirmLabel={inputModal.confirmLabel}
+                    onClose={() => setInputModal(null)}
+                    onConfirm={inputModal.onConfirm}
                 />
             )}
 

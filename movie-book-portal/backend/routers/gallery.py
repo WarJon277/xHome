@@ -354,6 +354,43 @@ async def move_folder(folder_path: str = Form(...), target_folder: str = Form(No
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при перемещении папки: {str(e)}")
 
+@router.post("/rename_folder")
+def rename_folder(data: dict):
+    try:
+        folder_path = data.get("folder_path")
+        new_name = data.get("new_name")
+
+        if not folder_path or not new_name:
+            raise HTTPException(status_code=400, detail="Не указан путь или новое имя")
+
+        # Sanitize new_name
+        new_name = re.sub(r'[<>:"/\\|?*]', '_', new_name)
+
+        base_path = os.path.abspath(GALLERY_UPLOADS)
+        source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder_path))
+        
+        # Parent directory of the source folder
+        parent_dir = os.path.dirname(source_path)
+        target_path = os.path.join(parent_dir, new_name)
+
+        if not source_path.startswith(base_path):
+            raise HTTPException(status_code=400, detail="Недопустимый путь")
+
+        if not os.path.exists(source_path):
+            raise HTTPException(status_code=404, detail="Папка не найдена")
+        
+        if os.path.exists(target_path):
+             raise HTTPException(status_code=400, detail="Папка с таким именем уже существует")
+
+        os.rename(source_path, target_path)
+        
+        return {"message": "Папка переименована успешно", "new_path": target_path}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при переименовании: {str(e)}")
+
 @router.post("/{photo_id}/apply_filter")
 async def apply_filter_to_photo(photo_id: int, filter_type: str = None):
     try:

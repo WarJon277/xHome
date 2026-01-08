@@ -93,6 +93,11 @@ export const createPhotoFolder = (data) => request('/gallery', {
 export const deletePhoto = (id) => request(`/gallery/${id}`, { method: 'DELETE' });
 export const deleteFolder = (folderPath) => fetch(`${API_BASE}/gallery/manage/folder_delete?path=${encodeURIComponent(folderPath)}`, { method: 'DELETE' });
 export const searchPhotos = (query) => request(`/gallery/search?query=${encodeURIComponent(query)}`);
+export const renameFolder = (folderPath, newName) => request('/gallery/rename_folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder_path: folderPath, new_name: newName })
+});
 
 
 // --- FILE UPLOADS (Native XHR for Progress) ---

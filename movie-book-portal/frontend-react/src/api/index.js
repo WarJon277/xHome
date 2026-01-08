@@ -141,6 +141,9 @@ export const uploadTvshowFile = (tvshowId, file, onProgress) =>
 export const uploadEpisodeFile = (episodeId, file, onProgress) =>
     uploadFile(`/episodes/${episodeId}/upload`, file, 'file', {}, onProgress);
 
+export const uploadBookFile = (bookId, file, onProgress) =>
+    uploadFile(`/books/${bookId}/upload`, file, 'file', {}, onProgress);
+
 export const uploadPhotoToFolder = (folder, file, onProgress) =>
     uploadFile(`/gallery/upload_to_folder`, file, 'file', { folder }, onProgress);
 

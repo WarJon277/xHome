@@ -1,8 +1,8 @@
 {
-    "--bg-primary": "#050014",
-    "--bg-secondary": "#1a0b2e",
-    "--bg-tertiary": "#000000",
-    "--text-primary": "#fff0f5",
-    "--text-secondary": "#ff69b4",
-    "--accent-color": "#ff00ff"
+    "--bg-primary": "#0a0a1a",
+    "--bg-secondary": "#1e1e1e",
+    "--text-primary": "#ffffff",
+    "--text-secondary": "#e0e0e0",
+    "--accent-color": "#e50914",
+    "--card-bg": "#1f1f1f"
 }

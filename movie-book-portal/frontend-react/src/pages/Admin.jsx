@@ -8,7 +8,7 @@ import {
     deleteMovie, deleteBook, deleteTvshow,
     uploadMovieFile, uploadTvshowFile, uploadEpisodeFile,
     createEpisode,
-    fetchTheme, updateTheme, fetchStats
+    fetchTheme, updateTheme, resetTheme, fetchStats, uploadBookFile
 } from '../api';
 
 export default function AdminPage() {
@@ -88,6 +88,7 @@ export default function AdminPage() {
         setIsLoadingItems(true);
         setLoadError(null);
         try {
+            console.log('Fetching content for type:', contentType);
             let data;
             switch (contentType) {
                 case 'movies':
@@ -102,6 +103,7 @@ export default function AdminPage() {
                 default:
                     data = [];
             }
+            console.log('Fetched data:', data);
 
             // Ensure data is an array
             if (Array.isArray(data)) {
@@ -187,6 +189,8 @@ export default function AdminPage() {
                     await uploadMovieFile(itemId, mainFile, (pct) => setUploadProgress(pct));
                 } else if (contentType === 'tvshows') {
                     await uploadTvshowFile(itemId, mainFile, (pct) => setUploadProgress(pct));
+                } else if (contentType === 'books') {
+                    await uploadBookFile(itemId, mainFile, (pct) => setUploadProgress(pct));
                 }
             }
 
@@ -430,80 +434,49 @@ export default function AdminPage() {
                                 )}
 
                                 {!isLoadingItems && !loadError && (
-                                    <>
-                                        {/* Desktop Table */}
-                                        <div className="hidden md:block">
-                                            <table className="w-full">
-                                                <thead className="bg-gray-800">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-gray-800 text-gray-300">
+                                                <tr>
+                                                    <th className="p-4 whitespace-nowrap">ID</th>
+                                                    <th className="p-4 whitespace-nowrap">Название</th>
+                                                    <th className="p-4 whitespace-nowrap">Действия</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-[var(--text-primary)]">
+                                                {items.length === 0 ? (
                                                     <tr>
-                                                        <th className="p-4 text-left">ID</th>
-                                                        <th className="p-4 text-left">Название</th>
-                                                        <th className="p-4 text-left">Действия</th>
+                                                        <td colSpan="3" className="p-8 text-center text-gray-400">
+                                                            Нет элементов
+                                                        </td>
                                                     </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {items.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan="3" className="p-8 text-center text-gray-400">
-                                                                Нет элементов
+                                                ) : (
+                                                    items.map(item => (
+                                                        <tr key={item.id} className="border-b border-gray-700 hover:bg-gray-800/50">
+                                                            <td className="p-4">{item.id}</td>
+                                                            <td className="p-4 font-medium">{item.title}</td>
+                                                            <td className="p-4 flex gap-2">
+                                                                <button
+                                                                    onClick={() => handleEdit(item)}
+                                                                    className="p-2 bg-yellow-600 rounded hover:bg-yellow-700 text-white"
+                                                                    title="Редактировать"
+                                                                >
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDelete(item.id)}
+                                                                    className="p-2 bg-red-600 rounded hover:bg-red-700 text-white"
+                                                                    title="Удалить"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
                                                             </td>
                                                         </tr>
-                                                    ) : (
-                                                        items.map(item => (
-                                                            <tr key={item.id} className="border-b border-gray-700">
-                                                                <td className="p-4">{item.id}</td>
-                                                                <td className="p-4">{item.title}</td>
-                                                                <td className="p-4 flex gap-2">
-                                                                    <button
-                                                                        onClick={() => handleEdit(item)}
-                                                                        className="p-2 bg-yellow-600 rounded hover:bg-yellow-700"
-                                                                    >
-                                                                        <Edit size={16} />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleDelete(item.id)}
-                                                                        className="p-2 bg-red-600 rounded hover:bg-red-700"
-                                                                    >
-                                                                        <Trash2 size={16} />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        {/* Mobile List */}
-                                        <div className="md:hidden">
-                                            {items.length === 0 ? (
-                                                <div className="p-8 text-center text-gray-400">Нет элементов</div>
-                                            ) : (
-                                                items.map(item => (
-                                                    <div key={item.id} className="p-4 border-b border-gray-700 flex justify-between items-center">
-                                                        <div className="truncate pr-4">
-                                                            <div className="text-xs text-gray-500">ID: {item.id}</div>
-                                                            <div className="font-medium truncate">{item.title}</div>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleEdit(item)}
-                                                                className="p-2 bg-yellow-600 rounded"
-                                                            >
-                                                                <Edit size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDelete(item.id)}
-                                                                className="p-2 bg-red-600 rounded"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 )}
                             </div>
                         </>

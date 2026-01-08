@@ -93,17 +93,21 @@ def get_stats(
 ):
     """Get real usage stats"""
     try:
-        # Count photos by scanning filesystem recursively
+        # Count ALL photos recursively from gallery (including all subfolders)
+        # This matches what user expects - total count of all photos in the system
         gallery_path = os.path.join(BASE_DIR, "uploads", "gallery")
         photo_count = 0
         
         if os.path.exists(gallery_path):
             for root, dirs, files in os.walk(gallery_path):
                 for file in files:
-                    # Count image files (excluding thumbnails and service files)
-                    if (file.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) 
-                        and not file.startswith('thumb_')
-                        and 'folder-icon' not in file.lower()):
+                    # Skip thumbnails (exact same check as gallery endpoint)
+                    if '_thumb.' in file:
+                        continue
+                    
+                    # Only count files with image extensions
+                    _, ext = os.path.splitext(file)
+                    if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
                         photo_count += 1
         
         stats = {

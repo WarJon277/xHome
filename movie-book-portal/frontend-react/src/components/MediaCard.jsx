@@ -39,7 +39,7 @@ export function MediaCard({ item, onClick, onPlay }) {
                 if (e.key === 'Enter') onClick && onClick();
             }}
             style={{
-                backgroundColor: '#1f1f1f',
+                backgroundColor: 'var(--card-bg)',
                 cursor: 'pointer',
                 height: '100%' // Stretch to fill grid height if needed
             }}
@@ -77,13 +77,13 @@ export function MediaCard({ item, onClick, onPlay }) {
 
             {/* Content Section */}
             <div className="p-4 flex flex-col gap-2 flex-grow">
-                <h3 className="text-lg font-bold text-white leading-tight">{title}</h3>
+                <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{title}</h3>
 
                 {/* Info: Director / Year */}
-                <div className="text-sm text-gray-400">
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {item.director && (
                         <div className="mb-1">
-                            <span className="font-semibold text-gray-300">Режиссёр:</span> {item.director}
+                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Режиссёр:</span> {item.director}
                         </div>
                     )}
                     <div className="flex flex-wrap gap-2 text-xs">
@@ -94,7 +94,7 @@ export function MediaCard({ item, onClick, onPlay }) {
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-gray-400 line-clamp-3 mt-1">
+                <p className="text-sm line-clamp-3 mt-1" style={{ color: 'var(--text-secondary)' }}>
                     {truncate(item.description, 120) || "Нет описания"}
                 </p>
             </div>

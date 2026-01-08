@@ -45,7 +45,8 @@ export default function AdminPage() {
         '--bg-secondary': '#1e1e1e',
         '--text-primary': '#ffffff',
         '--text-secondary': '#e0e0e0',
-        '--accent-color': '#4caf50',
+        '--accent-color': '#e50914',
+        '--card-bg': '#1f1f1f',
     });
 
     useEffect(() => {
@@ -263,10 +264,8 @@ export default function AdminPage() {
                 '--bg-secondary': '#1e1e1e',
                 '--text-primary': '#ffffff',
                 '--text-secondary': '#e0e0e0',
-                '--accent-color': '#4caf50',
-                '--background-color': '#141414',
-                '--card-background': '#1f1f1f',
-                '--primary-color': '#e50914',
+                '--accent-color': '#e50914',
+                '--card-bg': '#1f1f1f',
             },
             light: {
                 '--bg-primary': '#f5f5f5',
@@ -274,9 +273,7 @@ export default function AdminPage() {
                 '--text-primary': '#333333',
                 '--text-secondary': '#555555',
                 '--accent-color': '#2196f3',
-                '--background-color': '#f0f0f0',
-                '--card-background': '#ffffff',
-                '--primary-color': '#2196f3',
+                '--card-bg': '#ffffff',
             },
             ocean: {
                 '--bg-primary': '#001e3c',
@@ -284,9 +281,7 @@ export default function AdminPage() {
                 '--text-primary': '#e3f2fd',
                 '--text-secondary': '#90caf9',
                 '--accent-color': '#00bcd4',
-                '--background-color': '#001428',
-                '--card-background': '#0a2e52',
-                '--primary-color': '#00bcd4',
+                '--card-bg': '#0a2e52',
             }
         };
 
@@ -298,9 +293,9 @@ export default function AdminPage() {
                 document.documentElement.style.setProperty(key, value);
             });
             // Apply gradient background to body
-            if (newTheme['--background-color']) {
-                const bg2 = newTheme['--bg-secondary'] || newTheme['--background-color'];
-                document.body.style.background = `linear-gradient(135deg, ${newTheme['--background-color']} 0%, ${bg2} 100%)`;
+            if (newTheme['--bg-primary']) {
+                const bg2 = newTheme['--bg-secondary'] || newTheme['--bg-primary'];
+                document.body.style.background = `linear-gradient(135deg, ${newTheme['--bg-primary']} 0%, ${bg2} 100%)`;
                 document.body.style.backgroundAttachment = 'fixed';
             }
             // Save to API (and local storage as backup)
@@ -310,7 +305,10 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-white p-4 sm:p-8">
+        <div
+            className="min-h-screen text-white p-4 sm:p-8"
+            style={{ backgroundColor: 'var(--bg-primary)' }}
+        >
             {/* Header */}
             <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                 <div className="flex items-center gap-4">
@@ -515,7 +513,10 @@ export default function AdminPage() {
 
 function StatCard({ title, value }) {
     return (
-        <div className="bg-card-background p-6 rounded-lg text-center">
+        <div
+            className="p-6 rounded-lg text-center"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+        >
             <h3 className="text-gray-400 mb-2">{title}</h3>
             <div className="text-4xl font-bold text-primary">{value}</div>
         </div>
@@ -678,9 +679,9 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset, updateThemeAP
                                 localStorage.setItem('appTheme', JSON.stringify(newColors));
 
                                 // Special case for body background gradient if these specific keys change
-                                if (key === '--background-color' || key === '--bg-secondary') {
-                                    const bg2 = newColors['--bg-secondary'] || newColors['--background-color'];
-                                    document.body.style.background = `linear-gradient(135deg, ${newColors['--background-color']} 0%, ${bg2} 100%)`;
+                                if (key === '--bg-primary' || key === '--bg-secondary') {
+                                    const bg2 = newColors['--bg-secondary'] || newColors['--bg-primary'];
+                                    document.body.style.background = `linear-gradient(135deg, ${newColors['--bg-primary']} 0%, ${bg2} 100%)`;
                                     document.body.style.backgroundAttachment = 'fixed';
                                 }
                             }}

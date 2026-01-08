@@ -180,10 +180,18 @@ export default function GalleryPage() {
         if (!path) return null;
         path = path.replace(/\\/g, '/');
         if (path.startsWith('http')) return path;
+
+        // Remove duplicate /uploads if present
+        if (path.startsWith('/uploads/uploads/')) path = path.replace('/uploads/uploads/', '/uploads/');
+        if (path.startsWith('uploads/uploads/')) path = path.replace('uploads/uploads/', 'uploads/');
+
         if (path.startsWith('/uploads/') || path.startsWith('/static/')) return path;
         if (path.startsWith('uploads/') || path.startsWith('static/')) return `/${path}`;
-        if (path.startsWith('/')) return `/uploads${path}`;
-        return `/uploads/${path}`;
+
+        // If it starts with / but not /uploads/, it likely needs prefixing
+        if (path.startsWith('/')) return `/uploads/gallery${path}`;
+
+        return `/uploads/gallery/${path}`;
     };
 
     return (
@@ -251,11 +259,17 @@ export default function GalleryPage() {
                                 key={item.id || item.name}
                                 className={`
                                     relative aspect-square rounded-lg overflow-hidden cursor-pointer
-                                    hover:scale-105 transition-transform bg-card border border-gray-800
-                                    flex flex-col items-center justify-center p-4 group
+                                    hover:scale-105 transition-transform border border-gray-800
+                                    flex flex-col items-center justify-center p-4 group tv-focusable
                                 `}
+                                style={{ backgroundColor: 'var(--card-bg)' }}
+                                tabIndex={0}
+                                data-tv-clickable="true"
                                 onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
                                 onContextMenu={(e) => handleRightClick(e, item)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
+                                }}
                             >
                                 {isFolder ? (
                                     <>

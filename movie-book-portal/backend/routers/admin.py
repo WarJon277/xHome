@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Body, Depends
 
 from dependencies import get_db, get_db_books_simple, get_db_tvshows_simple, get_db_gallery_simple
-from database import Movie
+from database import Movie, Settings
 from database_books import Book
 from database_tvshows import Tvshow
 from database_gallery import Photo
@@ -22,8 +22,8 @@ DEFAULT_THEME = {
     "--bg-secondary": "#1e1e1e",
     "--text-primary": "#ffffff",
     "--text-secondary": "#e0e0e0",
-    "--accent-color": "#4caf50",
-    "--card-bg": "rgba(30, 30, 30, 0.7)",
+    "--accent-color": "#e50914",
+    "--card-bg": "#1f1f1f",
     "--header-bg": "rgba(18, 18, 28, 0.8)",
     "--font-family": "Arial, sans-serif"
 }
@@ -45,26 +45,43 @@ def save_theme_settings(settings: Dict[str, str]):
         json.dump(settings, f, indent=4)
 
 @router.get("/theme")
-def get_theme():
-    """Get current theme settings"""
-    return load_theme_settings()
+def get_theme(db: Session = Depends(get_db)):
+    """Get current theme settings from DB"""
+    try:
+        settings_record = db.query(Settings).filter(Settings.key == "app_theme").first()
+        if settings_record:
+            return json.loads(settings_record.value)
+        return DEFAULT_THEME
+    except Exception:
+        return DEFAULT_THEME
 
 @router.post("/theme")
-def update_theme(theme: ThemeSettings = Body(...)):
-    """Update theme settings"""
+def update_theme(theme: ThemeSettings = Body(...), db: Session = Depends(get_db)):
+    """Update theme settings in DB"""
     try:
-        save_theme_settings(theme.settings)
+        settings_record = db.query(Settings).filter(Settings.key == "app_theme").first()
+        if not settings_record:
+            settings_record = Settings(key="app_theme", value=json.dumps(theme.settings))
+            db.add(settings_record)
+        else:
+            settings_record.value = json.dumps(theme.settings)
+        db.commit()
         return {"message": "Theme updated successfully", "settings": theme.settings}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to save theme: {str(e)}")
 
 @router.post("/theme/reset")
-def reset_theme():
-    """Reset theme to defaults"""
+def reset_theme(db: Session = Depends(get_db)):
+    """Reset theme to defaults in DB"""
     try:
-        save_theme_settings(DEFAULT_THEME)
+        settings_record = db.query(Settings).filter(Settings.key == "app_theme").first()
+        if settings_record:
+            settings_record.value = json.dumps(DEFAULT_THEME)
+            db.commit()
         return {"message": "Theme reset successfully", "settings": DEFAULT_THEME}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to reset theme: {str(e)}")
 
 @router.get("/stats")

@@ -69,7 +69,11 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         };
 
         window.addEventListener('keydown', handleKeyDown, true); // Use capture to priority
-        return () => window.removeEventListener('keydown', handleKeyDown, true);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true);
+            document.body.style.overflow = '';
+        };
     }, [duration, isPlaying]);
 
     const togglePlay = () => {
@@ -121,7 +125,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black flex items-center justify-center font-sans overflow-hidden"
+            className="fixed inset-0 z-[10000] bg-black flex items-center justify-center font-sans overflow-hidden"
             onMouseMove={handleMouseMove}
         >
             <video

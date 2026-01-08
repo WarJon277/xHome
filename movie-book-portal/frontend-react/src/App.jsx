@@ -31,16 +31,19 @@ function App() {
         document.documentElement.style.setProperty(key, value);
       });
       // Special case for body background gradient
-      if (theme['--background-color']) {
-        const bg2 = theme['--bg-secondary'] || theme['--background-color'];
-        document.body.style.background = `linear-gradient(135deg, ${theme['--background-color']} 0%, ${bg2} 100%)`;
+      if (theme['--bg-primary']) {
+        const bg2 = theme['--bg-secondary'] || theme['--bg-primary'];
+        document.body.style.background = `linear-gradient(135deg, ${theme['--bg-primary']} 0%, ${bg2} 100%)`;
         document.body.style.backgroundAttachment = 'fixed';
       }
     };
 
     // 1. Try API
     fetchTheme()
-      .then(applyTheme)
+      .then(theme => {
+        console.log('Theme loaded from API:', theme);
+        applyTheme(theme);
+      })
       .catch(err => {
         console.warn('Failed to fetch theme from API, falling back to localStorage', err);
         // 2. Fallback to localStorage
@@ -98,10 +101,11 @@ function App() {
                 onClick={() => setIsMenuOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-4 p-3 rounded-lg transition-all ${isActive
-                    ? 'bg-red-600 text-white font-medium'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                    ? 'active-nav-item'
+                    : 'hover:bg-gray-800 hover:text-gray-200'
                   }`
                 }
+                style={({ isActive }) => !isActive ? { color: 'var(--text-secondary)' } : {}}
               >
                 {item.icon}
                 <span>{item.label}</span>

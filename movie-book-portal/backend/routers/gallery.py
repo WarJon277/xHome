@@ -61,8 +61,15 @@ def get_gallery_contents(folder: str = ""):
                         thumb_path = os.path.join(requested_path, thumb_name)
                         
                         if not os.path.exists(thumb_path):
-                            # Если специфичной миниатюры нет, проверяем другие варианты или используем оригинал
-                            thumb_filename = item
+                            # Try to generate thumbnail on the fly if missing
+                            try:
+                                with Image.open(item_path) as img:
+                                    img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                                    img.save(thumb_path, "WEBP", quality=80)
+                                    thumb_filename = thumb_name
+                            except Exception as thumb_gen_err:
+                                print(f"Failed to generate thumbnail for {item}: {thumb_gen_err}")
+                                thumb_filename = item
                         else:
                             thumb_filename = thumb_name
                         

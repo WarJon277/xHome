@@ -59,7 +59,10 @@ export default function TvShowDetails() {
     };
 
     return (
-        <div className="min-h-screen bg-[#141414] text-white p-4 sm:p-6 pb-24 relative">
+        <div
+            className="min-h-screen text-white p-4 sm:p-6 pb-24 relative"
+            style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+        >
             <button
                 onClick={() => navigate('/tvshows')}
                 className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10 p-2 bg-black/50 rounded-full hover:bg-white/20 transition-colors"
@@ -75,15 +78,18 @@ export default function TvShowDetails() {
                     className="w-full h-full object-cover"
                     alt={show.title}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-transparent"></div>
+                <div
+                    className="absolute inset-0 bg-gradient-to-t via-transparent to-transparent"
+                    style={{ background: 'linear-gradient(to top, var(--bg-primary), transparent)' }}
+                ></div>
                 <div className="absolute bottom-0 left-0 p-4 sm:p-8 w-full max-w-4xl">
                     <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold mb-2 sm:mb-4 drop-shadow-lg">{show.title}</h1>
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-base text-gray-300 mb-2 sm:mb-4">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-base mb-2 sm:mb-4" style={{ color: 'var(--text-secondary)' }}>
                         <span className="flex items-center gap-1"><Calendar size={14} className="sm:w-4 sm:h-4" /> {show.release_date?.split('-')[0]}</span>
                         <span className="flex items-center gap-1 text-yellow-500"><Star size={14} fill="currentColor" className="sm:w-4 sm:h-4" /> {show.rating || 'N/A'}</span>
-                        <span className="bg-white/10 px-2 py-0.5 rounded text-white">{show.genre}</span>
+                        <span className="bg-white/10 px-2 py-0.5 rounded" style={{ color: 'var(--text-primary)' }}>{show.genre}</span>
                     </div>
-                    <p className="text-gray-300 line-clamp-2 sm:line-clamp-3 text-sm sm:text-lg opacity-90">{show.description}</p>
+                    <p className="line-clamp-2 sm:line-clamp-3 text-sm sm:text-lg opacity-90" style={{ color: 'var(--text-secondary)' }}>{show.description}</p>
                 </div>
             </div>
 
@@ -96,7 +102,8 @@ export default function TvShowDetails() {
                             {groupedEpisodes[season].map(ep => (
                                 <div
                                     key={ep.id}
-                                    className="bg-[#1f1f1f] rounded-lg overflow-hidden hover:bg-[#2a2a2a] transition-colors cursor-pointer group flex"
+                                    className="rounded-lg overflow-hidden transition-colors cursor-pointer group flex"
+                                    style={{ backgroundColor: 'var(--card-bg)' }}
                                     onClick={() => setSelectedEpisode(ep)}
                                 >
                                     {/* Thumbnail */}
@@ -113,8 +120,8 @@ export default function TvShowDetails() {
 
                                     {/* Info */}
                                     <div className="p-2 sm:p-3 flex flex-col justify-center min-w-0">
-                                        <h3 className="font-medium text-sm sm:text-base text-gray-200 truncate">{ep.episode_number}. {ep.title}</h3>
-                                        <p className="text-[10px] sm:text-sm text-gray-500 line-clamp-1 sm:line-clamp-2">{ep.description || 'No description'}</p>
+                                        <h3 className="font-medium text-sm sm:text-base truncate" style={{ color: 'var(--text-primary)' }}>{ep.episode_number}. {ep.title}</h3>
+                                        <p className="text-[10px] sm:text-sm line-clamp-1 sm:line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{ep.description || 'No description'}</p>
                                     </div>
                                 </div>
                             ))}

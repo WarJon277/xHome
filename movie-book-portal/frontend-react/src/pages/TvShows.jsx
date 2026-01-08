@@ -28,10 +28,10 @@ export default function TvShowsPage() {
     return (
         <div className="p-4 sm:p-6 pb-24">
             <header className="mb-6 flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Tv className="text-purple-500" /> Сериалы
                 </h1>
-                <div className="text-gray-400 text-sm">
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {shows.length} shows
                 </div>
             </header>

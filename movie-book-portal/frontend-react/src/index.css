@@ -3,11 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --primary-color: #e50914;
-  --background-color: #141414;
-  --card-background: #1f1f1f;
-  --text-color: #ffffff;
+  /* Dynamic Theme Variables (overwritten by JS) */
+  --accent-color: #e50914;
+  --bg-primary: #141414;
+  --bg-secondary: #1e1e1e;
+  --card-bg: #1f1f1f;
+  --text-primary: #ffffff;
   --text-secondary: #a3a3a3;
+
+  /* Aliases for compatibility */
+  --primary-color: var(--accent-color);
+  --background-color: var(--bg-primary);
+  --card-background: var(--card-bg);
+  --text-color: var(--text-primary);
+
+  /* Static variables */
   --modal-background: rgba(0, 0, 0, 0.85);
   --input-background: #333;
   --border-radius: 8px;
@@ -26,9 +36,9 @@
 
 body {
   font-family: var(--font-family);
-  background: linear-gradient(135deg, var(--background-color) 0%, var(--bg-secondary) 100%);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   background-attachment: fixed;
-  color: var(--text-color);
+  color: var(--text-primary);
   line-height: 1.6;
   overflow-x: hidden;
   min-height: 100vh;
@@ -98,7 +108,7 @@ a:focus,
 
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--card-background);
+  background: var(--card-bg);
   padding: 2rem 1rem;
   display: flex;
   flex-direction: column;
@@ -107,6 +117,7 @@ a:focus,
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
   transition: transform 0.3s ease;
   z-index: 1000;
 }
@@ -117,11 +128,17 @@ a:focus,
   width: 100%;
 }
 
+.active-nav-item {
+  background-color: var(--accent-color);
+  color: white;
+  font-weight: 500;
+}
+
 .mobile-header {
   display: none;
   height: var(--nav-height);
   padding: 0 1.5rem;
-  background: var(--card-background);
+  background: var(--card-bg);
   align-items: center;
   justify-content: space-between;
   position: fixed;

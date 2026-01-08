@@ -106,11 +106,16 @@ export function useTvNavigation(enabled = true) {
                     if (closest) {
                         e.preventDefault();
                         closest.focus();
-                        closest.scrollIntoView({
+
+                        // Intelligent scroll: only scroll the closest scrollable parent
+                        // to avoid global window scrolling when navigating sidebars
+                        const scrollOptions = {
                             behavior: 'smooth',
-                            block: 'center',
-                            inline: 'center'
-                        });
+                            block: 'nearest',
+                            inline: 'nearest'
+                        };
+
+                        closest.scrollIntoView(scrollOptions);
                     }
                 }
             }

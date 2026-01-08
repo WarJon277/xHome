@@ -159,13 +159,29 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             setIsFullscreen(!!document.fullscreenElement);
         };
 
+        // History API for Back Button
+        window.history.pushState({ playerOpen: true }, '', window.location.href);
+        const handlePopState = (event) => {
+            // Browser back button pressed
+            event.preventDefault();
+            handleSaveProgress(videoRef.current?.currentTime || 0);
+            onClose();
+        };
+
         window.addEventListener('keydown', handleKeyDown, true); // Use capture to priority
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+        window.addEventListener('popstate', handlePopState);
         document.body.style.overflow = 'hidden';
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown, true);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            window.removeEventListener('popstate', handlePopState);
             document.body.style.overflow = '';
+            // If we are unmounting and history state is still ours, go back one step to clean up
+            if (window.history.state?.playerOpen) {
+                window.history.back();
+            }
         };
     }, [duration, isPlaying, showResumePrompt, savedProgress]);
 

@@ -102,9 +102,17 @@ export default function TvShowDetails() {
                             {groupedEpisodes[season].map(ep => (
                                 <div
                                     key={ep.id}
-                                    className="rounded-lg overflow-hidden transition-colors cursor-pointer group flex"
+                                    className="rounded-lg overflow-hidden transition-colors cursor-pointer group flex focus:ring-4 focus:ring-blue-500 outline-none"
                                     style={{ backgroundColor: 'var(--card-bg)' }}
                                     onClick={() => setSelectedEpisode(ep)}
+                                    tabIndex={0}
+                                    role="button"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setSelectedEpisode(ep);
+                                        }
+                                    }}
                                 >
                                     {/* Thumbnail */}
                                     <div className="w-24 sm:w-32 h-20 sm:h-24 bg-black flex-shrink-0 relative overflow-hidden">

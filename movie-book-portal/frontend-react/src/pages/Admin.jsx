@@ -35,7 +35,7 @@ export default function AdminPage() {
         author: '',
         rating: '',
         description: '',
-        genre: 'General'
+        genre: 'Общее'
     });
     const [mainFile, setMainFile] = useState(null);
     const [thumbnail, setThumbnail] = useState(null);
@@ -234,7 +234,7 @@ export default function AdminPage() {
             author: item.author || '',
             rating: item.rating || '',
             description: item.description || '',
-            genre: item.genre || 'General'
+            genre: item.genre || 'Общее'
         });
         setEditingId(item.id);
         setShowForm(true);
@@ -270,7 +270,7 @@ export default function AdminPage() {
             author: '',
             rating: '',
             description: '',
-            genre: 'General'
+            genre: 'Общее'
         });
         setMainFile(null);
         setThumbnail(null);
@@ -635,19 +635,19 @@ function ContentForm({
                 onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
                 className="w-full p-3 mb-4 bg-gray-800 rounded"
             >
-                <option value="General">General</option>
-                <option value="Action">Action</option>
-                <option value="Adventure">Adventure</option>
-                <option value="Comedy">Comedy</option>
-                <option value="Crime">Crime</option>
-                <option value="Drama">Drama</option>
-                <option value="Fantasy">Fantasy</option>
-                <option value="Horror">Horror</option>
-                <option value="Mystery">Mystery</option>
-                <option value="Romance">Romance</option>
-                <option value="Sci-Fi">Sci-Fi</option>
-                <option value="Thriller">Thriller</option>
-                <option value="Documentary">Documentary</option>
+                <option value="Общее">Общее</option>
+                <option value="Боевик">Боевик</option>
+                <option value="Приключения">Приключения</option>
+                <option value="Комедия">Комедия</option>
+                <option value="Криминал">Криминал</option>
+                <option value="Драма">Драма</option>
+                <option value="Фэнтези">Фэнтези</option>
+                <option value="Ужасы">Ужасы</option>
+                <option value="Мистика">Мистика</option>
+                <option value="Мелодрама">Мелодрама</option>
+                <option value="Фантастика">Фантастика</option>
+                <option value="Триллер">Триллер</option>
+                <option value="Документальный">Документальный</option>
             </select>
 
             <textarea

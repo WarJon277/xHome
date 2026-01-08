@@ -306,8 +306,8 @@ export default function AdminPage() {
 
     return (
         <div
-            className="min-h-screen text-white p-4 sm:p-8"
-            style={{ backgroundColor: 'var(--bg-primary)' }}
+            className="min-h-screen p-4 sm:p-8"
+            style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -400,7 +400,7 @@ export default function AdminPage() {
                                 </button>
                             </div>
 
-                            <div className="bg-card-background rounded-lg overflow-hidden">
+                            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--card-bg)' }}>
                                 {/* Desktop Table */}
                                 <div className="hidden md:block">
                                     <table className="w-full">
@@ -530,7 +530,7 @@ function ContentForm({
     isUploading, uploadProgress, editingId
 }) {
     return (
-        <form onSubmit={onSubmit} className="bg-card-background p-4 sm:p-6 rounded-lg max-w-2xl">
+        <form onSubmit={onSubmit} className="p-4 sm:p-6 rounded-lg max-w-2xl" style={{ backgroundColor: 'var(--card-bg)' }}>
             <h2 className="text-2xl mb-6">{editingId ? 'Редактирование' : 'Добавить новый элемент'}</h2>
 
             <input
@@ -665,7 +665,7 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset, updateThemeAP
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {Object.entries(themeColors).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-4 bg-card-background p-4 rounded">
+                    <div key={key} className="flex items-center gap-4 p-4 rounded" style={{ backgroundColor: 'var(--card-bg)' }}>
                         <label className="flex-1 text-sm sm:text-base">{key}</label>
                         <input
                             type="color"

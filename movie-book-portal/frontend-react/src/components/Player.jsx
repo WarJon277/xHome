@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Play, Pause, ChevronLeft } from 'lucide-react';
+import { X, Play, Pause, ChevronLeft, Maximize, Minimize, RotateCcw } from 'lucide-react';
+import { fetchProgress, saveProgress } from '../api';
 
 export default function Player({ item, src, onClose, onNext, onPrev }) {
     const videoRef = useRef(null);
@@ -7,8 +8,12 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const [showControls, setShowControls] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [savedProgress, setSavedProgress] = useState(0);
+    const [showResumePrompt, setShowResumePrompt] = useState(false);
     const controlsTimeoutRef = useRef(null);
     const progressRef = useRef(null);
+    const lastSavedTimeRef = useRef(0);
 
     // Normalize path
     const getVideoUrl = () => {
@@ -33,6 +38,59 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     };
 
     const videoUrl = getVideoUrl();
+    const itemType = item?.tvshow_id ? 'episode' : 'movie';
+    const itemId = item?.id;
+
+    useEffect(() => {
+        // Load progress
+        if (itemId) {
+            fetchProgress(itemType, itemId)
+                .then(data => {
+                    if (data && data.progress_seconds > 10) {
+                        setSavedProgress(data.progress_seconds);
+                        setShowResumePrompt(true);
+                        if (videoRef.current) {
+                            videoRef.current.pause();
+                            setIsPlaying(false);
+                        }
+                        // Hide prompt after 10s
+                        setTimeout(() => setShowResumePrompt(false), 10000);
+                    }
+                })
+                .catch(console.error);
+        }
+    }, [itemId, itemType]);
+
+    const handleResume = () => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = savedProgress;
+            videoRef.current.play();
+            setIsPlaying(true);
+        }
+        setShowResumePrompt(false);
+    };
+
+    const handleStartOver = () => {
+        setShowResumePrompt(false);
+        if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play();
+            setIsPlaying(true);
+        }
+    };
+
+    const handleSaveProgress = (time) => {
+        if (!itemId || Math.abs(time - lastSavedTimeRef.current) < 5) return;
+
+        // If near end (last 30 seconds or > 97%), reset progress to 0
+        let timeToSave = time;
+        if (duration > 0 && (time > duration - 30 || time / duration > 0.97)) {
+            timeToSave = 0;
+        }
+
+        saveProgress(itemType, itemId, timeToSave).catch(console.error);
+        lastSavedTimeRef.current = time;
+    };
 
     useEffect(() => {
         // Auto-play on mount and focus video for TV remotes
@@ -44,11 +102,12 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         const handleKeyDown = (e) => {
             let handled = false;
 
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                handleSaveProgress(videoRef.current?.currentTime || 0);
                 onClose();
                 handled = true;
             }
-            if (e.key === ' ' || e.key === 'Enter') {
+            if (e.key === ' ' || e.key === 'Enter' || e.key === 'MediaPlayPause' || e.key === 'PlayPause') {
                 togglePlay();
                 handled = true;
             }
@@ -68,10 +127,16 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             showControlsTemporarily();
         };
 
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
         window.addEventListener('keydown', handleKeyDown, true); // Use capture to priority
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
         document.body.style.overflow = 'hidden';
         return () => {
             window.removeEventListener('keydown', handleKeyDown, true);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.body.style.overflow = '';
         };
     }, [duration, isPlaying]);
@@ -85,6 +150,23 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 videoRef.current.pause();
                 setIsPlaying(false);
             }
+        }
+    };
+
+    const toggleFullscreen = () => {
+        const container = videoRef.current?.parentElement;
+        if (!container) return;
+
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            const requestFS = container.requestFullscreen || container.webkitRequestFullscreen || container.msRequestFullscreen;
+            if (requestFS) {
+                requestFS.call(container).catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            }
+        } else {
+            const exitFS = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+            if (exitFS) exitFS.call(document);
         }
     };
 
@@ -134,18 +216,59 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 className="w-full h-full object-contain outline-none"
                 tabIndex={-1}
                 onClick={togglePlay}
-                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+                onDoubleClick={toggleFullscreen}
+                onTimeUpdate={() => {
+                    const time = videoRef.current?.currentTime || 0;
+                    setCurrentTime(time);
+                    handleSaveProgress(time);
+                }}
                 onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
                 onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
+                onPause={() => {
+                    setIsPlaying(false);
+                    handleSaveProgress(videoRef.current?.currentTime || 0);
+                }}
             />
+
+            {/* Resume Prompt Overlay */}
+            {showResumePrompt && (
+                <div className="absolute inset-0 z-[10001] bg-black/80 flex items-center justify-center p-4">
+                    <div className="bg-gray-900 p-6 sm:p-10 rounded-2xl border border-white/10 shadow-2xl max-w-lg w-full text-center">
+                        <RotateCcw size={64} className="mx-auto text-red-500 mb-6" />
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">Продолжить просмотр?</h2>
+                        <p className="text-gray-400 mb-8 sm:text-xl">Вы остановились на {formatTime(savedProgress)}</p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <button
+                                onClick={handleResume}
+                                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-red-700 transition-all tv-focusable active:scale-95"
+                                data-tv-clickable="true"
+                                autoFocus
+                            >
+                                Продолжить
+                            </button>
+                            <button
+                                onClick={handleStartOver}
+                                className="flex-1 py-4 bg-white/10 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-white/20 transition-all tv-focusable active:scale-95"
+                                data-tv-clickable="true"
+                            >
+                                С начала
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Overlay Controls */}
             <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60 transition-opacity duration-500 pointer-events-none flex flex-col justify-between p-6 sm:p-10 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
 
                 {/* Header */}
                 <div className="flex items-center justify-between pointer-events-auto">
-                    <button onClick={onClose} className="p-3 text-white hover:bg-white/20 rounded-full transition-colors">
+                    <button
+                        onClick={onClose}
+                        className="p-3 text-white hover:bg-white/20 rounded-full transition-colors tv-focusable"
+                        data-tv-clickable="true"
+                        tabIndex={0}
+                    >
                         <ChevronLeft size={48} />
                     </button>
                     <div className="text-center flex-1 mx-4">
@@ -159,7 +282,12 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 {/* Center Play Button (only pulse if paused) */}
                 {!isPlaying && (
                     <div className="self-center pointer-events-auto">
-                        <button onClick={togglePlay} className="p-8 bg-red-600 rounded-full text-white hover:bg-red-700 hover:scale-110 transition-all shadow-2xl">
+                        <button
+                            onClick={togglePlay}
+                            className="p-8 bg-red-600 rounded-full text-white hover:bg-red-700 hover:scale-110 transition-all shadow-2xl tv-focusable"
+                            data-tv-clickable="true"
+                            tabIndex={0}
+                        >
                             <Play fill="currentColor" size={64} />
                         </button>
                     </div>
@@ -182,6 +310,15 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             </div>
                         </div>
                         <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>
+
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors ml-2 tv-focusable"
+                            data-tv-clickable="true"
+                            tabIndex={0}
+                        >
+                            {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                        </button>
                     </div>
                 </div>
             </div>

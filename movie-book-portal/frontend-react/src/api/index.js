@@ -170,3 +170,16 @@ export const updateTheme = (settings) => request('/admin/theme', {
 });
 export const resetTheme = () => request('/admin/theme/reset', { method: 'POST' });
 export const fetchStats = () => request('/admin/stats');
+
+
+// --- PROGRESS ---
+export const fetchProgress = (itemType, itemId) => request(`/progress/${itemType}/${itemId}`);
+export const saveProgress = (itemType, itemId, seconds) => request('/progress', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        item_type: itemType,
+        item_id: itemId,
+        progress_seconds: seconds
+    })
+});

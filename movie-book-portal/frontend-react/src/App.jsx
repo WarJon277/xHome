@@ -27,15 +27,16 @@ function App() {
   // Load and apply theme on start
   useEffect(() => {
     const applyTheme = (theme) => {
+      if (!theme || Object.keys(theme).length === 0) return;
       Object.entries(theme).forEach(([key, value]) => {
         document.documentElement.style.setProperty(key, value);
       });
       // Special case for body background gradient
-      if (theme['--bg-primary']) {
-        const bg2 = theme['--bg-secondary'] || theme['--bg-primary'];
-        document.body.style.background = `linear-gradient(135deg, ${theme['--bg-primary']} 0%, ${bg2} 100%)`;
-        document.body.style.backgroundAttachment = 'fixed';
-      }
+      const bg1 = theme['--bg-primary'] || '#141414';
+      const bg2 = theme['--bg-secondary'] || bg1;
+      document.body.style.background = `linear-gradient(135deg, ${bg1} 0%, ${bg2} 100%)`;
+      document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.color = theme['--text-primary'] || '#ffffff';
     };
 
     // 1. Try API
@@ -102,10 +103,10 @@ function App() {
                 className={({ isActive }) =>
                   `flex items-center gap-4 p-3 rounded-lg transition-all ${isActive
                     ? 'active-nav-item'
-                    : 'hover:bg-gray-800 hover:text-gray-200'
+                    : 'hover:opacity-80'
                   }`
                 }
-                style={({ isActive }) => !isActive ? { color: 'var(--text-secondary)' } : {}}
+                style={({ isActive }) => !isActive ? { color: 'var(--text-secondary)' } : { backgroundColor: 'var(--accent-color)', color: '#ffffff' }}
               >
                 {item.icon}
                 <span>{item.label}</span>

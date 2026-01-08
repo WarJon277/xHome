@@ -211,20 +211,22 @@ export default function GalleryPage() {
                     {currentFolder && (
                         <button
                             onClick={handleBack}
-                            className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 text-white transition-colors"
+                            className="p-2 rounded-full hover:opacity-80 transition-colors"
+                            style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
                         >
                             <ArrowLeft size={20} />
                         </button>
                     )}
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                         <ImageIcon className="text-yellow-500" /> Галерея
                     </h1>
                 </div>
 
                 {/* Breadcrumbs */}
-                <div className="text-gray-400 text-sm flex flex-wrap items-center gap-2 bg-card p-2 rounded px-4 inline-flex max-w-full">
+                <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
                     <span
-                        className={`cursor-pointer hover:text-white ${!currentFolder ? 'text-white' : ''}`}
+                        className={`cursor-pointer hover:opacity-80 ${!currentFolder ? 'font-bold' : ''}`}
+                        style={{ color: !currentFolder ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                         onClick={() => setCurrentFolder("")}
                     >
                         Root
@@ -249,7 +251,7 @@ export default function GalleryPage() {
             {loading ? (
                 <div className="text-center text-gray-500 mt-10">Загрузка...</div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1 sm:gap-2">
                     {items.map(item => {
                         const isFolder = item.type === 'folder';
                         const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;

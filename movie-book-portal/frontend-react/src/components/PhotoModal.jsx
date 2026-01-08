@@ -6,9 +6,18 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.key === 'Escape') onClose();
-            if (e.key === 'ArrowLeft' && onPrev) onPrev();
-            if (e.key === 'ArrowRight' && onNext) onNext();
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                e.preventDefault();
+                onClose();
+            }
+            if (e.key === 'ArrowLeft' && onPrev) {
+                e.preventDefault();
+                onPrev();
+            }
+            if (e.key === 'ArrowRight' && onNext) {
+                e.preventDefault();
+                onNext();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
@@ -38,11 +47,13 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
     const imageUrl = safeUrl(item.file_path);
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center backdrop-blur-sm">
+        <div className="fixed inset-0 z-[11000] bg-black/95 flex items-center justify-center backdrop-blur-sm">
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-white/70 hover:text-white z-50 p-2 rounded-full hover:bg-white/10 transition-colors"
+                className="absolute top-4 right-4 text-white/70 hover:text-white z-50 p-2 rounded-full hover:bg-white/10 transition-colors tv-focusable"
+                data-tv-clickable="true"
+                tabIndex={0}
             >
                 <X size={32} />
             </button>
@@ -51,7 +62,9 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
             {onPrev && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onPrev(); }}
-                    className="absolute left-2 sm:left-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all"
+                    className="absolute left-2 sm:left-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all tv-focusable"
+                    data-tv-clickable="true"
+                    tabIndex={0}
                 >
                     <ChevronLeft size={32} className="sm:w-12 sm:h-12" />
                 </button>
@@ -60,7 +73,9 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
             {onNext && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onNext(); }}
-                    className="absolute right-2 sm:right-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all"
+                    className="absolute right-2 sm:right-4 text-white/50 hover:text-white z-40 p-2 sm:p-4 rounded-full hover:bg-white/5 transition-all tv-focusable"
+                    data-tv-clickable="true"
+                    tabIndex={0}
                 >
                     <ChevronRight size={32} className="sm:w-12 sm:h-12" />
                 </button>

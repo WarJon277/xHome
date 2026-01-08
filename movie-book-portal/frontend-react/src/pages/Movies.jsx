@@ -44,10 +44,10 @@ export default function MoviesPage() {
             )}
 
             <header className="mb-6 flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Play className="text-red-500" /> Фильмы
                 </h1>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                     {movies.length} titles
                 </div>
             </header>

@@ -133,6 +133,7 @@ export default function TvShowDetails() {
             {/* Player Modal */}
             {selectedEpisode && (
                 <Player
+                    item={selectedEpisode}
                     src={getImageUrl(selectedEpisode.file_path)}
                     poster={getImageUrl(selectedEpisode.thumbnail_path || show.poster_path)}
                     title={`${show.title} - S${selectedEpisode.season_number}E${selectedEpisode.episode_number}`}

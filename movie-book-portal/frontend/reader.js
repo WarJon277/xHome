@@ -3,11 +3,16 @@ class BookReader {
         this.bookId = null;
         this.currentPage = 1;
         this.totalPages = 1;
-        this.fontSize = 18;
+        // Load settings from localStorage or defaults
+        this.fontSize = parseInt(localStorage.getItem('reader_fontSize')) || 18;
         this.bookTitle = 'Загрузка...';
 
         this.initElements();
         this.bindEvents();
+
+        // Apply initial settings
+        this.applySettings();
+
         this.loadBookInfo();
     }
 
@@ -41,6 +46,21 @@ class BookReader {
             if (e.key === 'ArrowRight') this.goToNextPage();
             if (e.key === 'Escape') this.exitReader();
         });
+    }
+
+    applySettings() {
+        // Apply font size
+        this.contentArea.style.fontSize = this.fontSize + 'px';
+
+        // Apply theme
+        const savedTheme = localStorage.getItem('reader_theme') || 'sepia';
+
+        // Ensure the selector matches the saved theme
+        if (this.themeSelector) {
+            this.themeSelector.value = savedTheme;
+        }
+
+        this.changeTheme(false); // false = don't save again
     }
 
     async loadBookInfo() {
@@ -170,9 +190,10 @@ class BookReader {
     changeFontSize(delta) {
         this.fontSize = Math.max(14, Math.min(32, this.fontSize + delta));
         this.contentArea.style.fontSize = this.fontSize + 'px';
+        localStorage.setItem('reader_fontSize', this.fontSize);
     }
 
-    changeTheme() {
+    changeTheme(save = true) {
         const container = this.readerContainer;
         container.classList.remove('theme-light', 'theme-sepia', 'theme-night');
 
@@ -184,28 +205,32 @@ class BookReader {
         } else {
             container.classList.add('theme-light');
         }
-    }
 
-exitReader() {
-if (window.history.length > 1) {
-        window.history.back();
-        return;
-    }
-
-    // Если истории по какой-то причине нет
-    try {
-        window.location.replace(document.referrer || '/');
-    } catch {
-        window.location.replace('/');
-    }
-
-    // Дополнительная защита — через 300 мс (иногда помогает на iOS/Android)
-    setTimeout(() => {
-        if (document.referrer) {
-            window.location.replace(document.referrer);
+        if (save) {
+            localStorage.setItem('reader_theme', theme);
         }
-    }, 300);
-}
+    }
+
+    exitReader() {
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        // Если истории по какой-то причине нет
+        try {
+            window.location.replace(document.referrer || '/');
+        } catch {
+            window.location.replace('/');
+        }
+
+        // Дополнительная защита — через 300 мс (иногда помогает на iOS/Android)
+        setTimeout(() => {
+            if (document.referrer) {
+                window.location.replace(document.referrer);
+            }
+        }, 300);
+    }
 }
 
 // Запуск

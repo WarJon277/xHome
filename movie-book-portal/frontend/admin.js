@@ -304,6 +304,36 @@ const THEME_PRESETS = {
         "--card-bg": "rgba(26, 11, 46, 0.7)",
         "--header-bg": "rgba(5, 0, 20, 0.9)",
         "--font-family": "'Courier New', monospace"
+    },
+    sunset: {
+        "--bg-primary": "#2d1b2e",
+        "--bg-secondary": "#b0413e",
+        "--text-primary": "#ffffc2",
+        "--text-secondary": "#feb2a8",
+        "--accent-color": "#fca311",
+        "--card-bg": "rgba(45, 27, 46, 0.7)",
+        "--header-bg": "rgba(45, 27, 46, 0.9)",
+        "--font-family": "'Trebuchet MS', sans-serif"
+    },
+    dracula: {
+        "--bg-primary": "#282a36",
+        "--bg-secondary": "#44475a",
+        "--text-primary": "#f8f8f2",
+        "--text-secondary": "#6272a4",
+        "--accent-color": "#ff79c6",
+        "--card-bg": "rgba(68, 71, 90, 0.7)",
+        "--header-bg": "rgba(40, 42, 54, 0.9)",
+        "--font-family": "Consolas, monospace"
+    },
+    coffee: {
+        "--bg-primary": "#2c241b",
+        "--bg-secondary": "#4a3c31",
+        "--text-primary": "#e6d7c3",
+        "--text-secondary": "#a89f91",
+        "--accent-color": "#c08c5d",
+        "--card-bg": "rgba(60, 48, 40, 0.75)",
+        "--header-bg": "rgba(44, 36, 27, 0.9)",
+        "--font-family": "Georgia, serif"
     }
 };
 

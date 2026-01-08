@@ -21,8 +21,23 @@ const HomePage = () => <Navigate to="/movies" replace />;
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Enable TV navigation globally
-  useTvNavigation(true);
+  // Enable TV navigation globally, but disable if a modal is open
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const checkModal = () => {
+      setIsModalOpen(document.body.classList.contains('modal-open'));
+    };
+
+    // Check initially and set up an observer or interval to track class changes
+    checkModal();
+    const observer = new MutationObserver(checkModal);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useTvNavigation(!isModalOpen);
 
   // Load and apply theme on start
   useEffect(() => {

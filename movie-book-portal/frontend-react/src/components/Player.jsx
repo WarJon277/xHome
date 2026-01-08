@@ -94,28 +94,56 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
     useEffect(() => {
         // Auto-play on mount and focus video for TV remotes
-        if (videoRef.current) {
+        if (videoRef.current && !showResumePrompt) {
             videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
             videoRef.current.focus();
         }
+    }, [showResumePrompt]);
 
+    useEffect(() => {
         const handleKeyDown = (e) => {
+            // Normalize key for some devices
+            const key = e.key;
+            const keyCode = e.keyCode;
+
+            // If prompt is showing, only allow Back button; others let spatial navigation handle it
+            if (showResumePrompt) {
+                if (key === 'Escape' || key === 'Backspace' || key === 'GoBack' || keyCode === 461 || keyCode === 10009 || keyCode === 27) {
+                    handleSaveProgress(videoRef.current?.currentTime || 0);
+                    onClose();
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                return;
+            }
+
             let handled = false;
 
-            if (e.key === 'Escape' || e.key === 'Backspace') {
+            // Support for various TV remote Back buttons (Samsung, LG, etc.)
+            const isBack = key === 'Escape' || key === 'Backspace' || key === 'GoBack' ||
+                keyCode === 461 || keyCode === 10009 || keyCode === 27 || keyCode === 8;
+
+            if (isBack) {
                 handleSaveProgress(videoRef.current?.currentTime || 0);
                 onClose();
                 handled = true;
             }
-            if (e.key === ' ' || e.key === 'Enter' || e.key === 'MediaPlayPause' || e.key === 'PlayPause') {
+
+            // Support for various TV remote Play/Pause buttons
+            const isPlayPause = key === ' ' || key === 'Enter' ||
+                key === 'MediaPlayPause' || key === 'PlayPause' ||
+                key === 'MediaPlay' || key === 'MediaPause' ||
+                keyCode === 179 || keyCode === 19 || keyCode === 415 || keyCode === 32 || keyCode === 13;
+
+            if (isPlayPause) {
                 togglePlay();
                 handled = true;
             }
-            if (e.key === 'ArrowRight') {
+            if (key === 'ArrowRight' || keyCode === 39) {
                 seek(10);
                 handled = true;
             }
-            if (e.key === 'ArrowLeft') {
+            if (key === 'ArrowLeft' || keyCode === 37) {
                 seek(-10);
                 handled = true;
             }
@@ -139,7 +167,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.body.style.overflow = '';
         };
-    }, [duration, isPlaying]);
+    }, [duration, isPlaying, showResumePrompt, savedProgress]);
 
     const togglePlay = () => {
         if (videoRef.current) {
@@ -240,7 +268,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <button
                                 onClick={handleResume}
-                                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-red-700 transition-all tv-focusable active:scale-95"
+                                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-red-700 transition-all tv-focusable active:scale-95 border-2 border-transparent focus:border-white outline-none"
                                 data-tv-clickable="true"
                                 autoFocus
                             >
@@ -248,7 +276,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             </button>
                             <button
                                 onClick={handleStartOver}
-                                className="flex-1 py-4 bg-white/10 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-white/20 transition-all tv-focusable active:scale-95"
+                                className="flex-1 py-4 bg-white/10 text-white rounded-xl font-bold text-lg sm:text-xml hover:bg-white/20 transition-all tv-focusable active:scale-95 border-2 border-transparent focus:border-white outline-none"
                                 data-tv-clickable="true"
                             >
                                 С начала

@@ -1,27 +1,40 @@
-import { X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { X, ChevronLeft, ChevronRight, Trash2, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) {
-    if (!item) return null;
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        // Prevent background TV navigation
+        document.body.classList.add('modal-open');
+
         const handleKeyDown = (e) => {
-            if (e.key === 'Escape' || e.key === 'Backspace') {
+            if (e.key === 'Escape' || e.key === 'Backspace' || e.keyCode === 10009 || e.keyCode === 461) {
                 e.preventDefault();
                 onClose();
             }
             if (e.key === 'ArrowLeft' && onPrev) {
                 e.preventDefault();
+                setIsLoading(true);
                 onPrev();
             }
             if (e.key === 'ArrowRight' && onNext) {
                 e.preventDefault();
+                setIsLoading(true);
                 onNext();
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true);
+            document.body.classList.remove('modal-open');
+        };
     }, [onClose, onNext, onPrev]);
+
+    // Reset loading when item changes
+    useEffect(() => {
+        setIsLoading(true);
+    }, [item?.id, item?.file_path]);
 
     const getImageUrl = (path) => {
         if (!path) return '';
@@ -81,12 +94,20 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
                 </button>
             )}
 
-            {/* Main Image */}
+            {/* Main Image Container */}
             <div className="relative w-full h-full flex items-center justify-center p-4">
+                {isLoading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-white/50">
+                        <Loader2 size={48} className="animate-spin text-primary" />
+                        <span className="text-sm font-medium animate-pulse">Загрузка...</span>
+                    </div>
+                )}
                 <img
                     src={imageUrl}
                     alt={item.title}
-                    className="max-h-full max-w-full object-contain shadow-2xl"
+                    className={`max-h-full max-w-full object-contain shadow-2xl transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+                    onLoad={() => setIsLoading(false)}
+                    onError={() => setIsLoading(false)}
                     onClick={(e) => e.stopPropagation()}
                 />
             </div>

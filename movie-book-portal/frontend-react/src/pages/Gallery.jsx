@@ -90,8 +90,8 @@ export default function GalleryPage() {
     const handleRightClick = (e, item) => {
         e.preventDefault();
         setContextMenu({
-            x: e.pageX,
-            y: e.pageY,
+            x: e.clientX,
+            y: e.clientY,
             item: item
         });
     };

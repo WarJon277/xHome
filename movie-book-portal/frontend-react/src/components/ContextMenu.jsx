@@ -14,10 +14,21 @@ export default function ContextMenu({ x, y, options, onClose }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [onClose]);
 
-    // Adjust position if it flows off screen (basic check)
+    // Adjust position if it flows off screen
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const menuWidth = 200; // Estimated max width
+    const menuHeight = 150; // Estimated max height
+
+    let finalX = x;
+    let finalY = y;
+
+    if (x + menuWidth > windowWidth) finalX = windowWidth - menuWidth - 10;
+    if (y + menuHeight > windowHeight) finalY = windowHeight - menuHeight - 10;
+
     const style = {
-        top: y,
-        left: x,
+        top: Math.max(0, finalY),
+        left: Math.max(0, finalX),
     };
 
     return (

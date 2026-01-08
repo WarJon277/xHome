@@ -179,3 +179,18 @@
         opacity: 1;
     }
 }
+
+/* Smooth zoom animation for all slides */
+@keyframes kaleidoscope-zoom {
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.55);
+    }
+}
+
+.kaleidoscope-zoom-animation {
+    animation: kaleidoscope-zoom 8s ease-in-out infinite alternate;
+}

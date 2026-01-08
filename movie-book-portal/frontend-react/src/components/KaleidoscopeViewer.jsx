@@ -186,7 +186,7 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
                 >
                     <img
                         src={activeItem?.photo_path}
-                        className="max-w-full max-h-full object-contain shadow-2xl"
+                        className="max-w-full max-h-full object-contain shadow-2xl kaleidoscope-zoom-animation"
                     />
                 </div>
 

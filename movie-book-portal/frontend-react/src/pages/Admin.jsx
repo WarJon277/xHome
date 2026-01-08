@@ -303,6 +303,46 @@ export default function AdminPage() {
                 '--text-secondary': '#90caf9',
                 '--accent-color': '#00bcd4',
                 '--card-bg': '#0a2e52',
+            },
+            forest: {
+                '--bg-primary': '#1b2e1b',
+                '--bg-secondary': '#2e4a2e',
+                '--text-primary': '#e8f5e9',
+                '--text-secondary': '#a5d6a7',
+                '--accent-color': '#66bb6a',
+                '--card-bg': 'rgba(46, 74, 46, 0.7)',
+            },
+            cyberpunk: {
+                '--bg-primary': '#050014',
+                '--bg-secondary': '#1a0b2e',
+                '--text-primary': '#fff0f5',
+                '--text-secondary': '#ff69b4',
+                '--accent-color': '#ff00ff',
+                '--card-bg': 'rgba(26, 11, 46, 0.7)',
+            },
+            sunset: {
+                '--bg-primary': '#2d1b2e',
+                '--bg-secondary': '#b0413e',
+                '--text-primary': '#ffffc2',
+                '--text-secondary': '#feb2a8',
+                '--accent-color': '#fca311',
+                '--card-bg': 'rgba(45, 27, 46, 0.7)',
+            },
+            dracula: {
+                '--bg-primary': '#282a36',
+                '--bg-secondary': '#44475a',
+                '--text-primary': '#f8f8f2',
+                '--text-secondary': '#6272a4',
+                '--accent-color': '#ff79c6',
+                '--card-bg': 'rgba(68, 71, 90, 0.7)',
+            },
+            coffee: {
+                '--bg-primary': '#2c241b',
+                '--bg-secondary': '#4a3c31',
+                '--text-primary': '#e6d7c3',
+                '--text-secondary': '#a89f91',
+                '--accent-color': '#c08c5d',
+                '--card-bg': 'rgba(60, 48, 40, 0.75)',
             }
         };
 
@@ -665,6 +705,11 @@ function ThemeSettings({ themeColors, setThemeColors, applyPreset, updateThemeAP
                     <option value="midnight">Midnight</option>
                     <option value="light">Light Mode</option>
                     <option value="ocean">Deep Ocean</option>
+                    <option value="forest">Forest</option>
+                    <option value="cyberpunk">Cyberpunk</option>
+                    <option value="sunset">Sunset</option>
+                    <option value="dracula">Dracula</option>
+                    <option value="coffee">Coffee</option>
                 </select>
             </div>
 

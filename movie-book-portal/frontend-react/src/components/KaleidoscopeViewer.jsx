@@ -62,7 +62,12 @@ export default function KaleidoscopeViewer() {
                             <div
                                 key={k.id}
                                 onClick={() => handlePlay(k.id)}
-                                className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-700 hover:border-green-500 group shadow-lg"
+                                className="relative aspect-square bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:scale-105 transition-transform border border-gray-700 hover:border-green-500 group shadow-lg tv-focusable"
+                                tabIndex={0}
+                                data-tv-clickable="true"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handlePlay(k.id);
+                                }}
                             >
                                 {cover ? (
                                     <img src={cover} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />

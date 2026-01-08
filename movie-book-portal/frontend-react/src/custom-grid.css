@@ -1,0 +1,32 @@
+/* Custom grid with max 5 columns */
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+    max-width: 100%;
+}
+
+/* Limit to 5 columns maximum */
+@media (min-width: 1280px) {
+    .media-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .media-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .media-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .media-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

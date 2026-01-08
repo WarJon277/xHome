@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #e50914;
+  --background-color: #141414;
+  --card-background: #1f1f1f;
+  --text-color: #ffffff;
+  --text-secondary: #a3a3a3;
+  --modal-background: rgba(0, 0, 0, 0.85);
+  --input-background: #333;
+  --border-radius: 8px;
+  --transition: all 0.3s ease;
+  --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --nav-height: 60px;
+  --sidebar-width: 250px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-family);
+  background: linear-gradient(135deg, var(--background-color) 0%, var(--bg-secondary) 100%);
+  background-attachment: fixed;
+  color: var(--text-color);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Utilities */
+.hidden {
+  display: none !important;
+}
+
+/* Button & Focus Reset */
+button {
+  outline: none;
+  font-family: inherit;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(229, 9, 20, 0.5);
+  color: white;
+}
+
+/* TV Focus Styles */
+*:focus {
+  outline: 3px solid #646cff;
+  outline-offset: 2px;
+}
+
+button:focus,
+a:focus,
+[tabindex]:focus,
+.tv-focusable:focus {
+  outline: 3px solid #646cff;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(100, 108, 255, 0.2);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  /* Adjust sidebar for mobile */
+  nav {
+    width: 200px !important;
+  }
+
+  /* Smaller padding on mobile */
+  main {
+    padding: 1rem !important;
+  }
+}
+
+/* TV / Large Screen Optimizations */
+@media (min-width: 1920px) {
+  body {
+    font-size: 18px;
+  }
+
+  /* Larger touch targets for TV */
+  button,
+  a {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Reduce animations for performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

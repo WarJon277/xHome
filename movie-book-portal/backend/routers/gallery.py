@@ -261,13 +261,13 @@ async def upload_photo_to_folder(folder: str = Form(""), file: UploadFile = File
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла: {str(e)}")
 
 @router.post("/move_photo")
-async def move_photo(photo_path: str = Form(...), target_folder: str = Form(...)):
+async def move_photo(photo_path: str = Form(...), target_folder: str = Form(None)):
     try:
         base_path = os.path.abspath(GALLERY_UPLOADS)
         source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, photo_path))
         
-        # Если целевая папка пустая строка, это означает перемещение в корень
-        if target_folder == "":
+        # Если целевая папка None или пустая, это означает перемещение в корень
+        if not target_folder:
             target_path = GALLERY_UPLOADS
         else:
             target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))
@@ -288,22 +288,28 @@ async def move_photo(photo_path: str = Form(...), target_folder: str = Form(...)
         source_thumb_path = os.path.join(os.path.dirname(source_path), f"{os.path.splitext(filename)[0]}_thumb.webp")
         dest_thumb_path = os.path.join(target_path, f"{os.path.splitext(filename)[0]}_thumb.webp")
         if os.path.exists(source_thumb_path):
-            shutil.move(source_thumb_path, dest_thumb_path)
+             # Check if dest already exists to avoid error? shutil.move overwrites usually but let's be safe
+             if os.path.exists(dest_thumb_path):
+                 os.remove(dest_thumb_path)
+             shutil.move(source_thumb_path, dest_thumb_path)
         
         return {"message": "Фото перемещено успешно", "new_path": destination_path}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка при перемещении фото: {str(e)}")
 
 @router.post("/move_folder")
-async def move_folder(folder_path: str = Form(...), target_folder: str = Form(...)):
+async def move_folder(folder_path: str = Form(...), target_folder: str = Form(None)):
+
     try:
         # Логирование для отладки
         print(f"Получен запрос на перемещение папки: folder_path='{folder_path}', target_folder='{target_folder}'")
         base_path = os.path.abspath(GALLERY_UPLOADS)
         source_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, folder_path))
         
-        # Если целевая папка пустая строка, это означает перемещение в корень
-        if target_folder == "":
+        # Если целевая папка None или пустая, это означает перемещение в корень
+        if not target_folder:
             target_path = GALLERY_UPLOADS
         else:
             target_path = os.path.abspath(os.path.join(GALLERY_UPLOADS, target_folder))

@@ -29,6 +29,7 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     }
 
     const modal = document.createElement('div');
+    modal.id = 'video-modal'; // Critical for tvNavigation.js to detect this as a modal
     Object.assign(modal.style, {
         position: 'fixed',
         inset: '0',
@@ -108,59 +109,88 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
     };
 
     // ─── КОНТЕЙНЕР ДЛЯ КНОПОК (поверх видео) ────────
-    // На ТВ мы НЕ добавляем кастомные оверлеи, чтобы не мешать нативному плееру
-    if (!isTV()) {
-        const overlay = document.createElement('div');
-        Object.assign(overlay.style, {
-            position: 'absolute',
-            inset: '0',
-            pointerEvents: 'none'
+    // Создаем оверлей для ВСЕХ устройств, включая ТВ
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+        position: 'absolute',
+        inset: '0',
+        pointerEvents: 'none',
+        zIndex: '10000' // Ensure it's above video
+    });
+
+    // Добавляем элементы управления эпизодами
+    const episodeControls = createEpisodeControls(title, modal, video, metadata);
+    episodeControls.style.pointerEvents = 'auto'; // Кнопки должны быть кликабельны
+
+    // Для ТВ делаем кнопки покрупнее и явно видимыми
+    if (isTV()) {
+        episodeControls.querySelectorAll('button').forEach(btn => {
+            btn.style.padding = '15px 25px';
+            btn.style.fontSize = '18px';
+            btn.style.margin = '10px';
+            btn.style.border = '2px solid transparent'; // Для фокуса
+
+            // Add focus styles specifically for this button
+            btn.addEventListener('focus', () => {
+                btn.style.borderColor = '#3498db';
+                btn.style.transform = 'scale(1.1)';
+                btn.style.background = 'rgba(50, 50, 150, 0.9)';
+            });
+            btn.addEventListener('blur', () => {
+                btn.style.borderColor = 'transparent';
+                btn.style.transform = 'scale(1)';
+                btn.style.background = 'rgba(0,0,0,0.7)';
+            });
         });
+    }
 
-        // Добавляем элементы управления эпизодами
-        const episodeControls = createEpisodeControls(title, modal, video, metadata);
-        episodeControls.style.pointerEvents = 'auto';
-        overlay.appendChild(episodeControls);
+    overlay.appendChild(episodeControls);
 
-        // Кнопка закрытия
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '✕';
-        Object.assign(closeBtn.style, {
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            zIndex: '2147483647',
-            width: '60px',
-            height: '60px',
-            background: 'rgba(200, 0, 0, 0.8)',
-            color: 'white',
-            border: '2px solid white',
-            borderRadius: '50%',
-            fontSize: '30px',
-            cursor: 'pointer',
-            pointerEvents: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 10px rgba(0,0,0,0.5)'
-        });
+    // Кнопка закрытия (показываем всегда, но на ТВ можно скрыть если мешает, пока оставим)
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    Object.assign(closeBtn.style, {
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        zIndex: '2147483647',
+        width: '60px',
+        height: '60px',
+        background: 'rgba(200, 0, 0, 0.8)',
+        color: 'white',
+        border: '2px solid white',
+        borderRadius: '50%',
+        fontSize: '30px',
+        cursor: 'pointer',
+        pointerEvents: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+    });
 
-        closeBtn.onclick = () => {
-            saveProgress();
-            modal.remove();
-        };
+    closeBtn.onclick = () => {
+        saveProgress();
+        modal.remove();
+    };
 
-        overlay.appendChild(closeBtn);
-        modal.append(video, overlay);
-    } else {
-        // Exclusive TV Mode: Только видео
-        modal.append(video);
-        // Добавляем подсказку про выход
+    if (isTV()) {
+        // На ТВ кнопку закрытия можно сделать прозрачнее или убрать фокус по умолчанию
+        closeBtn.style.opacity = '0.7';
+    }
+
+    overlay.appendChild(closeBtn);
+
+    // Добавляем оверлей в модальное окно (оно контейнер)
+    modal.append(video, overlay);
+
+    if (isTV()) {
+        // Добавляем подсказку про выход для ТВ
         const hint = document.createElement('div');
         hint.textContent = 'Нажмите НАЗАД для выхода';
         Object.assign(hint.style, {
             position: 'absolute',
-            top: '20px',
+            bottom: '20px', // Внизу
             right: '20px',
             background: 'rgba(0,0,0,0.5)',
             color: '#fff',
@@ -170,7 +200,7 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
             fontSize: '14px',
             borderRadius: '4px'
         });
-        modal.appendChild(hint);
+        overlay.appendChild(hint); // В оверлей
         // Скрываем подсказку через 5 сек
         setTimeout(() => hint.remove(), 5000);
     }
@@ -221,9 +251,12 @@ export function openVideoPlayer(filePath, title = '', metadata = null) {
                     if (!isTV()) return;
 
                     try {
-                        if (video.requestFullscreen) video.requestFullscreen();
-                        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-                        else if (video.msRequestFullscreen) video.msRequestFullscreen();
+                        // Request fullscreen on the MODAL (container), not just video
+                        // This allows custom overlays to be visible
+                        if (modal.requestFullscreen) modal.requestFullscreen();
+                        else if (modal.webkitRequestFullscreen) modal.webkitRequestFullscreen();
+                        else if (modal.msRequestFullscreen) modal.msRequestFullscreen();
+                        else if (video.requestFullscreen) video.requestFullscreen(); // Fallback to video only
                     } catch (err) {
                         console.warn("Fullscreen request failed", err);
                     }

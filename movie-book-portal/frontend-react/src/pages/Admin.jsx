@@ -615,6 +615,26 @@ function ContentForm({
                 className="w-full p-3 mb-4 bg-gray-800 rounded"
             />
 
+            <select
+                value={formData.genre}
+                onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
+                className="w-full p-3 mb-4 bg-gray-800 rounded"
+            >
+                <option value="General">General</option>
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="Comedy">Comedy</option>
+                <option value="Crime">Crime</option>
+                <option value="Drama">Drama</option>
+                <option value="Fantasy">Fantasy</option>
+                <option value="Horror">Horror</option>
+                <option value="Mystery">Mystery</option>
+                <option value="Romance">Romance</option>
+                <option value="Sci-Fi">Sci-Fi</option>
+                <option value="Thriller">Thriller</option>
+                <option value="Documentary">Documentary</option>
+            </select>
+
             <textarea
                 placeholder="Описание"
                 value={formData.description}

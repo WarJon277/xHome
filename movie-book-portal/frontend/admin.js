@@ -60,6 +60,9 @@ window.editAdminItem = async (category, id) => {
         // Rating/Genre if exist in form
         const ratingInput = document.getElementById('rating');
         if (ratingInput && item.rating) ratingInput.value = item.rating;
+
+        const genreInput = document.getElementById('genre');
+        if (genreInput && item.genre) genreInput.value = item.genre;
         // genre select logic is tricky in admin.js as it doesn't seem to fetch genres dynamically in the snippet shown?
         // Wait, admin.js DOES NOT show genre input in the form structure I saw earlier.
         // Let's re-read admin.js snippet. It has:
@@ -149,7 +152,7 @@ async function handleAddSubmit(e) {
             description: document.getElementById('description').value,
             director: document.getElementById('director-author').value, // Used for Director or Author
             author: document.getElementById('director-author').value,
-            genre: "General", // Default
+            genre: document.getElementById('genre').value || "General",
             rating: document.getElementById('rating').value ? parseFloat(document.getElementById('rating').value) : 0
         };
 

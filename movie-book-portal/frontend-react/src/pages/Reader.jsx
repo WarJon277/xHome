@@ -189,7 +189,12 @@ export default function Reader() {
         processed = processed.replace(/(src|href)="([^"]*?)"/gi, (match, attr, url) => {
             if (url && !url.match(/^(http|data:|#)/)) {
                 const encoded = url.split('/').map(s => encodeURIComponent(s)).join('/');
-                return `${attr}="/books/${bookId}/file_resource/${encoded}"`;
+                const newUrl = `/books/${bookId}/file_resource/${encoded}`;
+                if (attr.toLowerCase() === 'src') {
+                    // Add onerror handler for images
+                    return `${attr}="${newUrl}" onError="this.style.display='none'"`;
+                }
+                return `${attr}="${newUrl}"`;
             }
             return match;
         });

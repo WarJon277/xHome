@@ -15,6 +15,8 @@ export default function Reader() {
     const [theme, setTheme] = useState(() => localStorage.getItem('reader-theme') || 'sepia');
     const [error, setError] = useState(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [savedProgress, setSavedProgress] = useState(null);
+    const [initialProgressApplied, setInitialProgressApplied] = useState(false);
 
     const contentRef = useRef(null);
 
@@ -34,6 +36,10 @@ export default function Reader() {
                         const savedPage = Math.floor(prog.progress_seconds);
                         if (savedPage > 0 && savedPage <= (data.total_pages || 9999)) {
                             setCurrentPage(savedPage);
+                            setSavedProgress({
+                                page: savedPage,
+                                scrollRatio: prog.scroll_ratio || 0
+                            });
                         }
                     }
                 } catch (e) { console.warn("Could not load progress", e); }
@@ -45,11 +51,46 @@ export default function Reader() {
         loadMetadata();
     }, [id]);
 
+    const handleSaveProgress = async () => {
+        if (!id || !contentRef.current) return;
+        const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
+        const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
+        try {
+            await saveProgress('book', id, currentPage, scrollRatio);
+        } catch (e) {
+            console.error("Save progress failed", e);
+        }
+    };
+
     useEffect(() => {
         if (!isInitialLoad && id) {
-            saveProgress('book', id, currentPage).catch(console.error);
+            handleSaveProgress();
         }
     }, [currentPage, id, isInitialLoad]);
+
+    useEffect(() => {
+        const interval = setInterval(handleSaveProgress, 30000); // Less frequent periodic save
+
+        const onUnload = () => {
+            handleSaveProgress();
+        };
+        window.addEventListener('beforeunload', onUnload);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('beforeunload', onUnload);
+            handleSaveProgress(); // Final save on unmount
+        };
+    }, [id, currentPage]);
+
+    // Debounced scroll listener
+    const scrollTimeoutRef = useRef(null);
+    const handleScroll = () => {
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
+            handleSaveProgress();
+        }, 1500); // Save 1.5s after scrolling stops
+    };
 
     useEffect(() => {
         localStorage.setItem('reader-font-size', fontSize);
@@ -93,7 +134,29 @@ export default function Reader() {
                 }
 
                 if (contentRef.current) {
-                    contentRef.current.scrollTop = 0;
+                    if (!initialProgressApplied && savedProgress && savedProgress.page === currentPage) {
+                        console.log(`[READER] Restore scroll: page ${currentPage}, ratio ${savedProgress.scrollRatio}`);
+
+                        let attempts = 0;
+                        const restore = () => {
+                            if (!contentRef.current) return;
+                            const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
+                            const target = savedProgress.scrollRatio * scrollTotal;
+
+                            // Check if content is actually there (scrollbar appeared or it's a small page)
+                            if (scrollTotal > 0 || attempts > 10) {
+                                contentRef.current.scrollTop = target;
+                                console.log(`[READER] Scrolled to ${target} after ${attempts} attempts`);
+                                setInitialProgressApplied(true);
+                            } else {
+                                attempts++;
+                                setTimeout(restore, 100);
+                            }
+                        };
+                        setTimeout(restore, 200);
+                    } else {
+                        contentRef.current.scrollTop = 0;
+                    }
                 }
             } catch (e) {
                 console.error("✗ Page load error:", e);
@@ -210,7 +273,7 @@ export default function Reader() {
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                         onClick={() => navigate('/books')}
-                        className="p-2 rounded-full hover:bg-black/10 transition-colors"
+                        className="p-2 rounded-full hover:bg-black/10 transition-colors tv-focusable"
                         style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                     >
                         <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
@@ -224,11 +287,11 @@ export default function Reader() {
                 <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 w-full sm:w-auto">
                     {/* Font Size */}
                     <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1">
-                        <button onClick={() => setFontSize(s => Math.max(12, s - 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded">
+                        <button onClick={() => setFontSize(s => Math.max(12, s - 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded tv-focusable">
                             <ZoomOut size={18} className="sm:w-5 sm:h-5" />
                         </button>
                         <span className="text-xs sm:text-sm font-bold w-6 sm:w-10 text-center">{fontSize}</span>
-                        <button onClick={() => setFontSize(s => Math.min(40, s + 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded">
+                        <button onClick={() => setFontSize(s => Math.min(40, s + 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded tv-focusable">
                             <ZoomIn size={18} className="sm:w-5 sm:h-5" />
                         </button>
                     </div>
@@ -237,19 +300,19 @@ export default function Reader() {
                     <div className="flex items-center gap-1 bg-black/5 rounded-lg p-1">
                         <button
                             onClick={() => setTheme('light')}
-                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'light' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all tv-focusable ${theme === 'light' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
                             <Sun size={18} className="sm:w-5 sm:h-5" />
                         </button>
                         <button
                             onClick={() => setTheme('sepia')}
-                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'sepia' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all tv-focusable ${theme === 'sepia' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
                             <Coffee size={18} className="sm:w-5 sm:h-5" />
                         </button>
                         <button
                             onClick={() => setTheme('night')}
-                            className={`p-1.5 sm:p-2 rounded transition-all ${theme === 'night' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
+                            className={`p-1.5 sm:p-2 rounded transition-all tv-focusable ${theme === 'night' ? 'bg-white shadow-sm sm:shadow-md' : 'hover:bg-black/10'}`}
                         >
                             <Moon size={18} className="sm:w-5 sm:h-5" />
                         </button>
@@ -260,6 +323,7 @@ export default function Reader() {
             {/* Content */}
             <main
                 ref={contentRef}
+                onScroll={handleScroll}
                 className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-8"
                 style={{
                     fontSize: `${fontSize}px`,

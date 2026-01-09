@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchTvshow, fetchEpisodes } from '../api';
 import Player from '../components/Player';
 import { ArrowLeft, Play, Calendar, Star } from 'lucide-react';
@@ -12,6 +12,7 @@ export default function TvShowDetails() {
     const [groupedEpisodes, setGroupedEpisodes] = useState({});
     const [selectedEpisode, setSelectedEpisode] = useState(null);
     const [loading, setLoading] = useState(true);
+    const location = useLocation();
 
     useEffect(() => {
         const loadData = async () => {
@@ -44,6 +45,16 @@ export default function TvShowDetails() {
         };
         loadData();
     }, [id]);
+
+    useEffect(() => {
+        if (!loading && location.state?.resumeEpisodeId && episodes.length > 0) {
+            const ep = episodes.find(e => e.id === location.state.resumeEpisodeId);
+            if (ep) {
+                console.log("Resuming episode:", ep.title);
+                setSelectedEpisode(ep);
+            }
+        }
+    }, [loading, episodes, location.state]);
 
     if (loading) return <div className="p-6 text-white">Loading...</div>;
     if (!show) return <div className="p-6 text-white">Show not found</div>;

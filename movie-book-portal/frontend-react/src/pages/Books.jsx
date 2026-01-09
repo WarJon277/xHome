@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBooks } from '../api';
+import { fetchBooks, fetchLatestProgress } from '../api';
 import { MediaCard } from '../components/MediaCard';
+import ResumeBanner from '../components/ResumeBanner';
 import '../custom-grid.css';
 import { Book } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
@@ -10,11 +11,22 @@ export default function BooksPage() {
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedGenre, setSelectedGenre] = useState('Все');
+    const [latestBook, setLatestBook] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         loadBooks();
+        loadLatestProgress();
     }, []);
+
+    const loadLatestProgress = async () => {
+        try {
+            const data = await fetchLatestProgress('book');
+            setLatestBook(data);
+        } catch (e) {
+            console.error("Failed to fetch latest book progress", e);
+        }
+    };
 
     const loadBooks = async () => {
         try {
@@ -67,6 +79,12 @@ export default function BooksPage() {
                 genres={genres}
                 selectedGenre={selectedGenre}
                 onSelect={setSelectedGenre}
+            />
+
+            <ResumeBanner
+                item={latestBook}
+                onClose={() => setLatestBook(null)}
+                onResume={(item) => navigate(`/books/${item.item_id}`)}
             />
 
             {loading ? (

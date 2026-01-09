@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchTvshows } from '../api';
+import { fetchTvshows, fetchLatestProgress } from '../api';
+import ResumeBanner from '../components/ResumeBanner';
 import { MediaCard } from '../components/MediaCard';
 import '../custom-grid.css';
 import { Tv } from 'lucide-react';
@@ -10,11 +11,22 @@ export default function TvShowsPage() {
     const [shows, setShows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedGenre, setSelectedGenre] = useState('Все');
+    const [latestShow, setLatestShow] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         loadShows();
+        loadLatestProgress();
     }, []);
+
+    const loadLatestProgress = async () => {
+        try {
+            const data = await fetchLatestProgress('tvshow');
+            setLatestShow(data);
+        } catch (e) {
+            console.error("Failed to fetch latest show progress", e);
+        }
+    };
 
     const loadShows = async () => {
         try {
@@ -62,6 +74,14 @@ export default function TvShowsPage() {
                 genres={genres}
                 selectedGenre={selectedGenre}
                 onSelect={setSelectedGenre}
+            />
+
+            <ResumeBanner
+                item={latestShow}
+                onClose={() => setLatestShow(null)}
+                onResume={(item) => {
+                    navigate(`/tvshows/${item.tvshow_id}`, { state: { resumeEpisodeId: item.item_id } });
+                }}
             />
 
             {loading ? (

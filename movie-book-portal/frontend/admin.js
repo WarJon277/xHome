@@ -45,7 +45,7 @@ window.editAdminItem = async (category, id) => {
         const endpoint = category;
         const selectVal = category === 'movies' ? 'movie' : category === 'books' ? 'book' : 'tvshow';
 
-        const res = await fetch(`/${endpoint}/${id}`);
+        const res = await fetch(`/api/${endpoint}/${id}`);
         if (!res.ok) throw new Error("Failed to fetch item details");
         const item = await res.json();
 
@@ -159,7 +159,7 @@ async function handleAddSubmit(e) {
         // 1. Create OR Update Main Item
         if (currentEditingId) {
             btn.innerText = "Обновление записи...";
-            const updateRes = await fetch(`/${endpoint}/${currentEditingId}`, {
+            const updateRes = await fetch(`/api/${endpoint}/${currentEditingId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -174,7 +174,7 @@ async function handleAddSubmit(e) {
 
         } else {
             btn.innerText = "Создание записи...";
-            const createRes = await fetch(`/${endpoint}`, {
+            const createRes = await fetch(`/api/${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -206,7 +206,7 @@ async function handleAddSubmit(e) {
                         title: `Эпизод ${episodeNum}`
                     };
 
-                    const epRes = await fetch('/episodes', {
+                    const epRes = await fetch('/api/episodes', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(epData)
@@ -215,7 +215,7 @@ async function handleAddSubmit(e) {
                     const epObj = await epRes.json();
 
                     // Upload File
-                    await uploadFileXHR(`/episodes/${epObj.id}/upload`, file, (pct) => {
+                    await uploadFileXHR(`/api/episodes/${epObj.id}/upload`, file, (pct) => {
                         updateProgressBar(pct, `Эпизод ${i + 1}/${files.length}`);
                     });
                 }
@@ -225,7 +225,7 @@ async function handleAddSubmit(e) {
             const fileInput = document.getElementById('file');
             if (fileInput.files.length > 0) {
                 btn.innerText = "Загрузка файла...";
-                await uploadFileXHR(`/${endpoint}/${id}/upload`, fileInput.files[0], (pct) => {
+                await uploadFileXHR(`/api/${endpoint}/${id}/upload`, fileInput.files[0], (pct) => {
                     updateProgressBar(pct, "Загрузка основного файла");
                 });
             }
@@ -236,7 +236,7 @@ async function handleAddSubmit(e) {
         if (thumbInput.files.length > 0) {
             btn.innerText = "Загрузка обложки...";
             // Thumbnails are usually small, standard fetch is fine or XHR generic
-            await uploadFileXHR(`/${endpoint}/${id}/upload_thumbnail`, thumbInput.files[0], (pct) => {
+            await uploadFileXHR(`/api/${endpoint}/${id}/upload_thumbnail`, thumbInput.files[0], (pct) => {
                 updateProgressBar(pct, "Загрузка обложки");
             });
         }
@@ -364,7 +364,7 @@ async function loadContent(category, btn) {
     tableBody.innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center;">Загрузка...</td></tr>';
 
     try {
-        const response = await fetch(`/${category}`);
+        const response = await fetch(`/api/${category}`);
         if (!response.ok) throw new Error("Failed to fetch");
         const items = await response.json();
 
@@ -397,7 +397,7 @@ async function deleteItem(category, id) {
     if (!confirm(`Удалить объект ID ${id} из ${category}?`)) return;
 
     try {
-        const response = await fetch(`/${category}/${id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/${category}/${id}`, { method: 'DELETE' });
         if (response.ok) {
             // Reload current category
             const activeBtn = document.querySelector('#content .nav-item.active');
@@ -415,7 +415,7 @@ async function deleteItem(category, id) {
 
 async function loadStats() {
     try {
-        const response = await fetch('/admin/stats');
+        const response = await fetch('/api/admin/stats');
         const stats = await response.json();
         const grid = document.getElementById('stats-grid');
         grid.innerHTML = '';
@@ -443,7 +443,7 @@ async function loadStats() {
 
 async function loadThemeSettings() {
     try {
-        const response = await fetch('/admin/theme');
+        const response = await fetch('/api/admin/theme');
         const theme = await response.json();
 
         for (const [key, value] of Object.entries(theme)) {
@@ -466,7 +466,7 @@ async function saveTheme() {
     }
 
     try {
-        const response = await fetch('/admin/theme', {
+        const response = await fetch('/api/admin/theme', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -494,7 +494,7 @@ async function resetTheme() {
     if (!confirm("Вы уверены, что хотите сбросить тему к стандартной?")) return;
 
     try {
-        const response = await fetch('/admin/theme/reset', { method: 'POST' });
+        const response = await fetch('/api/admin/theme/reset', { method: 'POST' });
         if (response.ok) {
             location.reload();
         }

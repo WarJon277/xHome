@@ -3,10 +3,27 @@
 
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
+// Helper to get or create a unique Device ID
+function getDeviceId() {
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+        deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+        localStorage.setItem('device_id', deviceId);
+    }
+    return deviceId;
+}
+
 // Wraps fetch to handle errors consistently
 async function request(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
-    const response = await fetch(url, options);
+
+    // Add User-ID header to all requests
+    const headers = {
+        'X-User-Id': getDeviceId(),
+        ...(options.headers || {})
+    };
+
+    const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
         throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
@@ -199,12 +216,14 @@ export const fetchStats = () => request('/admin/stats');
 
 // --- PROGRESS ---
 export const fetchProgress = (itemType, itemId) => request(`/progress/${itemType}/${itemId}`);
-export const saveProgress = (itemType, itemId, seconds) => request('/progress', {
+export const fetchLatestProgress = (itemType) => request(`/progress/latest/${itemType}`);
+export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0) => request('/progress', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
         item_type: itemType,
         item_id: itemId,
-        progress_seconds: seconds
+        progress_seconds: seconds,
+        scroll_ratio: scrollRatio
     })
 });

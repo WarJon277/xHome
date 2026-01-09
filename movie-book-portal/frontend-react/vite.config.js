@@ -11,9 +11,9 @@ export default defineConfig({
       // Consolidate all /api calls and STRIP the /api prefix before sending to backend
       '/api': {
         target: 'http://localhost:5055',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
       },
+
 
       // Static Files and Uploads (keep as is if they don't clash)
       '/uploads': { target: 'http://localhost:5055', changeOrigin: true },

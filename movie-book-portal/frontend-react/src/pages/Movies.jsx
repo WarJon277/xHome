@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { fetchMovies } from '../api';
+import { fetchMovies, fetchLatestProgress, fetchMovie } from '../api';
+import ResumeBanner from '../components/ResumeBanner';
 import { MediaCard } from '../components/MediaCard';
 import { Play } from 'lucide-react';
 import Player from '../components/Player';
@@ -11,16 +12,33 @@ export default function MoviesPage() {
     const [error, setError] = useState(null);
     const [selectedMovie, setSelectedMovie] = useState(null);
     const [selectedGenre, setSelectedGenre] = useState('Все');
+    const [latestMovie, setLatestMovie] = useState(null);
 
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const data = await fetchMovies();
-                setMovies(data);
+                const [moviesResult, latestResult] = await Promise.allSettled([
+                    fetchMovies(),
+                    fetchLatestProgress('movie')
+                ]);
+
+                if (moviesResult.status === 'fulfilled') {
+                    setMovies(moviesResult.value);
+                } else {
+                    console.error("Failed to load movies:", moviesResult.reason);
+                    setError("Не удалось загрузить фильмы");
+                }
+
+                if (latestResult.status === 'fulfilled') {
+                    setLatestMovie(latestResult.value);
+                } else {
+                    console.warn("Failed to load latest progress:", latestResult.reason);
+                    // Do not set error, just log warning
+                }
             } catch (err) {
-                console.error("Failed to load movies:", err);
-                setError("Не удалось загрузить фильмы");
+                console.error("Unexpected error loading data:", err);
+                setError("Не удалось загрузить данные");
             } finally {
                 setLoading(false);
             }
@@ -78,6 +96,16 @@ export default function MoviesPage() {
                 genres={genres}
                 selectedGenre={selectedGenre}
                 onSelect={setSelectedGenre}
+            />
+
+            <ResumeBanner
+                item={latestMovie}
+                onClose={() => setLatestMovie(null)}
+                onResume={(item) => {
+                    const found = movies.find(m => m.id === item.item_id);
+                    if (found) setSelectedMovie(found);
+                    else fetchMovie(item.item_id).then(setSelectedMovie);
+                }}
             />
 
             <div className="media-grid">

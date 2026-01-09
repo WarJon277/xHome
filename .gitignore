@@ -2,7 +2,7 @@
 cd movie-book-portal
 venv
 .venv
-xWV2
+
 
 # Создайте .gitignore в корне
 cat > .gitignore << 'EOF'
@@ -27,7 +27,7 @@ cat > .gitignore << 'EOF'
 *.webp
 *.jpg
 *.jpeg
-
+*.apk
 
 # Python кэш
 __pycache__/

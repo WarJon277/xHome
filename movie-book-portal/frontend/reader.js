@@ -7,13 +7,32 @@ class BookReader {
         this.fontSize = parseInt(localStorage.getItem('reader_fontSize')) || 18;
         this.bookTitle = 'Загрузка...';
 
+        this.initialProgressLoaded = false;
+        this.savedProgress = null;
+
+        this.init();
+    }
+
+    async init() {
         this.initElements();
         this.bindEvents();
-
-        // Apply initial settings
         this.applySettings();
 
-        this.loadBookInfo();
+        const urlParams = new URLSearchParams(window.location.search);
+        this.bookId = parseInt(urlParams.get('bookId'));
+
+        if (!this.bookId) {
+            alert('Книга не найдена');
+            window.close();
+            return;
+        }
+
+        console.log(`[READER] Initializing book ${this.bookId}`);
+        await this.loadProgress();
+        await this.loadBookInfo();
+
+        // Periodic save every 10 seconds
+        setInterval(() => this.saveProgress(), 10000);
     }
 
     initElements() {
@@ -30,6 +49,11 @@ class BookReader {
         this.exitReaderBtn = document.getElementById('exit-reader');
         this.readerContainer = document.getElementById('reader-container');
         this.contentArea = document.getElementById('content-area');
+
+        // Scroll event for logging or immediate saving if needed
+        this.contentArea.addEventListener('scroll', () => {
+            this.lastScrollTime = Date.now();
+        });
     }
 
     bindEvents() {
@@ -64,22 +88,13 @@ class BookReader {
     }
 
     async loadBookInfo() {
-        const urlParams = new URLSearchParams(window.location.search);
-        this.bookId = parseInt(urlParams.get('bookId'));
-
-        if (!this.bookId) {
-            alert('Книга не найдена');
-            window.close();
-            return;
-        }
-
         try {
             const response = await fetch(`/books/${this.bookId}`);
             const book = await response.json();
             this.bookTitle = book.title || 'Книга';
             this.titleEl.textContent = this.bookTitle;
 
-            // Загружаем первую страницу
+            // Загружаем текущую страницу (уже установленную в loadProgress)
             await this.renderPage();
         } catch (err) {
             console.error(err);
@@ -106,6 +121,29 @@ class BookReader {
                     this.textContent.style.display = 'none';
                 }
                 this.updatePageInfo();
+
+                // Restore scroll if it's the first load
+                if (!this.initialProgressLoaded && this.savedProgress) {
+                    console.log(`[READER] Attempting to restore scroll to ratio ${this.savedProgress.scrollRatio}`);
+
+                    // Giving extra time for layout/images to finish
+                    const restoreScroll = () => {
+                        const maxScroll = this.contentArea.scrollHeight - this.contentArea.clientHeight;
+                        const targetScroll = this.savedProgress.scrollRatio * maxScroll;
+
+                        // For images, we might need to wait for onload, but maxScroll > 0 is a good hint content is there
+                        if (maxScroll > 0 || this.pdfPageImg.style.display !== 'none') {
+                            this.contentArea.scrollTop = targetScroll;
+                            console.log(`[READER] Scrolled to ${targetScroll} (max: ${maxScroll})`);
+                            this.initialProgressLoaded = true;
+                        } else {
+                            // Content might not be fully ready, try again once
+                            setTimeout(restoreScroll, 200);
+                        }
+                    };
+
+                    setTimeout(restoreScroll, 150);
+                }
             } else {
                 throw new Error(data.detail || 'Ошибка');
             }
@@ -160,8 +198,10 @@ class BookReader {
         this.textContent.style.display = 'block';
         this.pdfPageImg.style.display = 'none';
 
-        // Прокрутка вверх
-        this.contentArea.scrollTop = 0;
+        // Scroll to top only if it's NOT the initial load of a saved page
+        if (this.initialProgressLoaded) {
+            this.contentArea.scrollTop = 0;
+        }
     }
 
     goToPrevPage() {
@@ -173,6 +213,7 @@ class BookReader {
 
     goToNextPage() {
         if (this.currentPage < this.totalPages) {
+            this.saveProgress(); // Save before leaving page
             this.currentPage++;
             this.renderPage();
         }
@@ -212,24 +253,68 @@ class BookReader {
     }
 
     exitReader() {
-        if (window.history.length > 1) {
-            window.history.back();
-            return;
-        }
-
-        // Если истории по какой-то причине нет
-        try {
-            window.location.replace(document.referrer || '/');
-        } catch {
-            window.location.replace('/');
-        }
-
-        // Дополнительная защита — через 300 мс (иногда помогает на iOS/Android)
-        setTimeout(() => {
-            if (document.referrer) {
-                window.location.replace(document.referrer);
+        this.saveProgress().then(() => {
+            if (window.history.length > 1) {
+                window.history.back();
+                return;
             }
-        }, 300);
+
+            // Если истории по какой-то причине нет
+            try {
+                window.location.replace(document.referrer || '/');
+            } catch {
+                window.location.replace('/');
+            }
+
+            // Дополнительная защита — через 300 мс (иногда помогает на iOS/Android)
+            setTimeout(() => {
+                if (document.referrer) {
+                    window.location.replace(document.referrer);
+                }
+            }, 300);
+        });
+    }
+
+    async loadProgress() {
+        try {
+            console.log(`[READER] Loading progress for book ${this.bookId}`);
+            const response = await fetch(`/progress/book/${this.bookId}`);
+            if (response.ok) {
+                const data = await response.json();
+                console.log(`[READER] Found progress:`, data);
+                if (data.progress_seconds > 0) {
+                    this.currentPage = Math.floor(data.progress_seconds);
+                    this.savedProgress = {
+                        page: this.currentPage,
+                        scrollRatio: data.scroll_ratio || 0
+                    };
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load progress', e);
+        }
+    }
+
+    async saveProgress() {
+        if (!this.bookId || !this.contentArea) return;
+
+        const scrollTotal = this.contentArea.scrollHeight - this.contentArea.clientHeight;
+        const scrollRatio = scrollTotal > 0 ? this.contentArea.scrollTop / scrollTotal : 0;
+
+        try {
+            await fetch('/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    item_type: 'book',
+                    item_id: this.bookId,
+                    progress_seconds: this.currentPage,
+                    scroll_ratio: scrollRatio
+                })
+            });
+        } catch (e) {
+            console.error('Failed to save progress', e);
+        }
     }
 }
 

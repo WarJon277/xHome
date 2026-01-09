@@ -31,16 +31,25 @@ app.add_middleware(
 # Middleware для проверки доступа
 @app.middleware("http")
 async def check_app_identification(request: Request, call_next):
-    # Разрешаем доступ без проверки для статических файлов и если это локальный запрос
-    host = request.client.host
-    is_local = host in ["127.0.0.1", "localhost", "::1"] or host.startswith("192.168.") or host.startswith("10.") or host.startswith("172.16.")
+    # Получаем реальный IP, если мы за прокси (Vite, Nginx и т.д.)
+    real_ip = request.headers.get("x-forwarded-for", request.client.host)
+    if "," in real_ip:
+        real_ip = real_ip.split(",")[0].strip()
+        
+    is_local = real_ip in ["127.0.0.1", "localhost", "::1"] or \
+               real_ip.startswith("192.168.") or \
+               real_ip.startswith("10.") or \
+               real_ip.startswith("172.16.")
     
     user_agent = request.headers.get("user-agent", "")
     is_app = "xWV2-App-Identifier" in user_agent
 
+    # Логирование для отладки (потом можно будет убрать)
+    if request.url.path in ["/", "/gallery.html", "/reader.html", "/admin"]:
+        print(f"[AUTH] IP: {real_ip}, Local: {is_local}, App: {is_app}, path: {request.url.path}")
+
     # Если это не локальный запрос и не из приложения, блокируем доступ к страницам
     if not is_local and not is_app:
-        # Разрешаем запросы к API (можно ужесточить позже) или только к страницам
         if request.url.path in ["/", "/gallery.html", "/reader.html", "/admin"]:
             return HTMLResponse(
                 content="<h2>Доступ разрешен только через официальное приложение xWV2</h2>",
@@ -102,10 +111,10 @@ async def admin_page():
     return FileResponse(os.path.join(FRONTEND_PATH, "admin.html"))
 
 # Подключение роутеров
-app.include_router(movies.router)
-app.include_router(books.router)
-app.include_router(tvshows.router)
-app.include_router(gallery.router)
-app.include_router(admin.router)
-app.include_router(progress.router)
-app.include_router(kaleidoscopes.router)
+app.include_router(movies.router, prefix="/api")
+app.include_router(books.router, prefix="/api")
+app.include_router(tvshows.router, prefix="/api")
+app.include_router(gallery.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
+app.include_router(kaleidoscopes.router, prefix="/api")

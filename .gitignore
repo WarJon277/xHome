@@ -2,7 +2,7 @@
 cd movie-book-portal
 venv
 .venv
-
+release
 
 # Создайте .gitignore в корне
 cat > .gitignore << 'EOF'
@@ -28,6 +28,7 @@ cat > .gitignore << 'EOF'
 *.jpg
 *.jpeg
 *.apk
+*.dm
 
 # Python кэш
 __pycache__/
@@ -66,3 +67,4 @@ EOF
 
 
 movie-book-portal/backend/media_portal.db
+xWV2/app/release/release/baselineProfiles/1/app-release.dm

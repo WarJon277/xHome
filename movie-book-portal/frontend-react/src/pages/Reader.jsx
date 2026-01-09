@@ -174,33 +174,55 @@ export default function Reader() {
 
     const processContent = (html, bookId) => {
         console.log('Processing content for book:', bookId);
-        let processed = html;
 
-        // Extract body content if present
-        const bodyMatch = processed.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        if (bodyMatch) {
-            console.log('✓ Extracted body content');
-            processed = bodyMatch[1];
-        } else {
-            console.log('⚠ No body tag found, using full content');
-        }
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
 
-        // Rewrite resource URLs
-        processed = processed.replace(/(src|href)="([^"]*?)"/gi, (match, attr, url) => {
+        // Helper to rewrite URL
+        const rewriteUrl = (url) => {
             if (url && !url.match(/^(http|data:|#)/)) {
                 const encoded = url.split('/').map(s => encodeURIComponent(s)).join('/');
-                const newUrl = `/books/${bookId}/file_resource/${encoded}`;
-                if (attr.toLowerCase() === 'src') {
-                    // Add onerror handler for images
-                    return `${attr}="${newUrl}" onError="this.style.display='none'"`;
-                }
-                return `${attr}="${newUrl}"`;
+                return `/books/${bookId}/file_resource/${encoded}`;
             }
-            return match;
+            return url;
+        };
+
+        // 1. Handle <img> tags
+        doc.querySelectorAll('img').forEach(img => {
+            const rawSrc = img.getAttribute('src');
+            if (rawSrc) {
+                img.setAttribute('src', rewriteUrl(rawSrc));
+                // Add onerror to hide broken images
+                img.setAttribute('onerror', "this.style.display='none'");
+            }
         });
 
-        console.log('Content processed successfully, final length:', processed.length);
-        return processed;
+        // 2. Handle SVG <image> tags (often used for covers in EPUB)
+        doc.querySelectorAll('image').forEach(img => {
+            const href = img.getAttribute('xlink:href') || img.getAttribute('href');
+            if (href) {
+                const newUrl = rewriteUrl(href);
+                img.setAttribute('xlink:href', newUrl);
+                img.setAttribute('href', newUrl); // Set both for compatibility
+
+                // SVG image error handling is tricky, often best to hide the parent svg if image fails
+                // But we can try setting display='none' on the image tag itself
+                img.setAttribute('onerror', "this.style.display='none'; this.parentElement ? this.parentElement.style.display='none' : null");
+            }
+        });
+
+        // 3. Handle Links (CSS, etc)
+        doc.querySelectorAll('link[href]').forEach(link => {
+            link.setAttribute('href', rewriteUrl(link.getAttribute('href')));
+        });
+
+        // 4. Handle Scripts
+        doc.querySelectorAll('script[src]').forEach(script => {
+            script.setAttribute('src', rewriteUrl(script.getAttribute('src')));
+        });
+
+        // Return body content if it exists, otherwise full document
+        return doc.body.innerHTML || doc.documentElement.outerHTML;
     };
 
     const handleNext = () => {

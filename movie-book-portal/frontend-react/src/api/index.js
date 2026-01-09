@@ -1,7 +1,7 @@
 // API Wrapper for React Frontend
 // Ported from legacy api.js
 
-const API_BASE = ''; // Proxied by Vite to http://localhost:5055
+const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Wraps fetch to handle errors consistently
 async function request(endpoint, options = {}) {

@@ -1,4 +1,4 @@
-const API_BASE = window.location.origin;
+const API_BASE = window.location.origin + '/api';
 
 export async function fetchMovies() {
     const response = await fetch(`${API_BASE}/movies`);
@@ -405,7 +405,7 @@ export async function movePhoto(photoPath, targetFolder) {
     const formData = new FormData();
     const photoPathValue = photoPath || '';
     const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
-    
+
     formData.append('photo_path', photoPathValue);
     formData.append('target_folder', targetFolderValue);
 
@@ -420,7 +420,7 @@ export async function moveFolder(folderPath, targetFolder) {
     const formData = new FormData();
     const folderPathValue = typeof folderPath === 'object' ? (folderPath.path || '') : (folderPath || '');
     const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
-    
+
     formData.append('folder_path', folderPathValue);
     formData.append('target_folder', targetFolderValue);
 

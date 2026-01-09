@@ -7,23 +7,14 @@ export default defineConfig({
   server: {
     port: 5050,
     proxy: {
-      // API Endpoints
-      '/movies': { target: 'http://localhost:5055', changeOrigin: true },
-      '/tvshows': { target: 'http://localhost:5055', changeOrigin: true },
-      '/episodes': { target: 'http://localhost:5055', changeOrigin: true },
-      '/books': { target: 'http://localhost:5055', changeOrigin: true },
-      '/gallery': { target: 'http://localhost:5055', changeOrigin: true },
-      '/items': { target: 'http://localhost:5055', changeOrigin: true },
-      '/categories': { target: 'http://localhost:5055', changeOrigin: true },
-      '/genres': { target: 'http://localhost:5055', changeOrigin: true },
-      '/progress': { target: 'http://localhost:5055', changeOrigin: true },
-      '/scan': { target: 'http://localhost:5055', changeOrigin: true },
-      '/admin': { target: 'http://localhost:5055', changeOrigin: true },
-      '/delete_file': { target: 'http://localhost:5055', changeOrigin: true },
-      '/delete_folder': { target: 'http://localhost:5055', changeOrigin: true },
-      '/kaleidoscopes': { target: 'http://localhost:5055', changeOrigin: true },
+      // Consolidate all /api calls and STRIP the /api prefix before sending to backend
+      '/api': {
+        target: 'http://localhost:5055',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
 
-      // Static Files
+      // Static Files and Uploads (keep as is if they don't clash)
       '/uploads': { target: 'http://localhost:5055', changeOrigin: true },
       '/thumbnails': { target: 'http://localhost:5055', changeOrigin: true },
     }

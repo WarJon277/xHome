@@ -25,6 +25,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.app.DownloadManager
 import android.os.Environment
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -60,8 +61,25 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
 
-        // webView.clearCache(true)
-        // android.webkit.WebStorage.getInstance().deleteAllData()
+        // Handle back button
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    if (doubleBackToExitPressedOnce) {
+                        finish()
+                    } else {
+                        doubleBackToExitPressedOnce = true
+                        Toast.makeText(this@MainActivity, "Нажмите ещё раз для выхода", Toast.LENGTH_SHORT).show()
+                        handler.postDelayed({ doubleBackToExitPressedOnce = false }, 2000)
+                    }
+                }
+            }
+        })
+
+        // Clear cache on start to avoid white screen issues after portal updates
+        webView.clearCache(false)
 
         val primaryUrl = "http://192.168.0.182:5050/"
         val fallbackUrl = "https://dev.tpw-xxar.ru"
@@ -213,10 +231,26 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 val url = request?.url.toString()
-                if (!isPrimaryUrlLoaded && url.contains("192.168.0.182:5050")) {
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Ошибка сервера. Переход на резерв...", Toast.LENGTH_LONG).show()
-                        webView.loadUrl("https://dev.tpw-xxar.ru")
+                Log.e("WebViewError", "Error loading $url: ${error?.description}")
+
+                // If primary URL fails to load initially
+                if (request?.isForMainFrame == true) {
+                    if (!isPrimaryUrlLoaded && url.contains("192.168.0.182:5050")) {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Ошибка сервера. Переход на резерв...", Toast.LENGTH_LONG).show()
+                            webView.loadUrl("https://dev.tpw-xxar.ru")
+                        }
+                    }
+                }
+                
+                // Detection of "White Screen" due to missing scripts (404)
+                // If a chunk fails to load from our domains, maybe we should force a reload
+                if (url.contains(".js") || url.contains(".css")) {
+                    if (url.contains("192.168.0.182:5050") || url.contains("tpw-xxar.ru")) {
+                        // Error code 404 is not directly in WebResourceError in older APIs, 
+                        // but we can check description or just any error on a script
+                        Log.w("WebViewError", "Resource failed: $url")
+                        // Optional: trigger a refresh if the user is seeing a white screen
                     }
                 }
             }

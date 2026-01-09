@@ -1,13 +1,37 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend-react</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Media Portal</title>
+  <script>
+    // Reload page if a script or chunk fails to load after an update
+    window.onerror = function (message, source, lineno, colno, error) {
+      if (message.includes('ChunkLoadError') || message.includes('Loading chunk')) {
+        console.warn('Chunk load error detected, reloading...');
+        window.location.reload();
+      }
+    };
+    window.addEventListener('error', function (e) {
+      if (e.target.tagName === 'SCRIPT') {
+        console.warn('Script failed to load:', e.target.src);
+        // Only reload if it's a chunk from our assets
+        if (e.target.src.includes('/assets/')) {
+          window.location.reload();
+        }
+      }
+    }, true);
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

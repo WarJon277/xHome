@@ -203,7 +203,7 @@ export default function AdminPage() {
                 const endpoint = contentType === 'movies' ? 'movies' :
                     contentType === 'books' ? 'books' : 'tvshows';
 
-                const response = await fetch(`/${endpoint}/${itemId}/upload_thumbnail`, {
+                const response = await fetch(`/api/${endpoint}/${itemId}/upload_thumbnail`, {
                     method: 'POST',
                     body: formData
                 });

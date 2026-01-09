@@ -172,57 +172,84 @@ export default function Reader() {
         loadPage();
     }, [id, currentPage, book]);
 
-    const processContent = (html, bookId) => {
-        console.log('Processing content for book:', bookId);
+    // Global error handler for broken images (capture phase)
+    useEffect(() => {
+        const handleError = (e) => {
+            const tag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
+            // Handle broken images (img, image)
+            if (tag === 'img' || tag === 'image') {
+                const target = e.target;
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+                // Try fallback to book thumbnail if available and not yet tried
+                if (book && book.thumbnail_path && target.getAttribute('data-has-fallback') !== 'true') {
+                    console.log('Attempting thumbnail fallback for:', target.src || target.href);
+                    target.setAttribute('data-has-fallback', 'true');
 
-        // Helper to rewrite URL
-        const rewriteUrl = (url) => {
-            if (url && !url.match(/^(http|data:|#)/)) {
-                const encoded = url.split('/').map(s => encodeURIComponent(s)).join('/');
-                return `/books/${bookId}/file_resource/${encoded}`;
+                    let thumb = book.thumbnail_path.replace(/\\/g, '/');
+                    if (!thumb.startsWith('/')) {
+                        if (thumb.startsWith('uploads/')) thumb = '/' + thumb;
+                        else thumb = '/uploads/' + thumb;
+                    }
+
+                    if (tag === 'image') {
+                        target.setAttribute('xlink:href', thumb);
+                        target.setAttribute('href', thumb);
+                    } else {
+                        target.src = thumb;
+                    }
+                    // Prevent hiding, give fallback a chance to load
+                    return;
+                }
+
+                console.log(`Hiding broken image (final): ${target.src || target.href || 'unknown'}`);
+                target.style.display = 'none';
+
+                // Also try to hide parent frame if it looks like a wrapper
+                if (target.parentElement) {
+                    const parentTag = target.parentElement.tagName.toLowerCase();
+                    if (parentTag === 'svg') {
+                        target.parentElement.style.display = 'none';
+                    }
+                    // Temporarily disabling div hiding to ensure text is not hidden
+                    // else if (parentTag === 'div' && target.parentElement.classList.contains('cover-container')) { 
+                    //    target.parentElement.style.display = 'none';
+                    // }
+                }
             }
-            return url;
         };
 
-        // 1. Handle <img> tags
-        doc.querySelectorAll('img').forEach(img => {
-            const rawSrc = img.getAttribute('src');
-            if (rawSrc) {
-                img.setAttribute('src', rewriteUrl(rawSrc));
-                // Add onerror to hide broken images
-                img.setAttribute('onerror', "this.style.display='none'");
+        // Capture phase to catch non-bubbling load errors
+        window.addEventListener('error', handleError, true);
+        return () => window.removeEventListener('error', handleError, true);
+    }, [book]);
+
+    const processContent = (html, bookId) => {
+        console.log('Processing content for book:', bookId);
+        let processed = html;
+
+        // Extract body content if present
+        const bodyMatch = processed.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+            console.log('✓ Extracted body content');
+            processed = bodyMatch[1];
+        } else {
+            console.log('⚠ No body tag found, using full content');
+        }
+
+        // Rewrite resource URLs (src, xlink:href)
+        // EXCLUDING generic 'href' to avoid breaking CSS links or anchors which might cause issues
+        // Also updated regex to handle both single and double quotes
+        processed = processed.replace(/(src|xlink:href)=(['"])(.*?)\2/gi, (match, attr, quote, url) => {
+            if (url && !url.match(/^(http|data:|#)/)) {
+                // If it's seemingly a relative path, prefix it
+                const encoded = url.split('/').map(s => encodeURIComponent(s)).join('/');
+                return `${attr}=${quote}/api/books/${bookId}/file_resource/${encoded}${quote}`;
             }
+            return match;
         });
 
-        // 2. Handle SVG <image> tags (often used for covers in EPUB)
-        doc.querySelectorAll('image').forEach(img => {
-            const href = img.getAttribute('xlink:href') || img.getAttribute('href');
-            if (href) {
-                const newUrl = rewriteUrl(href);
-                img.setAttribute('xlink:href', newUrl);
-                img.setAttribute('href', newUrl); // Set both for compatibility
-
-                // SVG image error handling is tricky, often best to hide the parent svg if image fails
-                // But we can try setting display='none' on the image tag itself
-                img.setAttribute('onerror', "this.style.display='none'; this.parentElement ? this.parentElement.style.display='none' : null");
-            }
-        });
-
-        // 3. Handle Links (CSS, etc)
-        doc.querySelectorAll('link[href]').forEach(link => {
-            link.setAttribute('href', rewriteUrl(link.getAttribute('href')));
-        });
-
-        // 4. Handle Scripts
-        doc.querySelectorAll('script[src]').forEach(script => {
-            script.setAttribute('src', rewriteUrl(script.getAttribute('src')));
-        });
-
-        // Return body content if it exists, otherwise full document
-        return doc.body.innerHTML || doc.documentElement.outerHTML;
+        console.log('Content processed successfully, final length:', processed.length);
+        return processed;
     };
 
     const handleNext = () => {

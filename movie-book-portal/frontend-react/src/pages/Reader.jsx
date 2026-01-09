@@ -284,6 +284,19 @@ export default function Reader() {
         }
     };
 
+    const [showSettings, setShowSettings] = useState(false);
+    const longPressTimer = useRef(null);
+
+    const handleLongPressStart = () => {
+        longPressTimer.current = setTimeout(() => {
+            setShowSettings(true);
+        }, 600); // 600ms for long press
+    };
+
+    const handleLongPressEnd = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+
     const colors = getThemeColors();
 
     if (error && !book) {
@@ -316,7 +329,7 @@ export default function Reader() {
 
     return (
         <div
-            className="h-screen flex flex-col"
+            className="h-screen flex flex-col overflow-hidden"
             style={{ backgroundColor: colors.bg, color: colors.text }}
         >
             {/* Header */}
@@ -338,39 +351,16 @@ export default function Reader() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
-                    {/* Font Size - Compact on mobile */}
-                    <div className="flex items-center bg-black/5 rounded-lg p-0.5 sm:p-1">
-                        <button onClick={() => setFontSize(s => Math.max(12, s - 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded tv-focusable">
-                            <ZoomOut size={14} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <span className="text-[10px] sm:text-sm font-bold w-5 sm:w-10 text-center">{fontSize}</span>
-                        <button onClick={() => setFontSize(s => Math.min(40, s + 2))} className="p-1 sm:p-2 hover:bg-black/10 rounded tv-focusable">
-                            <ZoomIn size={14} className="sm:w-5 sm:h-5" />
-                        </button>
-                    </div>
-
-                    {/* Theme Selector - Hide text/labels on mobile */}
-                    <div className="flex items-center bg-black/5 rounded-lg p-0.5 sm:p-1">
-                        <button
-                            onClick={() => setTheme('light')}
-                            className={`p-1 sm:p-2 rounded transition-all tv-focusable ${theme === 'light' ? 'bg-white shadow-sm' : 'hover:bg-black/10'}`}
-                        >
-                            <Sun size={14} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button
-                            onClick={() => setTheme('sepia')}
-                            className={`p-1 sm:p-2 rounded transition-all tv-focusable ${theme === 'sepia' ? 'bg-white shadow-sm' : 'hover:bg-black/10'}`}
-                        >
-                            <Coffee size={14} className="sm:w-5 sm:h-5" />
-                        </button>
-                        <button
-                            onClick={() => setTheme('night')}
-                            className={`p-1 sm:p-2 rounded transition-all tv-focusable ${theme === 'night' ? 'bg-white shadow-sm' : 'hover:bg-black/10'}`}
-                        >
-                            <Moon size={14} className="sm:w-5 sm:h-5" />
-                        </button>
-                    </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable"
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <Sun size={16} className="sm:w-5 sm:h-5" />
+                            <span className="text-[10px] sm:text-sm font-bold uppercase">Темы</span>
+                        </div>
+                    </button>
                 </div>
             </header>
 
@@ -378,7 +368,11 @@ export default function Reader() {
             <main
                 ref={contentRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-8"
+                onTouchStart={handleLongPressStart}
+                onTouchEnd={handleLongPressEnd}
+                onMouseDown={handleLongPressStart}
+                onMouseUp={handleLongPressEnd}
+                className="flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-8 select-none"
                 style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: '1.6',
@@ -401,8 +395,8 @@ export default function Reader() {
                 )}
             </main>
 
-            {/* Footer - More compact and sleek */}
-            <div className="flex flex-col flex-shrink-0">
+            {/* Footer */}
+            <div className="flex flex-col flex-shrink-0 z-10">
                 {/* Thin Progress line above footer on mobile */}
                 <div className="w-full h-1 bg-black/5 flex-shrink-0">
                     <div
@@ -456,6 +450,94 @@ export default function Reader() {
                     </button>
                 </footer>
             </div>
+
+            {/* Settings Modal */}
+            {showSettings && (
+                <div
+                    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-[2px]"
+                    onClick={() => setShowSettings(false)}
+                >
+                    <div
+                        className="w-full sm:max-w-md bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 transform transition-transform animate-in fade-in slide-in-from-bottom-10"
+                        style={{
+                            backgroundColor: theme === 'night' ? '#1a1a1a' : (theme === 'sepia' ? '#f4ece0' : '#ffffff'),
+                            color: theme === 'night' ? '#e0e0e0' : '#5c4636'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-lg font-bold">Настройки</h2>
+                            <button
+                                onClick={() => setShowSettings(false)}
+                                className="p-2 hover:bg-black/5 rounded-full"
+                            >
+                                <RotateCcw size={20} className="rotate-45" />
+                            </button>
+                        </div>
+
+                        {/* Font Size */}
+                        <div className="mb-8">
+                            <label className="text-xs font-bold uppercase opacity-50 block mb-3">Размер шрифта</label>
+                            <div className="flex items-center justify-between bg-black/5 rounded-xl p-2">
+                                <button
+                                    onClick={() => setFontSize(s => Math.max(12, s - 2))}
+                                    className="w-12 h-12 flex items-center justify-center hover:bg-black/10 rounded-lg transition-colors"
+                                >
+                                    <ZoomOut size={24} />
+                                </button>
+                                <span className="text-xl font-bold">{fontSize}</span>
+                                <button
+                                    onClick={() => setFontSize(s => Math.min(40, s + 2))}
+                                    className="w-12 h-12 flex items-center justify-center hover:bg-black/10 rounded-lg transition-colors"
+                                >
+                                    <ZoomIn size={24} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Themes */}
+                        <div className="mb-4">
+                            <label className="text-xs font-bold uppercase opacity-50 block mb-3">Цветовая схема</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                <button
+                                    onClick={() => setTheme('light')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-blue-500 bg-white ring-4 ring-blue-500/10' : 'border-transparent bg-gray-100 hover:bg-gray-200'}`}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-white border shadow-sm flex items-center justify-center">
+                                        <Sun size={18} className="text-orange-500" />
+                                    </div>
+                                    <span className="text-xs font-bold text-gray-900">Светлая</span>
+                                </button>
+                                <button
+                                    onClick={() => setTheme('sepia')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${theme === 'sepia' ? 'border-orange-400 bg-[#f4ece0] ring-4 ring-orange-400/10' : 'border-transparent bg-[#ebe2d5] hover:bg-[#e2d7c5]'}`}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#f4ece0] border border-orange-200 shadow-sm flex items-center justify-center">
+                                        <Coffee size={18} className="text-orange-700" />
+                                    </div>
+                                    <span className="text-xs font-bold text-[#5c4636]">Сепия</span>
+                                </button>
+                                <button
+                                    onClick={() => setTheme('night')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${theme === 'night' ? 'border-blue-400 bg-[#121212] ring-4 ring-blue-400/10' : 'border-transparent bg-zinc-800 hover:bg-zinc-700'}`}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-[#121212] border border-zinc-700 shadow-sm flex items-center justify-center">
+                                        <Moon size={18} className="text-blue-300" />
+                                    </div>
+                                    <span className="text-xs font-bold text-gray-300">Темная</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowSettings(false)}
+                            className="w-full mt-6 py-4 bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition-all"
+                        >
+                            Готово
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

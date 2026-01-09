@@ -2,6 +2,7 @@
 cd movie-book-portal
 venv
 .venv
+xWV2
 
 # Создайте .gitignore в корне
 cat > .gitignore << 'EOF'

@@ -1,9 +1,9 @@
 # main.py - Entry point for the Media Portal
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from database import create_tables
 from database_books import create_books_tables
@@ -27,6 +27,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware для проверки доступа
+@app.middleware("http")
+async def check_app_identification(request: Request, call_next):
+    # Разрешаем доступ без проверки для статических файлов и если это локальный запрос
+    host = request.client.host
+    is_local = host in ["127.0.0.1", "localhost", "::1"] or host.startswith("192.168.") or host.startswith("10.") or host.startswith("172.16.")
+    
+    user_agent = request.headers.get("user-agent", "")
+    is_app = "xWV2-App-Identifier" in user_agent
+
+    # Если это не локальный запрос и не из приложения, блокируем доступ к страницам
+    if not is_local and not is_app:
+        # Разрешаем запросы к API (можно ужесточить позже) или только к страницам
+        if request.url.path in ["/", "/gallery.html", "/reader.html", "/admin"]:
+            return HTMLResponse(
+                content="<h2>Доступ разрешен только через официальное приложение xWV2</h2>",
+                status_code=403
+            )
+            
+    response = await call_next(request)
+    return response
 
 # Пути
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

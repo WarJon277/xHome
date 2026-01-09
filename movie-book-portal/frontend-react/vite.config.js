@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5050,
+    allowedHosts: ["dev.tpw-xxar.ru"],
     proxy: {
       // Consolidate all /api calls and STRIP the /api prefix before sending to backend
       '/api': {

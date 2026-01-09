@@ -270,7 +270,7 @@ export default function Reader() {
         const handleKeyDown = (e) => {
             if (e.key === 'ArrowRight' || e.key === 'PageDown') handleNext();
             if (e.key === 'ArrowLeft' || e.key === 'PageUp') handlePrev();
-            if (e.key === 'Escape') navigate('/books');
+            if (e.key === 'Escape') navigate('/books', { replace: true });
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
@@ -306,7 +306,7 @@ export default function Reader() {
                     <div className="text-2xl mb-4 text-red-500">Ошибка</div>
                     <div className="text-sm opacity-70">{error}</div>
                     <button
-                        onClick={() => navigate('/books')}
+                        onClick={() => navigate('/books', { replace: true })}
                         className="mt-6 px-6 py-2 bg-white/10 rounded-lg hover:bg-white/20"
                     >
                         Вернуться к списку
@@ -339,7 +339,7 @@ export default function Reader() {
             >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                     <button
-                        onClick={() => navigate('/books')}
+                        onClick={() => navigate('/books', { replace: true })}
                         className="p-1.5 sm:p-2 rounded-full hover:bg-black/10 transition-colors tv-focusable flex-shrink-0"
                         style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
                     >

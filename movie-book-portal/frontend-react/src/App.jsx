@@ -114,6 +114,7 @@ function App() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                replace
                 onClick={() => setIsMenuOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-4 p-3 rounded-lg transition-all ${isActive

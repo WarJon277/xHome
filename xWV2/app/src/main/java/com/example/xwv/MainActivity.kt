@@ -64,9 +64,27 @@ class MainActivity : AppCompatActivity() {
         // Handle back button
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
+                val currentUrl = webView.url ?: ""
+                val path = try { Uri.parse(currentUrl).path ?: "" } catch (e: Exception) { "" }
+                
+                // Define top-level sections where we want the exit dialog instead of history back
+                val topLevelPaths = listOf("/movies", "/tvshows", "/gallery", "/books", "/admin", "/")
+                val isTopLevel = topLevelPaths.any { path == it || path == "$it/" }
+
+                if (isTopLevel) {
+                    // On a main screen - show exit confirmation
+                    if (doubleBackToExitPressedOnce) {
+                        finish()
+                    } else {
+                        doubleBackToExitPressedOnce = true
+                        Toast.makeText(this@MainActivity, "Нажмите ещё раз для выхода", Toast.LENGTH_SHORT).show()
+                        handler.postDelayed({ doubleBackToExitPressedOnce = false }, 2000)
+                    }
+                } else if (webView.canGoBack()) {
+                    // Inside a category (e.g. movie details) - go back to the listing
                     webView.goBack()
                 } else {
+                    // Fallback for any other case
                     if (doubleBackToExitPressedOnce) {
                         finish()
                     } else {

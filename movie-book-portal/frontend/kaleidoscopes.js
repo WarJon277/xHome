@@ -1,5 +1,5 @@
 // kaleidoscopes.js
-const API_BASE = ''; // Relative path
+const API_BASE = '/api'; // Point to the API prefix
 
 async function fetchKaleidoscopes() {
     try {
@@ -25,7 +25,7 @@ async function fetchKaleidoscopeDetails(id) {
 
 // Container for Kaleidoscopes
 const kaleidoscopeContainer = document.getElementById('kaleidoscope-container');
-const galleryContainer = document.getElementById('gallery-container');
+const galleryContainer = document.getElementById('photos-grid'); // Fixed: was gallery-container
 const galleryTab = document.getElementById('tab-gallery');
 const kaleidoscopeTab = document.getElementById('tab-kaleidoscope');
 

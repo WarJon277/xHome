@@ -1,16 +1,14 @@
 # main.py - Entry point for the Media Portal
 import os
+import ipaddress
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from database import create_tables
 from database_books import create_books_tables
 from database_tvshows import create_tvshows_tables
-from database_gallery import create_gallery_tables
-from database_progress import create_progress_tables
-
 from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 from database_kaleidoscope import create_kaleidoscope_tables
@@ -28,33 +26,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware для проверки доступа
+# Middleware для проверки доступа (безопасность портала)
 @app.middleware("http")
-async def check_app_identification(request: Request, call_next):
-    # Получаем реальный IP, если мы за прокси (Vite, Nginx и т.д.)
-    real_ip = request.headers.get("x-forwarded-for", request.client.host)
+async def security_middleware(request: Request, call_next):
+    # 1. Определение реального IP адреса
+    real_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "127.0.0.1")
     if "," in real_ip:
         real_ip = real_ip.split(",")[0].strip()
         
-    is_local = real_ip in ["127.0.0.1", "localhost", "::1"] or \
-               real_ip.startswith("192.168.") or \
-               real_ip.startswith("10.") or \
-               real_ip.startswith("172.16.")
-    
-    user_agent = request.headers.get("user-agent", "")
-    is_app = "xWV2-App-Identifier" in user_agent
+    # 2. Проверка: является ли подключение локальным (домашняя сеть)
+    is_local = False
+    if real_ip in ("127.0.0.1", "localhost", "::1"):
+        is_local = True
+    else:
+        try:
+            ip_obj = ipaddress.ip_address(real_ip)
+            # is_private покрывает 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+            is_local = ip_obj.is_private or ip_obj.is_loopback
+        except ValueError:
+            pass
+            
+    # 3. Проверка: является ли подключение из нашего приложения
+    user_agent = request.headers.get("user-agent", "").lower()
+    # Рекомендуется использовать поиск в нижнем регистре для надежности
+    is_app = "xwv2-app-identifier" in user_agent
 
-    # Логирование для отладки (потом можно будет убрать)
-    if request.url.path in ["/", "/gallery.html", "/reader.html", "/admin"]:
-        print(f"[AUTH] IP: {real_ip}, Local: {is_local}, App: {is_app}, path: {request.url.path}")
-
-    # Если это не локальный запрос и не из приложения, блокируем доступ к страницам
+    # 4. Правила блокировки
+    # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем.
     if not is_local and not is_app:
-        if request.url.path in ["/", "/gallery.html", "/reader.html", "/admin"]:
-            return HTMLResponse(
-                content="<h2>Доступ разрешен только через официальное приложение xWV2</h2>",
-                status_code=403
+        # Разрешаем favicon, чтобы браузеры не спамили в консоль
+        if request.url.path == "/favicon.ico":
+            return await call_next(request)
+
+        # Если это запрос к API, возвращаем JSON
+        if request.url.path.startswith("/api"):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Access Denied. Only authorized app connections allowed outside local network."}
             )
+        
+        # Для остальных запросов возвращаем красивый HTML
+        return HTMLResponse(
+            status_code=403,
+            content=f"""
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin-top: 100px; padding: 20px;">
+                <h1 style="color: #e50914; font-size: 3em;">Вход заблокирован</h1>
+                <p style="font-size: 1.2em; color: #333;">Этот сервер — частная территория.</p>
+                <div style="background: #f8f8f8; border: 1px solid #ddd; padding: 20px; border-radius: 8px; max-width: 500px; margin: 30px auto; text-align: left;">
+                    <p>Для доступа необходимо выполнить одно из условий:</p>
+                    <ul style="line-height: 1.6;">
+                        <li>Находиться в <b>локальной домашней сети</b>.</li>
+                        <li>Использовать <b>официальное приложение xWV2</b>.</li>
+                    </ul>
+                </div>
+                <p style="color: #999; font-size: 0.9em;">Ваш IP: {real_ip}</p>
+            </div>
+            """
+        )
             
     response = await call_next(request)
     return response

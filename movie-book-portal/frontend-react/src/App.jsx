@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { Home, Film, Tv, Image, Book, Settings, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTvNavigation } from './hooks/useTvNavigation';
@@ -13,11 +13,26 @@ import Dashboard from './pages/Dashboard';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
 
-// Redirect home to movies
-// Dashboard is imported
-// MoviesPage imported
+// Wrapper to enable page transitions
+const MainContentWithTransition = () => {
+  const location = useLocation();
 
-// GalleryPage imported
+  return (
+    <main key={location.pathname} className="main-content page-enter">
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/movies" element={<MoviesPage />} />
+        <Route path="/tvshows" element={<TvShowsPage />} />
+        <Route path="/tvshows/:id" element={<TvShowDetails />} />
+        <Route path="/books" element={<BooksPage />} />
+        <Route path="/books/:id" element={<Reader />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="*" element={<Dashboard />} />
+      </Routes>
+    </main>
+  );
+};
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -133,19 +148,7 @@ function App() {
         </nav>
 
         {/* Main Content Area */}
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/movies" element={<MoviesPage />} />
-            <Route path="/tvshows" element={<TvShowsPage />} />
-            <Route path="/tvshows/:id" element={<TvShowDetails />} />
-            <Route path="/books" element={<BooksPage />} />
-            <Route path="/books/:id" element={<Reader />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="*" element={<Dashboard />} />
-          </Routes>
-        </main>
+        <MainContentWithTransition />
       </div>
     </Router>
   );

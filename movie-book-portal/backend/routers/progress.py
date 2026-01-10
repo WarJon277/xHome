@@ -119,3 +119,12 @@ def get_progress(
         "progress_seconds": progress.progress_seconds,
         "scroll_ratio": getattr(progress, "scroll_ratio", 0.0)
     }
+@router.delete("/clear")
+def clear_all_progress(
+    x_user_id: str = Header("global"),
+    db: Session = Depends(get_db_progress)
+):
+    """Clear all playback history for the current user/device"""
+    db.query(PlaybackProgress).filter(PlaybackProgress.user_id == x_user_id).delete()
+    db.commit()
+    return {"status": "success", "message": "All progress cleared"}

@@ -227,5 +227,6 @@ export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0) => requ
         scroll_ratio: scrollRatio
     })
 });
+export const clearProgress = () => request('/progress/clear', { method: 'DELETE' });
 // --- DASHBOARD ---
 export const fetchDashboardData = () => request('/dashboard');

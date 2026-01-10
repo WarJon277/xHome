@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow } from '../api';
-import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw } from 'lucide-react';
+import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress } from '../api';
+import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import Player from '../components/Player';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -9,6 +10,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedMedia, setSelectedMedia] = useState(null);
+    const [showClearModal, setShowClearModal] = useState(false);
     const navigate = useNavigate();
 
     const loadData = async () => {
@@ -21,6 +23,16 @@ export default function Dashboard() {
             setError("Не удалось загрузить данные дашборда");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleClearHistory = async () => {
+        try {
+            await clearProgress();
+            setShowClearModal(false);
+            loadData();
+        } catch (err) {
+            console.error("Failed to clear progress:", err);
         }
     };
 
@@ -75,11 +87,22 @@ export default function Dashboard() {
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (
-        <div className="p-4 sm:p-8 pb-24 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-8 pb-24 pt-20 sm:pt-8 max-w-7xl mx-auto">
             {selectedMedia && (
                 <Player
                     item={selectedMedia}
                     onClose={() => setSelectedMedia(null)}
+                />
+            )}
+
+            {showClearModal && (
+                <ConfirmationModal
+                    title="Очистить историю?"
+                    message="Все данные о просмотренных фильмах и прочитанных книгах будут удалены безвозвратно."
+                    onClose={() => setShowClearModal(false)}
+                    onConfirm={handleClearHistory}
+                    confirmLabel="Очистить"
+                    isDanger={true}
                 />
             )}
 
@@ -102,9 +125,20 @@ export default function Dashboard() {
 
                 {/* 1. Continue Watching - Large Widget */}
                 <section className="md:col-span-8 space-y-4">
-                    <h2 className="flex items-center gap-2 text-xl font-semibold">
-                        <Clock className="text-blue-500" /> Продолжить просмотр
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold">
+                            <Clock className="text-blue-500" /> Продолжить просмотр
+                        </h2>
+                        {data.continue_watching.length > 0 && (
+                            <button
+                                onClick={() => setShowClearModal(true)}
+                                className="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1 transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+                                title="Очистить историю"
+                            >
+                                <Trash2 size={14} /> Очистить
+                            </button>
+                        )}
+                    </div>
                     {data.continue_watching.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {data.continue_watching.map((item, idx) => (

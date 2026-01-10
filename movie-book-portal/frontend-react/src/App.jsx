@@ -10,6 +10,7 @@ import BooksPage from './pages/Books';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
 import Dashboard from './pages/Dashboard';
+import Player from './components/Player';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
 
@@ -36,6 +37,16 @@ const MainContentWithTransition = () => {
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [globalPlayingItem, setGlobalPlayingItem] = useState(null);
+
+  useEffect(() => {
+    const handlePlay = (e) => {
+      console.log("Global Play triggered:", e.detail);
+      setGlobalPlayingItem(e.detail);
+    };
+    window.addEventListener('app:play', handlePlay);
+    return () => window.removeEventListener('app:play', handlePlay);
+  }, []);
 
   // Enable TV navigation globally, but disable if a modal is open
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,6 +160,14 @@ function App() {
 
         {/* Main Content Area */}
         <MainContentWithTransition />
+
+        {/* Global Player - Rendered outside of animated container to avoid stacking issues */}
+        {globalPlayingItem && (
+          <Player
+            item={globalPlayingItem}
+            onClose={() => setGlobalPlayingItem(null)}
+          />
+        )}
       </div>
     </Router>
   );

@@ -10,7 +10,6 @@ export default function MoviesPage() {
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedMovie, setSelectedMovie] = useState(null);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestMovie, setLatestMovie] = useState(null);
 
@@ -67,7 +66,7 @@ export default function MoviesPage() {
     }, [movies, selectedGenre]);
 
     const handlePlay = (movie) => {
-        setSelectedMovie(movie);
+        window.dispatchEvent(new CustomEvent('app:play', { detail: movie }));
     };
 
     if (loading) return <div className="p-8 text-center text-gray-400">Loading movies...</div>;
@@ -75,13 +74,6 @@ export default function MoviesPage() {
 
     return (
         <div className="p-4 sm:p-6 pb-24">
-            {/* Player Modal */}
-            {selectedMovie && (
-                <Player
-                    item={selectedMovie}
-                    onClose={() => setSelectedMovie(null)}
-                />
-            )}
 
             <header className="mb-6 flex items-center justify-between">
                 <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
@@ -103,8 +95,8 @@ export default function MoviesPage() {
                 onClose={() => setLatestMovie(null)}
                 onResume={(item) => {
                     const found = movies.find(m => m.id === item.item_id);
-                    if (found) setSelectedMovie(found);
-                    else fetchMovie(item.item_id).then(setSelectedMovie);
+                    if (found) handlePlay(found);
+                    else fetchMovie(item.item_id).then(handlePlay);
                 }}
             />
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress } from '../api';
+import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode } from '../api';
 import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2 } from 'lucide-react';
 import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -9,7 +9,6 @@ export default function Dashboard() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedMedia, setSelectedMedia] = useState(null);
     const [showClearModal, setShowClearModal] = useState(false);
     const navigate = useNavigate();
 
@@ -61,14 +60,11 @@ export default function Dashboard() {
             if (item.type === 'movie' || item.type === 'episode') {
                 const fullItem = item.type === 'movie'
                     ? await fetchMovie(item.id)
-                    : await fetchTvshow(item.tvshow_id || item.id);
+                    : await fetchEpisode(item.id); // It's an episode ID in progress
 
-                if (item.type === 'episode') {
-                    // Navigate to TV show details if it's an episode or show
-                    navigate(`/tvshows/${item.tvshow_id || item.id}`);
-                } else {
-                    setSelectedMedia(fullItem);
-                }
+                window.dispatchEvent(new CustomEvent('app:play', { detail: fullItem }));
+            } else if (item.type === 'tvshow') {
+                navigate(`/tvshows/${item.id}`);
             } else if (item.type === 'book') {
                 navigate(`/books/${item.id}`);
             }
@@ -88,13 +84,6 @@ export default function Dashboard() {
 
     return (
         <div className="p-4 sm:p-8 pb-24 pt-20 sm:pt-8 max-w-7xl mx-auto">
-            {selectedMedia && (
-                <Player
-                    item={selectedMedia}
-                    onClose={() => setSelectedMedia(null)}
-                />
-            )}
-
             {showClearModal && (
                 <ConfirmationModal
                     title="Очистить историю?"

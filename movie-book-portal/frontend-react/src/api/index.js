@@ -80,6 +80,7 @@ export const updateEpisode = (id, data) => request(`/episodes/${id}`, {
     body: JSON.stringify(data)
 });
 export const deleteEpisode = (id) => request(`/episodes/${id}`, { method: 'DELETE' });
+export const fetchEpisode = (id) => request(`/episodes/${id}`);
 
 // --- BOOKS ---
 export const fetchBooks = () => request('/books');

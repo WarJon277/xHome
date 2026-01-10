@@ -10,7 +10,6 @@ export default function TvShowDetails() {
     const [show, setShow] = useState(null);
     const [episodes, setEpisodes] = useState([]);
     const [groupedEpisodes, setGroupedEpisodes] = useState({});
-    const [selectedEpisode, setSelectedEpisode] = useState(null);
     const [loading, setLoading] = useState(true);
     const location = useLocation();
 
@@ -51,10 +50,21 @@ export default function TvShowDetails() {
             const ep = episodes.find(e => e.id === location.state.resumeEpisodeId);
             if (ep) {
                 console.log("Resuming episode:", ep.title);
-                setSelectedEpisode(ep);
+                handlePlayEpisode(ep);
             }
         }
     }, [loading, episodes, location.state]);
+
+    const handlePlayEpisode = (ep) => {
+        // Enforce extra info for global player
+        const playItem = {
+            ...ep,
+            tvshow_id: id,
+            show_title: show?.title,
+            title: `${show?.title} - S${ep.season_number}E${ep.episode_number}`
+        };
+        window.dispatchEvent(new CustomEvent('app:play', { detail: playItem }));
+    };
 
     if (loading) return <div className="p-6 text-white">Loading...</div>;
     if (!show) return <div className="p-6 text-white">Show not found</div>;
@@ -115,13 +125,13 @@ export default function TvShowDetails() {
                                     key={ep.id}
                                     className="rounded-lg overflow-hidden transition-colors cursor-pointer group flex focus:ring-4 focus:ring-blue-500 outline-none"
                                     style={{ backgroundColor: 'var(--card-bg)' }}
-                                    onClick={() => setSelectedEpisode(ep)}
+                                    onClick={() => handlePlayEpisode(ep)}
                                     tabIndex={0}
                                     role="button"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
                                             e.preventDefault();
-                                            setSelectedEpisode(ep);
+                                            handlePlayEpisode(ep);
                                         }
                                     }}
                                 >
@@ -149,16 +159,6 @@ export default function TvShowDetails() {
                 ))}
             </div>
 
-            {/* Player Modal */}
-            {selectedEpisode && (
-                <Player
-                    item={selectedEpisode}
-                    src={getImageUrl(selectedEpisode.file_path)}
-                    poster={getImageUrl(selectedEpisode.thumbnail_path || show.poster_path)}
-                    title={`${show.title} - S${selectedEpisode.season_number}E${selectedEpisode.episode_number}`}
-                    onClose={() => setSelectedEpisode(null)}
-                />
-            )}
         </div>
     );
 }

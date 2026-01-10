@@ -227,3 +227,5 @@ export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0) => requ
         scroll_ratio: scrollRatio
     })
 });
+// --- DASHBOARD ---
+export const fetchDashboardData = () => request('/dashboard');

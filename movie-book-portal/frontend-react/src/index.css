@@ -237,3 +237,29 @@ a:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Dashboard specific styles */
+.dashboard-card {
+  perspective: 1000px;
+}
+
+.dashboard-card img {
+  transform-origin: center;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

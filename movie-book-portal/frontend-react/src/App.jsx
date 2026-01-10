@@ -9,11 +9,12 @@ import TvShowDetails from './pages/TvShowDetails';
 import BooksPage from './pages/Books';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
+import Dashboard from './pages/Dashboard';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
 
 // Redirect home to movies
-const HomePage = () => <Navigate to="/movies" replace />;
+// Dashboard is imported
 // MoviesPage imported
 
 // GalleryPage imported
@@ -134,7 +135,7 @@ function App() {
         {/* Main Content Area */}
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/movies" element={<MoviesPage />} />
             <Route path="/tvshows" element={<TvShowsPage />} />
             <Route path="/tvshows/:id" element={<TvShowDetails />} />
@@ -142,7 +143,7 @@ function App() {
             <Route path="/books/:id" element={<Reader />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="*" element={<HomePage />} />
+            <Route path="*" element={<Dashboard />} />
           </Routes>
         </main>
       </div>

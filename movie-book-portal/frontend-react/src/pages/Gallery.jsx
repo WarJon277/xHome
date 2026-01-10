@@ -299,7 +299,7 @@ export default function GalleryPage() {
     };
 
     return (
-        <div className="p-0 sm:p-6 relative min-h-screen pb-24 bg-transparent">
+        <div className="p-4 sm:p-6 relative min-h-screen pb-24 bg-transparent mt-12 sm:mt-0">
             {/* Hidden File Input */}
             <input
                 type="file"
@@ -310,69 +310,64 @@ export default function GalleryPage() {
                 className="hidden"
             />
 
-            {/* Improved Tabs for Mobile Visibility */}
-            <div className="sticky top-0 z-50 flex gap-2 p-2 bg-[#0a0a1a] border-b border-gray-800 mb-4 shadow-lg justify-center">
-                <button
-                    onClick={() => setViewMode('photos')}
-                    className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'photos'
-                        ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
-                        : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    ФОТО
-                </button>
-                <button
-                    onClick={() => setViewMode('kaleidoscopes')}
-                    className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'kaleidoscopes'
-                        ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
-                        : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    КАЛЕЙДОСКОП
-                </button>
-            </div>
-
-            <div className="px-4"> {/* Container for the rest of content */}
+            <div className="px-0 sm:px-4"> {/* Container for content */}
                 {viewMode === 'kaleidoscopes' ? (
-                    <KaleidoscopeViewer />
+                    <>
+                        <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                <PlayCircle className="text-red-500" /> Калейдоскопы
+                            </h1>
+                            <div className="flex bg-black/40 p-1 rounded-lg self-start sm:self-auto border border-white/5">
+                                <button
+                                    onClick={() => setViewMode('photos')}
+                                    className="px-6 py-2 rounded-md transition-all text-sm font-medium text-gray-400 hover:text-white"
+                                >
+                                    Фото
+                                </button>
+                                <button
+                                    className="px-6 py-2 rounded-md transition-all text-sm font-bold text-white shadow-lg"
+                                    style={{ backgroundColor: 'var(--accent-color)' }}
+                                >
+                                    Калейдоскопы
+                                </button>
+                            </div>
+                        </header>
+                        <KaleidoscopeViewer />
+                    </>
                 ) : (
                     <>
                         <header className="mb-6">
-                            <div className="flex items-center gap-4 mb-2">
-                                {currentPath && (
-                                    <button
-                                        onClick={handleBack}
-                                        className="p-2 rounded-full hover:opacity-80 transition-colors"
-                                        style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
-                                    >
-                                        <ArrowLeft size={20} />
-                                    </button>
-                                )}
-                                <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <ImageIcon className="text-yellow-500" /> Галерея (ТЕСТ)
-                                </h1>
-                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-4">
+                                    {currentPath && (
+                                        <button
+                                            onClick={handleBack}
+                                            className="p-2 rounded-full hover:opacity-80 transition-colors"
+                                            style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                                        >
+                                            <ArrowLeft size={20} />
+                                        </button>
+                                    )}
+                                    <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                        <ImageIcon style={{ color: 'var(--accent-color)' }} /> Галерея
+                                    </h1>
+                                </div>
 
-                            {/* TABS MOVED HERE FOR GUARANTEED VISIBILITY */}
-                            <div className="flex gap-2 p-1 bg-yellow-400 rounded-lg mb-4 justify-center shadow-xl">
-                                <button
-                                    onClick={() => setViewMode('photos')}
-                                    className={`flex-1 py-3 px-2 rounded-md text-xs font-black transition-all ${viewMode === 'photos'
-                                        ? 'bg-black text-white'
-                                        : 'bg-yellow-200 text-black'
-                                        }`}
-                                >
-                                    ФОТО (ЖМИ!)
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('kaleidoscopes')}
-                                    className={`flex-1 py-3 px-2 rounded-md text-xs font-black transition-all ${viewMode === 'kaleidoscopes'
-                                        ? 'bg-black text-white'
-                                        : 'bg-yellow-200 text-black'
-                                        }`}
-                                >
-                                    КАЛЕЙДОСКОП
-                                </button>
+                                {/* Minimalist Tab Switcher */}
+                                <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 self-start sm:self-auto">
+                                    <button
+                                        className="px-6 py-2 rounded-md transition-all text-sm font-bold text-white shadow-lg"
+                                        style={{ backgroundColor: 'var(--accent-color)' }}
+                                    >
+                                        Фото
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('kaleidoscopes')}
+                                        className="px-6 py-2 rounded-md transition-all text-sm font-medium text-gray-400 hover:text-white"
+                                    >
+                                        Калейдоскопы
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Breadcrumbs */}

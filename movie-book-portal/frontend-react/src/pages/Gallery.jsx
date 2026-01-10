@@ -299,7 +299,7 @@ export default function GalleryPage() {
     };
 
     return (
-        <div className="p-4 sm:p-6 relative min-h-screen pb-24">
+        <div className="p-0 sm:p-6 relative min-h-screen pb-24 bg-transparent">
             {/* Hidden File Input */}
             <input
                 type="file"
@@ -310,209 +310,216 @@ export default function GalleryPage() {
                 className="hidden"
             />
 
-            {/* Tabs */}
-            <div className="flex gap-4 mb-6 border-b border-gray-800 pb-2">
+            {/* Improved Tabs for Mobile Visibility */}
+            <div className="sticky top-0 z-50 flex gap-2 p-2 bg-[#0a0a1a] border-b border-gray-800 mb-4 shadow-lg justify-center">
                 <button
                     onClick={() => setViewMode('photos')}
-                    className={`text-lg font-bold pb-2 px-2 transition-colors ${viewMode === 'photos' ? 'text-green-500 border-b-2 border-green-500' : 'text-gray-400 hover:text-white'}`}
+                    className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'photos'
+                            ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                            : 'bg-gray-800/50 text-gray-400 hover:text-white'
+                        }`}
                 >
-                    Фотографии
+                    ФОТО
                 </button>
                 <button
                     onClick={() => setViewMode('kaleidoscopes')}
-                    className={`text-lg font-bold pb-2 px-2 transition-colors ${viewMode === 'kaleidoscopes' ? 'text-green-500 border-b-2 border-green-500' : 'text-gray-400 hover:text-white'}`}
+                    className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'kaleidoscopes'
+                            ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                            : 'bg-gray-800/50 text-gray-400 hover:text-white'
+                        }`}
                 >
-                    Калейдоскопы
+                    КАЛЕЙДОСКОП
                 </button>
             </div>
 
-            {viewMode === 'kaleidoscopes' ? (
-                <KaleidoscopeViewer />
-            ) : (
-                <>
-                    <header className="mb-6">
-                        <div className="flex items-center gap-4 mb-2">
-                            {currentPath && (
-                                <button
-                                    onClick={handleBack}
-                                    className="p-2 rounded-full hover:opacity-80 transition-colors"
-                                    style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+            <div className="px-4"> {/* Container for the rest of content */}
+                {viewMode === 'kaleidoscopes' ? (
+                    <KaleidoscopeViewer />
+                ) : (
+                    <>
+                        <header className="mb-6">
+                            <div className="flex items-center gap-4 mb-2">
+                                {currentPath && (
+                                    <button
+                                        onClick={handleBack}
+                                        className="p-2 rounded-full hover:opacity-80 transition-colors"
+                                        style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
+                                )}
+                                <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <ImageIcon className="text-yellow-500" /> Галерея
+                                </h1>
+                            </div>
+
+                            {/* Breadcrumbs */}
+                            <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
+                                <span
+                                    className={`cursor-pointer hover:opacity-80 ${!currentPath ? 'font-bold' : ''}`}
+                                    style={{ color: !currentPath ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                                    onClick={() => setCurrentPath("")}
                                 >
-                                    <ArrowLeft size={20} />
-                                </button>
-                            )}
-                            <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                <ImageIcon className="text-yellow-500" /> Галерея
-                            </h1>
-                        </div>
-
-                        {/* Breadcrumbs */}
-                        <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
-                            <span
-                                className={`cursor-pointer hover:opacity-80 ${!currentPath ? 'font-bold' : ''}`}
-                                style={{ color: !currentPath ? 'var(--text-primary)' : 'var(--text-secondary)' }}
-                                onClick={() => setCurrentPath("")}
-                            >
-                                Root
-                            </span>
-                            {currentPath.split('/').filter(Boolean).map((part, index, arr) => {
-                                const path = arr.slice(0, index + 1).join('/');
-                                return (
-                                    <span key={path} className="flex items-center gap-2">
-                                        <span>/</span>
-                                        <span
-                                            className={`cursor-pointer hover:text-white ${index === arr.length - 1 ? 'text-white font-semibold' : ''}`}
-                                            onClick={() => setCurrentPath(path)}
-                                        >
-                                            {part}
+                                    Root
+                                </span>
+                                {currentPath.split('/').filter(Boolean).map((part, index, arr) => {
+                                    const path = arr.slice(0, index + 1).join('/');
+                                    return (
+                                        <span key={path} className="flex items-center gap-2">
+                                            <span>/</span>
+                                            <span
+                                                className={`cursor-pointer hover:text-white ${index === arr.length - 1 ? 'text-white font-semibold' : ''}`}
+                                                onClick={() => setCurrentPath(path)}
+                                            >
+                                                {part}
+                                            </span>
                                         </span>
-                                    </span>
-                                );
-                            })}
-                        </div>
-                    </header>
+                                    );
+                                })}
+                            </div>
+                        </header>
 
-                    {loading ? (
-                        <div className="text-center text-gray-500 mt-10">Загрузка...</div>
-                    ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-2 sm:gap-3">
-                            {items.map(item => {
-                                const isFolder = item.type === 'folder';
-                                const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
+                        {loading ? (
+                            <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-2 sm:gap-3">
+                                {items.map(item => {
+                                    const isFolder = item.type === 'folder';
+                                    const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
 
-                                return (
-                                    <div
-                                        key={item.id || item.name}
-                                        className={`
+                                    return (
+                                        <div
+                                            key={item.id || item.name}
+                                            className={`
                                             relative aspect-square rounded-lg overflow-hidden cursor-pointer
                                             hover:scale-105 transition-transform border border-gray-800
                                             flex flex-col items-center justify-center p-4 group tv-focusable
                                         `}
-                                        style={{ backgroundColor: 'var(--card-bg)' }}
-                                        tabIndex={0}
-                                        data-tv-clickable="true"
-                                        onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
-                                        onContextMenu={(e) => handleRightClick(e, item)}
-                                        onTouchStart={(e) => handleTouchStart(e, item)}
-                                        onTouchEnd={handleTouchEnd}
-                                        onTouchMove={handleTouchEnd}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
-                                        }}
-                                    >
-                                        {isFolder ? (
-                                            <>
-                                                <Folder size={64} className="text-blue-500 mb-2" fill="currentColor" />
-                                                <span className="text-center text-sm font-medium text-white truncate w-full px-2">
-                                                    {item.name}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {imageUrl ? (
-                                                    <img
-                                                        src={imageUrl}
-                                                        className="absolute inset-0 w-full h-full object-cover"
-                                                        alt={item.title}
-                                                        loading="lazy"
-                                                    />
-                                                ) : (
-                                                    <div className="text-gray-600">No Image</div>
-                                                )}
-                                                {/* Hover Info */}
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                                                    <span className="text-white text-xs truncate w-full">{item.title}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                            style={{ backgroundColor: 'var(--card-bg)' }}
+                                            tabIndex={0}
+                                            data-tv-clickable="true"
+                                            onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
+                                            onContextMenu={(e) => handleRightClick(e, item)}
+                                            onTouchStart={(e) => handleTouchStart(e, item)}
+                                            onTouchEnd={handleTouchEnd}
+                                            onTouchMove={handleTouchEnd}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') isFolder ? handleFolderClick(item.name) : handlePhotoClick(item);
+                                            }}
+                                        >
+                                            {isFolder ? (
+                                                <>
+                                                    <Folder size={64} className="text-blue-500 mb-2" fill="currentColor" />
+                                                    <span className="text-center text-sm font-medium text-white truncate w-full px-2">
+                                                        {item.name}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {imageUrl ? (
+                                                        <img
+                                                            src={imageUrl}
+                                                            className="absolute inset-0 w-full h-full object-cover"
+                                                            alt={item.title}
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        <div className="text-gray-600">No Image</div>
+                                                    )}
+                                                    {/* Hover Info */}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                                        <span className="text-white text-xs truncate w-full">{item.title}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
-                    {/* Photo Modal */}
-                    {selectedPhoto && (
-                        <PhotoModal
-                            item={selectedPhoto}
-                            onClose={closePhotoModal}
-                            onNext={() => navigatePhoto(1)}
-                            onPrev={() => navigatePhoto(-1)}
-                            hasNext={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) < items.filter(item => item.type !== 'folder').length - 1}
-                            hasPrev={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) > 0}
-                            onDelete={handleDelete}
-                        />
-                    )}
-                </>
-            )}
+                        {/* Photo Modal */}
+                        {selectedPhoto && (
+                            <PhotoModal
+                                item={selectedPhoto}
+                                onClose={closePhotoModal}
+                                onNext={() => navigatePhoto(1)}
+                                onPrev={() => navigatePhoto(-1)}
+                                hasNext={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) < items.filter(item => item.type !== 'folder').length - 1}
+                                hasPrev={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) > 0}
+                                onDelete={handleDelete}
+                            />
+                        )}
+                    </>
+                )}
 
-            {/* Move Modal */}
-            {moveItem && (
-                <MoveModal
-                    item={moveItem}
-                    currentPath={currentPath}
-                    onClose={() => setMoveItem(null)}
-                    onMove={handleMoveAction}
-                />
-            )}
+                {/* Move Modal */}
+                {moveItem && (
+                    <MoveModal
+                        item={moveItem}
+                        currentPath={currentPath}
+                        onClose={() => setMoveItem(null)}
+                        onMove={handleMoveAction}
+                    />
+                )}
 
-            {/* Context Menu */}
-            {contextMenu && (
-                <ContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    onClose={() => setContextMenu(null)}
-                    options={[
-                        { label: "Открыть", onClick: () => contextMenu.item.type === 'folder' ? handleFolderClick(contextMenu.item.name) : handlePhotoClick(contextMenu.item), icon: <Upload size={16} /> },
-                        // Show "Rename" only for folders
-                        ...(contextMenu.item.type === 'folder' ? [{ label: "Переименовать", onClick: () => handleRename(contextMenu.item), icon: <Edit size={16} /> }] : []),
-                        { label: "Переместить", onClick: () => setMoveItem(contextMenu.item), icon: <Move size={16} /> },
-                        { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
-                    ]}
-                />
-            )}
+                {/* Context Menu */}
+                {contextMenu && (
+                    <ContextMenu
+                        x={contextMenu.x}
+                        y={contextMenu.y}
+                        onClose={() => setContextMenu(null)}
+                        options={[
+                            { label: "Открыть", onClick: () => contextMenu.item.type === 'folder' ? handleFolderClick(contextMenu.item.name) : handlePhotoClick(contextMenu.item), icon: <Upload size={16} /> },
+                            // Show "Rename" only for folders
+                            ...(contextMenu.item.type === 'folder' ? [{ label: "Переименовать", onClick: () => handleRename(contextMenu.item), icon: <Edit size={16} /> }] : []),
+                            { label: "Переместить", onClick: () => setMoveItem(contextMenu.item), icon: <Move size={16} /> },
+                            { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
+                        ]}
+                    />
+                )}
 
-            {/* CONFIRMATION MODAL */}
-            {confirmModal && (
-                <ConfirmationModal
-                    title={confirmModal.title}
-                    message={confirmModal.message}
-                    onClose={() => setConfirmModal(null)}
-                    onConfirm={confirmModal.onConfirm}
-                    confirmLabel={confirmModal.confirmLabel}
-                    isDanger={confirmModal.isDanger}
-                />
-            )}
+                {/* CONFIRMATION MODAL */}
+                {confirmModal && (
+                    <ConfirmationModal
+                        title={confirmModal.title}
+                        message={confirmModal.message}
+                        onClose={() => setConfirmModal(null)}
+                        onConfirm={confirmModal.onConfirm}
+                        confirmLabel={confirmModal.confirmLabel}
+                        isDanger={confirmModal.isDanger}
+                    />
+                )}
 
-            {/* INPUT MODAL */}
-            {inputModal && (
-                <InputModal
-                    title={inputModal.title}
-                    initialValue={inputModal.initialValue}
-                    placeholder={inputModal.placeholder}
-                    confirmLabel={inputModal.confirmLabel}
-                    onClose={() => setInputModal(null)}
-                    onConfirm={inputModal.onConfirm}
-                />
-            )}
+                {/* INPUT MODAL */}
+                {inputModal && (
+                    <InputModal
+                        title={inputModal.title}
+                        initialValue={inputModal.initialValue}
+                        placeholder={inputModal.placeholder}
+                        confirmLabel={inputModal.confirmLabel}
+                        onClose={() => setInputModal(null)}
+                        onConfirm={inputModal.onConfirm}
+                    />
+                )}
 
-            {/* Floating Action Buttons (FABs) */}
-            <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-3 sm:gap-4">
-                <button
-                    onClick={handleCreateFolder}
-                    className="p-3 sm:p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
-                    title="Создать папку"
-                >
-                    <Folder size={20} className="sm:w-6 sm:h-6" />
-                </button>
-                <button
-                    onClick={handleUploadClick}
-                    className="p-3 sm:p-4 bg-primary hover:bg-red-700 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
-                    title="Загрузить фото"
-                >
-                    <Upload size={20} className="sm:w-6 sm:h-6" />
-                </button>
+                {/* Floating Action Buttons (FABs) */}
+                <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-3 sm:gap-4">
+                    <button
+                        onClick={handleCreateFolder}
+                        className="p-3 sm:p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
+                        title="Создать папку"
+                    >
+                        <Folder size={20} className="sm:w-6 sm:h-6" />
+                    </button>
+                    <button
+                        onClick={handleUploadClick}
+                        className="p-3 sm:p-4 bg-primary hover:bg-red-700 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
+                        title="Загрузить фото"
+                    >
+                        <Upload size={20} className="sm:w-6 sm:h-6" />
+                    </button>
+                </div>
             </div>
-        </div>
-    );
+            );
 }

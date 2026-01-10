@@ -10,7 +10,13 @@ from database_gallery import Photo, get_db_gallery
 from database_progress import PlaybackProgress, get_db_progress
 from dependencies import get_db as get_db_main, get_db_books_simple, get_db_tvshows_simple
 
+import os
+import hashlib
+
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GALLERY_UPLOADS = os.path.join(BASE_DIR, "uploads", "gallery")
 
 @router.get("")
 def get_dashboard_data(
@@ -100,16 +106,53 @@ def get_dashboard_data(
     if rec_pool:
         recommendation = random.choice(rec_pool)
 
-    # 4. Quick Access to Latest Photos
-    latest_photos = db_gallery.query(Photo).order_by(Photo.id.desc()).limit(10).all()
-    photos_data = [{"id": p.id, "url": p.file_path, "thumbnail": p.thumbnail_path or p.file_path} for p in latest_photos]
+    # 4. Quick Access to Latest Photos (Fsys scan to match Admin/Gallery logic)
+    photos_data = []
+    if os.path.exists(GALLERY_UPLOADS):
+        all_photos = []
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                if '_thumb.' in file:
+                    continue
+                _, ext = os.path.splitext(file)
+                if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    full_path = os.path.join(root, file)
+                    mtime = os.path.getmtime(full_path)
+                    all_photos.append((mtime, full_path, file))
+        
+        # Sort by modification time
+        all_photos.sort(key=lambda x: x[0], reverse=True)
+        
+        for mtime, full_path, file in all_photos[:10]:
+            rel_path = os.path.relpath(full_path, BASE_DIR).replace('\\', '/')
+            # Check for thumb
+            thumb_name = f"{os.path.splitext(file)[0]}_thumb.webp"
+            thumb_full = os.path.join(os.path.dirname(full_path), thumb_name)
+            thumb_rel = rel_path
+            if os.path.exists(thumb_full):
+                thumb_rel = os.path.relpath(thumb_full, BASE_DIR).replace('\\', '/')
+            
+            photos_data.append({
+                "id": int(hashlib.md5(full_path.encode()).hexdigest(), 16) % 10**8,
+                "url": f"/{rel_path}",
+                "thumbnail": f"/{thumb_rel}"
+            })
 
     # 5. Daily Stats
+    photo_count = 0
+    if os.path.exists(GALLERY_UPLOADS):
+        for root, dirs, files in os.walk(GALLERY_UPLOADS):
+            for file in files:
+                if '_thumb.' in file: continue
+                _, ext = os.path.splitext(file)
+                if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    photo_count += 1
+
     stats = {
         "movies_count": db_movies.query(func.count(Movie.id)).scalar(),
         "books_count": db_books.query(func.count(Book.id)).scalar(),
         "tvshows_count": db_tvshows.query(func.count(Tvshow.id)).scalar(),
-        "photos_count": db_gallery.query(func.count(Photo.id)).scalar()
+        "photos_count": photo_count
     }
 
     return {

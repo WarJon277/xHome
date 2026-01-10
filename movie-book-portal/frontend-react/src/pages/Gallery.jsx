@@ -349,8 +349,30 @@ export default function GalleryPage() {
                                     </button>
                                 )}
                                 <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                    <ImageIcon className="text-yellow-500" /> Галерея
+                                    <ImageIcon className="text-yellow-500" /> Галерея (ТЕСТ)
                                 </h1>
+                            </div>
+
+                            {/* TABS MOVED HERE FOR GUARANTEED VISIBILITY */}
+                            <div className="flex gap-2 p-1 bg-yellow-400 rounded-lg mb-4 justify-center shadow-xl">
+                                <button
+                                    onClick={() => setViewMode('photos')}
+                                    className={`flex-1 py-3 px-2 rounded-md text-xs font-black transition-all ${viewMode === 'photos'
+                                        ? 'bg-black text-white'
+                                        : 'bg-yellow-200 text-black'
+                                        }`}
+                                >
+                                    ФОТО (ЖМИ!)
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('kaleidoscopes')}
+                                    className={`flex-1 py-3 px-2 rounded-md text-xs font-black transition-all ${viewMode === 'kaleidoscopes'
+                                        ? 'bg-black text-white'
+                                        : 'bg-yellow-200 text-black'
+                                        }`}
+                                >
+                                    КАЛЕЙДОСКОП
+                                </button>
                             </div>
 
                             {/* Breadcrumbs */}

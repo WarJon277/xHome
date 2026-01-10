@@ -544,7 +544,7 @@ export default function GalleryPage() {
                                 : [{ label: "Поделиться", onClick: () => handleShare(contextMenu.item), icon: <Share2 size={16} /> }]
                             ),
                             { label: "Переместить", onClick: () => setMoveItem(contextMenu.item), icon: <Move size={16} /> },
-                            { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
+                            { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash2 size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
                         ]}
                     />
                 )}

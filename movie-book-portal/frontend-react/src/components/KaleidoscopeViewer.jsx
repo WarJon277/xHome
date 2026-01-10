@@ -191,18 +191,20 @@ function KaleidoscopePlayer({ kaleidoscope, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black z-[100] overflow-hidden">
+        <div className="fixed inset-0 bg-black z-[2000] overflow-hidden">
             {/* Controls */}
-            <div className="absolute top-0 left-0 w-full z-50 p-4 flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent">
-                <div className="text-white/80">
-                    <h2 className="text-xl font-bold">{kaleidoscope.title}</h2>
-                    {activeItem && <p className="text-sm opacity-60">Фото {currentIndex + 1} из {items.length}</p>}
+            <div className="absolute top-0 left-0 w-full z-[2100] p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent pt-10 sm:pt-6">
+                <div className="text-white/90 drop-shadow-lg">
+                    <h2 className="text-2xl font-bold">{kaleidoscope.title}</h2>
+                    {activeItem && <p className="text-sm opacity-80">Фото {currentIndex + 1} из {items.length}</p>}
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-sm transition-colors"
+                    className="p-4 bg-red-600 hover:bg-red-700 rounded-full text-white shadow-2xl transition-all transform hover:scale-110 active:scale-90 border-2 border-white/20"
+                    title="Закрыть (Esc)"
+                    style={{ minWidth: '60px', minHeight: '60px', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}
                 >
-                    <X size={24} />
+                    <X size={32} strokeWidth={3} />
                 </button>
             </div>
 

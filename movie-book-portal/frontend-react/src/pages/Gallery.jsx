@@ -315,8 +315,8 @@ export default function GalleryPage() {
                 <button
                     onClick={() => setViewMode('photos')}
                     className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'photos'
-                            ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
-                            : 'bg-gray-800/50 text-gray-400 hover:text-white'
+                        ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                        : 'bg-gray-800/50 text-gray-400 hover:text-white'
                         }`}
                 >
                     ФОТО
@@ -324,8 +324,8 @@ export default function GalleryPage() {
                 <button
                     onClick={() => setViewMode('kaleidoscopes')}
                     className={`flex-1 max-w-[150px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 ${viewMode === 'kaleidoscopes'
-                            ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
-                            : 'bg-gray-800/50 text-gray-400 hover:text-white'
+                        ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                        : 'bg-gray-800/50 text-gray-400 hover:text-white'
                         }`}
                 >
                     КАЛЕЙДОСКОП
@@ -521,5 +521,6 @@ export default function GalleryPage() {
                     </button>
                 </div>
             </div>
-            );
+        </div>
+    );
 }

@@ -1,4 +1,4 @@
-import { X, ChevronLeft, ChevronRight, Trash2, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) {
@@ -55,6 +55,48 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
         if (path.startsWith('/uploads/')) return path;
         if (path.startsWith('uploads/')) return `/${path}`;
         return `/uploads/${path}`;
+    };
+
+    const handleShare = async () => {
+        const url = safeUrl(item.file_path);
+        const fullUrl = window.location.origin + url;
+
+        if (window.AndroidApp && typeof window.AndroidApp.shareFile === 'function') {
+            window.AndroidApp.shareFile(fullUrl, item.title || item.name);
+            return;
+        }
+
+        if (navigator.share) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const file = new File([blob], `${item.title || 'photo'}.jpg`, { type: blob.type });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: item.title,
+                        files: [file]
+                    });
+                } else {
+                    await navigator.share({
+                        title: item.title,
+                        url: fullUrl
+                    });
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Share failed:', err);
+                }
+            }
+        } else {
+            // Fallback
+            try {
+                await navigator.clipboard.writeText(fullUrl);
+                alert("Ссылка скопирована в буфер обмена");
+            } catch (err) {
+                alert("Ваш браузер не поддерживает функцию 'Поделиться'");
+            }
+        }
     };
 
     // Early return if item is not provided
@@ -126,18 +168,33 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
                     </p>
                 </div>
 
-                {onDelete && (
+                <div className="flex gap-2">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('Delete this photo?')) onDelete(item);
+                            handleShare();
                         }}
-                        className="p-3 bg-red-600/80 hover:bg-red-600 text-white rounded-full transition-colors"
-                        title="Delete"
+                        className="p-3 bg-green-600/80 hover:bg-green-600 text-white rounded-full transition-colors tv-focusable"
+                        title="Share"
+                        data-tv-clickable="true"
                     >
-                        <Trash2 size={20} />
+                        <Share2 size={20} />
                     </button>
-                )}
+
+                    {onDelete && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Delete this photo?')) onDelete(item);
+                            }}
+                            className="p-3 bg-red-600/80 hover:bg-red-600 text-white rounded-full transition-colors tv-focusable"
+                            title="Delete"
+                            data-tv-clickable="true"
+                        >
+                            <Trash2 size={20} />
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

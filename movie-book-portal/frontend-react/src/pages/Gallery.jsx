@@ -3,7 +3,7 @@ import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoT
 import {
     Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
     ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
-    PlayCircle, Edit, Move
+    PlayCircle, Edit, Move, Share
 } from 'lucide-react';
 import KaleidoscopeViewer from '../components/KaleidoscopeViewer';
 import PhotoModal from '../components/PhotoModal';
@@ -35,14 +35,17 @@ export default function GalleryPage() {
     // Upload Refs
     const fileInputRef = useRef(null);
     const longPressTimer = useRef(null);
+    const isLongPress = useRef(false);
 
     // ... (touch handlers mostly same)
     const handleTouchStart = (e, item) => {
+        isLongPress.current = false;
         const touch = e.touches[0];
         const clientX = touch.clientX;
         const clientY = touch.clientY;
 
         longPressTimer.current = setTimeout(() => {
+            isLongPress.current = true;
             setContextMenu({
                 x: clientX,
                 y: clientY,
@@ -279,6 +282,49 @@ export default function GalleryPage() {
         }
     };
 
+    const handleShare = async (item) => {
+        if (!item || item.type === 'folder') return;
+        const url = getImageUrl(item.file_path);
+        const fullUrl = window.location.origin + url;
+
+        if (window.AndroidApp && typeof window.AndroidApp.shareFile === 'function') {
+            window.AndroidApp.shareFile(fullUrl, item.title || item.name);
+            return;
+        }
+
+        if (navigator.share) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const file = new File([blob], `${item.title || 'photo'}.jpg`, { type: blob.type });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: item.title,
+                        files: [file]
+                    });
+                } else {
+                    await navigator.share({
+                        title: item.title,
+                        url: fullUrl
+                    });
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Share failed:', err);
+                }
+            }
+        } else {
+            // Fallback: Copy link to clipboard
+            try {
+                await navigator.clipboard.writeText(fullUrl);
+                alert("Ссылка скопирована в буфер обмена");
+            } catch (err) {
+                alert("Ваш браузер не поддерживает функцию 'Поделиться'");
+            }
+        }
+    };
+
     // Helper to normalize path
     const getImageUrl = (path) => {
         if (!path) return null;
@@ -411,11 +457,15 @@ export default function GalleryPage() {
                                             relative aspect-square rounded-lg overflow-hidden cursor-pointer
                                             hover:scale-105 transition-transform border border-gray-800
                                             flex flex-col items-center justify-center p-4 group tv-focusable
+                                            select-none
                                         `}
-                                            style={{ backgroundColor: 'var(--card-bg)' }}
+                                            style={{ backgroundColor: 'var(--card-bg)', WebkitTouchCallout: 'none' }}
                                             tabIndex={0}
                                             data-tv-clickable="true"
-                                            onClick={() => isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)}
+                                            onClick={() => {
+                                                if (isLongPress.current) return;
+                                                isFolder ? handleFolderClick(item.name) : handlePhotoClick(item)
+                                            }}
                                             onContextMenu={(e) => handleRightClick(e, item)}
                                             onTouchStart={(e) => handleTouchStart(e, item)}
                                             onTouchEnd={handleTouchEnd}
@@ -487,9 +537,12 @@ export default function GalleryPage() {
                         y={contextMenu.y}
                         onClose={() => setContextMenu(null)}
                         options={[
-                            { label: "Открыть", onClick: () => contextMenu.item.type === 'folder' ? handleFolderClick(contextMenu.item.name) : handlePhotoClick(contextMenu.item), icon: <Upload size={16} /> },
-                            // Show "Rename" only for folders
-                            ...(contextMenu.item.type === 'folder' ? [{ label: "Переименовать", onClick: () => handleRename(contextMenu.item), icon: <Edit size={16} /> }] : []),
+                            { label: "Открыть", onClick: () => contextMenu.item.type === 'folder' ? handleFolderClick(contextMenu.item.name) : handlePhotoClick(contextMenu.item), icon: <ImageIcon size={16} /> },
+                            // Show "Rename" for folders and "Share" for photos
+                            ...(contextMenu.item.type === 'folder'
+                                ? [{ label: "Переименовать", onClick: () => handleRename(contextMenu.item), icon: <Edit size={16} /> }]
+                                : [{ label: "Поделиться", onClick: () => handleShare(contextMenu.item), icon: <Share2 size={16} /> }]
+                            ),
                             { label: "Переместить", onClick: () => setMoveItem(contextMenu.item), icon: <Move size={16} /> },
                             { label: 'Удалить', onClick: () => handleDelete(contextMenu.item), icon: <Trash size={16} />, className: 'text-red-500 hover:bg-red-500/20' }
                         ]}

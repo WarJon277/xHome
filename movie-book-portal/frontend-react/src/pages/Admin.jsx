@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw } from 'lucide-react';
 import {
@@ -13,6 +13,81 @@ import {
 } from '../api';
 import { X, Download, BookOpen } from 'lucide-react';
 import KaleidoscopeManager from '../components/KaleidoscopeManager';
+
+// Genre Options Structure
+const GENRE_OPTIONS = {
+    "Фантастика": [
+        "Альтернативная история", "Боевая фантастика", "Бояръ-аниме",
+        "Героическая фантастика", "Городское фэнтези", "Киберпанк",
+        "Космическая фантастика", "ЛитРПГ", "Мистика", "Научная фантастика",
+        "Попаданцы", "Постапокалипсис", "Социальная фантастика", "Стимпанк",
+        "Тёмное фэнтези", "Ужасы", "Фэнтези", "Эпическая фантастика",
+        "Юмористическая фантастика"
+    ],
+    "Детективы и Триллеры": [
+        "Артефакт-детективы", "Боевик", "Дамский детективный роман",
+        "Детективы", "Иронический детектив", "Исторический детектив",
+        "Классический детектив", "Криминальный детектив", "Крутой детектив",
+        "Политический детектив", "Полицейский детектив", "Про маньяков",
+        "Советский детектив", "Триллер", "Шпионский детектив"
+    ],
+    "Детская литература": [
+        "Детская литература: прочее", "Детская образовательная литература",
+        "Зарубежная литература для детей", "Классическая детская литература",
+        "Народные сказки", "Сказки зарубежных писателей",
+        "Сказки отечественных писателей", "Детская проза: приключения",
+        "Детская фантастика", "Стихи для детей и подростков"
+    ],
+    "Любовные романы": [
+        "Исторические любовные романы", "Короткие любовные романы",
+        "Любовное фэнтези", "Остросюжетные любовные романы",
+        "Современные любовные романы", "Эротика"
+    ],
+    "Проза": [
+        "Историческая проза", "Классическая проза", "Проза о войне",
+        "Современная проза", "Русская классика", "Советская классика"
+    ],
+    "Приключения": [
+        "Вестерн", "Исторические приключения", "Морские приключения",
+        "Приключения", "Природа и животные", "Путешествия и география"
+    ],
+    "Искусство и Культура": [
+        "Искусство и Дизайн", "Кино", "Музыка", "Культурология"
+    ],
+    "Деловая литература": [
+        "Деловая литература", "Карьера, кадры", "Маркетинг, PR",
+        "Финансы", "Экономика"
+    ],
+    "Наука и Образование": [
+        "История", "Психология", "Философия", "Математика",
+        "Физика", "Литературоведение", "Языкознание", "Политика"
+    ],
+    "Дом и семья": [
+        "Боевые искусства, спорт", "Домашние животные", "Здоровье",
+        "Кулинария", "Педагогика, воспитание", "Популярная психология",
+        "Семейные отношения, секс", "Хобби и ремесла"
+    ],
+    "Компьютеры и Интернет": [
+        "Интернет и Сети", "Программирование", "Компьютерная литература"
+    ],
+    "Документальная литература": [
+        "Биографии и мемуары", "Военная документалистика",
+        "Документальная литература", "Публицистика"
+    ],
+    "Религия и Эзотерика": [
+        "Религия", "Православие", "Эзотерика", "Самосовершенствование"
+    ],
+    "Поэзия и Юмор": [
+        "Поэзия", "Классическая поэзия", "Юмористические стихи",
+        "Анекдоты", "Юмор", "Юмористическая проза"
+    ]
+};
+
+const PROVIDERS_LIST = [
+    { id: 'flibusta', name: 'Flibusta (.is)' },
+    { id: 'coollib', name: 'CoolLib (.net)' },
+    { id: 'royallib', name: 'RoyalLib.com' }
+];
 
 export default function AdminPage() {
     const navigate = useNavigate();
@@ -47,8 +122,16 @@ export default function AdminPage() {
 
     // Browse/Suggestion State
     const [showBrowseModal, setShowBrowseModal] = useState(false);
+    const browseAbortController = useRef(null);
+    const modalOpenRef = useRef(false); // Track modal state for async operations
+
+    // Sync ref
+    useEffect(() => {
+        modalOpenRef.current = showBrowseModal;
+    }, [showBrowseModal]);
     const [browseItems, setBrowseItems] = useState([]);
     const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
+    const [browseProvider, setBrowseProvider] = useState('royallib');
 
     // Lazy load covers AND descriptions effect
     useEffect(() => {
@@ -63,7 +146,7 @@ export default function AdminPage() {
                     const tid = setTimeout(async () => {
                         if (!mounted) return;
                         try {
-                            const data = await fetchDetails(item.id);
+                            const data = await fetchDetails(item.id, browseProvider);
                             if (mounted && data) {
                                 setBrowseItems(prev => {
                                     const next = [...prev];
@@ -98,7 +181,7 @@ export default function AdminPage() {
             mounted = false;
             timeouts.forEach(clearTimeout);
         };
-    }, [browseItems, showBrowseModal]);
+    }, [browseItems, showBrowseModal, browseProvider]);
 
     // Theme State
     const [themeColors, setThemeColors] = useState({
@@ -337,25 +420,87 @@ export default function AdminPage() {
         setShowForm(false);
     };
 
-    const handleBrowse = async () => {
-        if (!formData.genre || formData.genre === 'Общее') {
+    const handleBrowse = async (isRefresh = false) => {
+        console.log("handleBrowse called", { isRefresh, genre: formData.genre, provider: browseProvider });
+
+        if (!formData.genre || formData.genre.toLowerCase() === 'общее') {
             alert('Пожалуйста, выберите конкретный жанр');
             return;
         }
-        setShowBrowseModal(true);
+
+        // Clean up previous request if any
+        if (browseAbortController.current) {
+            browseAbortController.current.abort();
+        }
+
+        // Create new AbortController
+        browseAbortController.current = new AbortController();
+        const signal = browseAbortController.current.signal;
+
+        if (!isRefresh) {
+            setShowBrowseModal(true);
+        }
+
         setIsLoadingBrowse(true);
+        // Only clear items if we are switching genres or providers, or explicit refresh
+        // But for simplicity, we clear to show loading state clearly
+        setBrowseItems([]);
+
         try {
-            // 1. Fetch list of ~20 items (lite)
-            const items = await fetchBrowse(contentType, formData.genre);
-            setBrowseItems(items);
+            const activeGenreName = Object.keys(GENRE_OPTIONS).find(cat =>
+                GENRE_OPTIONS[cat].includes(formData.genre)
+            ) ? formData.genre : 'Научная фантастика';
+
+            console.log("Fetching browse items...", { genre: activeGenreName, provider: browseProvider });
+
+            const targetType = contentType === 'books' ? 'books' : 'books';
+
+            const items = await fetchBrowse(targetType, activeGenreName, browseProvider, { signal });
+            console.log("Items fetched:", items);
+
+            // Double check: if modal closed, ignore
+            if (!modalOpenRef.current) {
+                console.log("Modal closed, ignoring results (ref check)");
+                return;
+            }
+
+            if (Array.isArray(items)) {
+                setBrowseItems(items.map(i => ({ ...i, coverLoaded: false })));
+            } else {
+                setBrowseItems([]);
+            }
         } catch (e) {
+            if (e.name === 'AbortError') {
+                console.log("Browse request cancelled");
+                return; // Do nothing, request was cancelled
+            }
             console.error("Browse failed:", e);
-            alert("Не удалось загрузить список книг.");
-            setShowBrowseModal(false);
+            alert(`Не удалось загрузить список: ${e.message}`);
+            if (!isRefresh) setShowBrowseModal(false);
         } finally {
-            setIsLoadingBrowse(false);
+            // Only turn off loading if this request wasn't aborted (or if it was aborted but we want to clean up UI)
+            // If aborted, the new request will have set loading to true already.
+            // But if we close modal, we want loading to be false.
+            if (!signal.aborted) {
+                setIsLoadingBrowse(false);
+            }
         }
     };
+
+    // Re-fetch when provider changes if modal is open
+    // Removed showBrowseModal from dependency to avoid double-fetch on opening
+    useEffect(() => {
+        if (showBrowseModal) {
+            handleBrowse(true);
+        }
+    }, [browseProvider]);
+
+    // Cleanup on unmount or modal close
+    useEffect(() => {
+        if (!showBrowseModal && browseAbortController.current) {
+            browseAbortController.current.abort();
+        }
+    }, [showBrowseModal]);
 
     const handleSelectSuggestion = async (item) => {
         // item has { id, title, author, source_url }
@@ -363,8 +508,8 @@ export default function AdminPage() {
         setIsSuggesting(true); // Reuse loading state on the button or global
 
         try {
-            // 2. Fetch full details for selected item
-            const data = await fetchDetails(item.id);
+            // 2. Fetch full details for selected item - PASS THE PROVIDER!
+            const data = await fetchDetails(item.id, browseProvider);
 
             setFormData({
                 ...formData,
@@ -383,6 +528,12 @@ export default function AdminPage() {
                     const res = await fetch(`/api/discovery/proxy?url=${encodeURIComponent(url)}`);
                     if (!res.ok) throw new Error('Proxy fetch failed');
                     const blob = await res.blob();
+
+                    // Validate content type
+                    if (blob.type.includes('text/html') || blob.type.includes('application/json')) {
+                        throw new Error('Ссылка ведет на веб-страницу или заблокирована (не файл книги)');
+                    }
+
                     // Try to get filename from content-disposition if possible, or use default
                     const contentDisp = res.headers.get('Content-Disposition');
                     let filename = defaultName;
@@ -693,8 +844,10 @@ export default function AdminPage() {
                             isUploading={isUploading}
                             uploadProgress={uploadProgress}
                             editingId={editingId}
-                            onSuggest={handleBrowse}
+                            onSuggest={() => handleBrowse(false)}
                             isSuggesting={isSuggesting}
+                            browseProvider={browseProvider}
+                            setBrowseProvider={setBrowseProvider}
                         />
                     )}
                 </div>
@@ -730,6 +883,17 @@ export default function AdminPage() {
                                 >
                                     <RefreshCw size={24} className={isLoadingBrowse ? "animate-spin" : ""} />
                                 </button>
+
+                                <select
+                                    value={browseProvider}
+                                    onChange={(e) => setBrowseProvider(e.target.value)}
+                                    className="bg-gray-800 text-white px-3 py-1.5 rounded border border-gray-600 focus:border-primary outline-none text-sm transition-colors"
+                                >
+                                    {PROVIDERS_LIST.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+
                                 <button onClick={() => setShowBrowseModal(false)} className="p-2 hover:bg-white/10 rounded-full">
                                     <X size={24} />
                                 </button>
@@ -747,31 +911,39 @@ export default function AdminPage() {
                                     Книги не найдены. Попробуйте другой жанр.
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {browseItems.map(item => (
                                         <div
                                             key={item.id}
                                             onClick={() => handleSelectSuggestion(item)}
-                                            title={`${item.title} - ${item.author}`}
-                                            className="group relative cursor-pointer bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-primary transition-all hover:scale-105 shadow-lg"
+                                            className="group flex flex-col cursor-pointer bg-gray-800/40 rounded-xl overflow-hidden border border-gray-700 hover:border-primary transition-all hover:translate-y-[-4px] shadow-xl backdrop-blur-md"
                                         >
-                                            <div className="aspect-[2/3] bg-gray-900 relative">
-                                                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex flex-col justify-between p-3 text-center">
-                                                    <div className="text-xs text-gray-300 border-b border-gray-600 pb-2 mb-2 line-clamp-1">{item.author}</div>
-                                                    <div className="font-bold text-sm text-gray-100 line-clamp-4 leading-snug">{item.title}</div>
-                                                    <div className="mt-auto pt-2 opacity-50 text-gray-400"><BookOpen size={24} className="mx-auto" /></div>
+                                            <div className="p-5 flex flex-col h-full">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="text-xs font-bold text-primary uppercase tracking-wider">{item.author}</div>
+                                                    <div className="text-gray-500"><BookOpen size={18} /></div>
                                                 </div>
-                                                {/* Overlay */}
-                                                <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-4 text-center z-10">
+
+                                                <h4 className="font-bold text-lg text-white mb-3 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                                                    {item.title}
+                                                </h4>
+
+                                                <div className="flex-1">
                                                     {item.description ? (
-                                                        <div className="text-[10px] leading-relaxed text-gray-300 mb-3 overflow-hidden line-clamp-[10]">
+                                                        <p className="text-sm leading-relaxed text-gray-400 line-clamp-[6] italic">
                                                             {item.description}
-                                                        </div>
+                                                        </p>
                                                     ) : (
-                                                        <div className="text-[10px] text-gray-500 mb-4 animate-pulse">Загрузка описания...</div>
+                                                        <div className="h-24 flex items-center justify-center border border-dashed border-gray-700 rounded-lg text-gray-600 text-xs italic">
+                                                            Аннотация будет загружена при выборе
+                                                        </div>
                                                     )}
-                                                    <div className="bg-primary text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform mt-auto">
-                                                        <Download size={16} /> Выбрать
+                                                </div>
+
+                                                <div className="mt-5 pt-4 border-t border-gray-700/50 flex items-center justify-between">
+                                                    <span className="text-[10px] text-gray-500 font-mono opacity-50">ID: {item.id.toString().substring(0, 15)}</span>
+                                                    <div className="bg-primary/20 text-primary px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 group-hover:bg-primary group-hover:text-white transition-all">
+                                                        <Plus size={14} /> Выбрать книгу
                                                     </div>
                                                 </div>
                                             </div>
@@ -804,7 +976,8 @@ function ContentForm({
     thumbnail, setThumbnail, episodeFiles, setEpisodeFiles,
     seasonNumber, setSeasonNumber, onSubmit, onCancel,
     isUploading, uploadProgress, editingId,
-    onSuggest, isSuggesting
+    onSuggest, isSuggesting,
+    browseProvider, setBrowseProvider
 }) {
     return (
         <form onSubmit={onSubmit} className="p-4 sm:p-6 rounded-lg max-w-2xl" style={{ backgroundColor: 'var(--card-bg)' }}>
@@ -854,139 +1027,28 @@ function ContentForm({
                     className="flex-1 p-3 bg-gray-800 rounded"
                 >
                     <option value="">Выберите жанр</option>
-                    <optgroup label="Фантастика">
-                        <option value="Альтернативная история">Альтернативная история</option>
-                        <option value="Боевая фантастика">Боевая фантастика</option>
-                        <option value="Бояръ-аниме">Бояръ-аниме</option>
-                        <option value="Героическая фантастика">Героическая фантастика</option>
-                        <option value="Городское фэнтези">Городское фэнтези</option>
-                        <option value="Киберпанк">Киберпанк</option>
-                        <option value="Космическая фантастика">Космическая фантастика</option>
-                        <option value="ЛитРПГ">ЛитРПГ</option>
-                        <option value="Мистика">Мистика</option>
-                        <option value="Научная фантастика">Научная фантастика</option>
-                        <option value="Попаданцы">Попаданцы</option>
-                        <option value="Постапокалипсис">Постапокалипсис</option>
-                        <option value="Социальная фантастика">Социальная фантастика</option>
-                        <option value="Стимпанк">Стимпанк</option>
-                        <option value="Тёмное фэнтези">Тёмное фэнтези</option>
-                        <option value="Ужасы">Ужасы</option>
-                        <option value="Фэнтези">Фэнтези</option>
-                        <option value="Эпическая фантастика">Эпическая фантастика</option>
-                        <option value="Юмористическая фантастика">Юмористическая фантастика</option>
-                    </optgroup>
-                    <optgroup label="Детективы и Триллеры">
-                        <option value="Артефакт-детективы">Артефакт-детективы</option>
-                        <option value="Боевик">Боевик</option>
-                        <option value="Дамский детективный роман">Дамский детективный роман</option>
-                        <option value="Детективы">Детективы</option>
-                        <option value="Иронический детектив">Иронический детектив</option>
-                        <option value="Исторический детектив">Исторический детектив</option>
-                        <option value="Классический детектив">Классический детектив</option>
-                        <option value="Криминальный детектив">Криминальный детектив</option>
-                        <option value="Крутой детектив">Крутой детектив</option>
-                        <option value="Политический детектив">Политический детектив</option>
-                        <option value="Полицейский детектив">Полицейский детектив</option>
-                        <option value="Про маньяков">Про маньяков</option>
-                        <option value="Советский детектив">Советский детектив</option>
-                        <option value="Триллер">Триллер</option>
-                        <option value="Шпионский детектив">Шпионский детектив</option>
-                    </optgroup>
-                    <optgroup label="Детская литература">
-                        <option value="Детская литература: прочее">Детская литература: прочее</option>
-                        <option value="Детская образовательная литература">Детская образовательная литература</option>
-                        <option value="Зарубежная литература для детей">Зарубежная литература для детей</option>
-                        <option value="Классическая детская литература">Классическая детская литература</option>
-                        <option value="Народные сказки">Народные сказки</option>
-                        <option value="Сказки зарубежных писателей">Сказки зарубежных писателей</option>
-                        <option value="Сказки отечественных писателей">Сказки отечественных писателей</option>
-                        <option value="Детская проза: приключения">Детская проза: приключения</option>
-                        <option value="Детская фантастика">Детская фантастика</option>
-                        <option value="Стихи для детей и подростков">Стихи для детей и подростков</option>
-                    </optgroup>
-                    <optgroup label="Любовные романы">
-                        <option value="Исторические любовные романы">Исторические любовные романы</option>
-                        <option value="Короткие любовные романы">Короткие любовные романы</option>
-                        <option value="Любовное фэнтези">Любовное фэнтези</option>
-                        <option value="Остросюжетные любовные романы">Остросюжетные любовные романы</option>
-                        <option value="Современные любовные романы">Современные любовные романы</option>
-                        <option value="Эротика">Эротика</option>
-                    </optgroup>
-                    <optgroup label="Проза">
-                        <option value="Историческая проза">Историческая проза</option>
-                        <option value="Классическая проза">Классическая проза</option>
-                        <option value="Проза о войне">Проза о войне</option>
-                        <option value="Современная проза">Современная проза</option>
-                        <option value="Русская классика">Русская классика</option>
-                        <option value="Советская классика">Советская классика</option>
-                    </optgroup>
-                    <optgroup label="Приключения">
-                        <option value="Вестерн">Вестерн</option>
-                        <option value="Исторические приключения">Исторические приключения</option>
-                        <option value="Морские приключения">Морские приключения</option>
-                        <option value="Приключения">Приключения</option>
-                        <option value="Природа и животные">Природа и животные</option>
-                        <option value="Путешествия и география">Путешествия и география</option>
-                    </optgroup>
-                    <optgroup label="Искусство и Культура">
-                        <option value="Искусство и Дизайн">Искусство и Дизайн</option>
-                        <option value="Кино">Кино</option>
-                        <option value="Музыка">Музыка</option>
-                        <option value="Культурология">Культурология</option>
-                    </optgroup>
-                    <optgroup label="Деловая литература">
-                        <option value="Деловая литература">Деловая литература</option>
-                        <option value="Карьера, кадры">Карьера, кадры</option>
-                        <option value="Маркетинг, PR">Маркетинг, PR</option>
-                        <option value="Финансы">Финансы</option>
-                        <option value="Экономика">Экономика</option>
-                    </optgroup>
-                    <optgroup label="Наука и Образование">
-                        <option value="История">История</option>
-                        <option value="Психология">Психология</option>
-                        <option value="Философия">Философия</option>
-                        <option value="Математика">Математика</option>
-                        <option value="Физика">Физика</option>
-                        <option value="Литературоведение">Литературоведение</option>
-                        <option value="Языкознание">Языкознание</option>
-                        <option value="Политика">Политика</option>
-                    </optgroup>
-                    <optgroup label="Дом и семья">
-                        <option value="Боевые искусства, спорт">Боевые искусства, спорт</option>
-                        <option value="Домашние животные">Домашние животные</option>
-                        <option value="Здоровье">Здоровье</option>
-                        <option value="Кулинария">Кулинария</option>
-                        <option value="Педагогика, воспитание">Педагогика, воспитание</option>
-                        <option value="Популярная психология">Популярная психология</option>
-                        <option value="Семейные отношения, секс">Семейные отношения, секс</option>
-                        <option value="Хобби и ремесла">Хобби и ремесла</option>
-                    </optgroup>
-                    <optgroup label="Компьютеры и Интернет">
-                        <option value="Интернет и Сети">Интернет и Сети</option>
-                        <option value="Программирование">Программирование</option>
-                        <option value="Компьютерная литература">Компьютерная литература</option>
-                    </optgroup>
-                    <optgroup label="Документальная литература">
-                        <option value="Биографии и мемуары">Биографии и мемуары</option>
-                        <option value="Военная документалистика">Военная документалистика</option>
-                        <option value="Документальная литература">Документальная литература</option>
-                        <option value="Публицистика">Публицистика</option>
-                    </optgroup>
-                    <optgroup label="Религия и Эзотерика">
-                        <option value="Религия">Религия</option>
-                        <option value="Православие">Православие</option>
-                        <option value="Эзотерика">Эзотерика</option>
-                        <option value="Самосовершенствование">Самосовершенствование</option>
-                    </optgroup>
-                    <optgroup label="Поэзия и Юмор">
-                        <option value="Поэзия">Поэзия</option>
-                        <option value="Классическая поэзия">Классическая поэзия</option>
-                        <option value="Юмористические стихи">Юмористические стихи</option>
-                        <option value="Анекдоты">Анекдоты</option>
-                        <option value="Юмор">Юмор</option>
-                        <option value="Юмористическая проза">Юмористическая проза</option>
-                    </optgroup>
+                    {Object.entries(GENRE_OPTIONS).map(([label, options]) => (
+                        <optgroup key={label} label={label}>
+                            {options.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </optgroup>
+                    ))}
                 </select>
+
+                {contentType === 'books' && !editingId && (
+                    <select
+                        value={browseProvider}
+                        onChange={(e) => setBrowseProvider(e.target.value)}
+                        className="p-3 bg-purple-900/30 border border-purple-500/30 rounded text-purple-100 outline-none focus:border-purple-500 transition-colors"
+                        title="Выберите источник для поиска"
+                    >
+                        {PROVIDERS_LIST.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                )}
+
                 {!editingId && (
                     <button
                         type="button"

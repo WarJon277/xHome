@@ -6,34 +6,41 @@ import os
 import random
 from typing import List, Optional
 from pydantic import BaseModel
+import re
+from urllib.parse import urlparse, urljoin, quote
 
 router = APIRouter(tags=["discovery"])
 
-# Primary domain as requested
+# Providers config
+PROVIDERS = {
+    "flibusta": "http://flibusta.is",
+    "coollib": "https://pda.coollib.net",
+    "royallib": "https://royallib.com"
+}
+
 FLIBUSTA_MIRRORS = [
     "http://flibusta.is",
 ]
 
-def get_headers():
-    user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-    ]
-    return {
-        'User-Agent': random.choice(user_agents),
+def get_headers(referer=None):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
+        'Cache-Control': 'max-age=0',
         'Upgrade-Insecure-Requests': '1',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0'
+        'Connection': 'keep-alive',
     }
+    if referer:
+        headers['Referer'] = referer
+    return headers
 
 def request_flibusta(path: str, timeout: int = 15):
     """Try to request path from the primary domain"""
@@ -49,7 +56,7 @@ def request_flibusta(path: str, timeout: int = 15):
         url = f"{mirror.rstrip('/')}/{path.lstrip('/')}"
         try:
             print(f"Requesting Flibusta: {url}")
-            response = requests.get(url, headers=get_headers(), timeout=timeout)
+            response = requests.get(url, headers=get_headers(), timeout=8)
             if response.status_code == 200:
                 # Add base_url attribute for absolute link resolution
                 response.base_url = mirror
@@ -62,143 +69,166 @@ def request_flibusta(path: str, timeout: int = 15):
             
     raise Exception(f"All mirrors failed. Last error: {last_error}")
 
-# Mapping frontend genres to Flibusta/TMDB genres
-# Full Flibusta Genre Mapping
+# Simplified Genre Mapping (works for both Flibusta and Coollib - they use identical FB2 slugs)
 GENRE_MAPPING = {
-    "Деловая литература": {
-        "Деловая литература": "economics_ref",
-        "Карьера, кадры": "popular_business",
-        "Маркетинг, PR": "org_behavior",
-        "Финансы": "banking",
-        "Экономика": "economics",
-    },
-    "Детективы и триллеры": {
-        "Артефакт-детективы": "det_artifact",
-        "Боевик": "det_action",
-        "Дамский детективный роман": "det_lady",
-        "Детективы": "detective",
-        "Иронический детектив": "det_irony",
-        "Исторический детектив": "det_history",
-        "Классический детектив": "det_classic",
-        "Криминальный детектив": "det_crime",
-        "Крутой детектив": "det_hard",
-        "Политический детектив": "det_political",
-        "Полицейский детектив": "det_police",
-        "Про маньяков": "det_maniac",
-        "Советский детектив": "det_su",
-        "Триллер": "thriller",
-        "Шпионский детектив": "det_espionage",
-    },
-    "Детская литература": {
-        "Детская литература: прочее": "children",
-        "Детская образовательная литература": "child_education",
-        "Зарубежная литература для детей": "foreign_children",
-        "Классическая детская литература": "child_classical",
-        "Народные сказки": "folk_tale",
-        "Сказки зарубежных писателей": "child_tale_foreign_writers",
-        "Сказки отечественных писателей": "child_tale_russian_writers",
-        "Детская проза: приключения": "child_adv",
-        "Детская фантастика": "child_sf",
-        "Стихи для детей и подростков": "child_verse",
-    },
-    "Документальная литература": {
-        "Биографии и мемуары": "nonf_biography",
-        "Военная документалистика": "nonf_military",
-        "Документальная литература": "nonfiction",
-        "Публицистика": "nonf_publicism",
-    },
-    "Дом и семья": {
-        "Боевые искусства, спорт": "home_sport",
-        "Домашние животные": "home_pets",
-        "Здоровье": "home_health",
-        "Кулинария": "home_cooking",
-        "Педагогика, воспитание": "sci_pedagogy",
-        "Популярная психология": "sci_psychology_popular",
-        "Семейные отношения, секс": "home_sex",
-        "Хобби и ремесла": "home_crafts",
-    },
-    "Искусство и Культура": {
-        "Искусство и Дизайн": "design",
-        "Кино": "cine",
-        "Музыка": "music",
-        "Культурология": "sci_culture",
-    },
-    "Компьютеры и Интернет": {
-        "Интернет и Сети": "comp_www",
-        "Программирование": "comp_db",
-        "Компьютерная литература": "computers",
-    },
-    "Любовные романы": {
-        "Исторические любовные романы": "love_history",
-        "Короткие любовные романы": "love_short",
-        "Любовное фэнтези": "love_sf",
-        "Остросюжетные любовные романы": "love_detective",
-        "Современные любовные романы": "love_contemporary",
-        "Эротика": "love_erotica",
-    },
-    "Наука и Образование": {
-        "История": "sci_history",
-        "Психология": "sci_psychology",
-        "Философия": "sci_philosophy",
-        "Математика": "sci_math",
-        "Физика": "sci_phys",
-        "Литературоведение": "sci_philology",
-        "Языкознание": "sci_linguistic",
-        "Политика": "sci_politics",
-    },
-    "Поэзия": {
-        "Поэзия": "poetry",
-        "Классическая поэзия": "poetry_classical",
-        "Юмористические стихи": "humor_verse",
-    },
-    "Приключения": {
-        "Вестерн": "adv_indian",
-        "Исторические приключения": "adv_history",
-        "Морские приключения": "adv_maritime",
-        "Приключения": "adventure",
-        "Природа и животные": "adv_animal",
-        "Путешествия и география": "adv_geo",
-    },
-    "Проза": {
-        "Историческая проза": "prose_history",
-        "Классическая проза": "prose_classic",
-        "Проза о войне": "prose_military",
-        "Современная проза": "prose_contemporary",
-        "Русская классика": "prose_rus_classic",
-        "Советская классика": "prose_su_classics",
-    },
-    "Религия и Эзотерика": {
-        "Религия": "religion",
-        "Православие": "religion_orthodoxy",
-        "Эзотерика": "religion_esoterics",
-        "Самосовершенствование": "religion_self",
-    },
-    "Фантастика": {
-        "Альтернативная история": "sf_history",
-        "Боевая фантастика": "sf_action",
-        "Бояръ-аниме": "boyar_anime",
-        "Героическая фантастика": "sf_heroic",
-        "Городское фэнтези": "sf_fantasy_city",
-        "Киберпанк": "sf_cyberpunk",
-        "Космическая фантастика": "sf_space",
-        "ЛитРПГ": "sf_litrpg",
-        "Мистика": "sf_mystic",
-        "Научная фантастика": "sf",
-        "Попаданцы": "popadancy",
-        "Постапокалипсис": "sf_postapocalyptic",
-        "Социальная фантастика": "sf_social",
-        "Стимпанк": "sf_stimpank",
-        "Тёмное фэнтези": "dark_fantasy",
-        "Ужасы": "sf_horror",
-        "Фэнтези": "sf_fantasy",
-        "Эпическая фантастика": "sf_epic",
-        "Юмористическая фантастика": "sf_humor",
-    },
-    "Юмор": {
-        "Анекдоты": "humor_anecdote",
-        "Юмор": "humor",
-        "Юмористическая проза": "humor_prose",
-    }
+    # Фантастика и Фэнтези
+    "Альтернативная история": "sf_history",
+    "Боевая фантастика": "sf_action",
+    "Героическая фантастика": "sf_heroic",
+    "Городское фэнтези": "sf_fantasy_city",
+    "Киберпанк": "sf_cyberpunk",
+    "Космическая фантастика": "sf_space",
+    "ЛитРПГ": "sf_litrpg",
+    "Мистика": "sf_mystic",
+    "Научная фантастика": "sf",
+    "Попаданцы": "popadancy",
+    "Постапокалипсис": "sf_postapocalyptic",
+    "Социальная фантастика": "sf_social",
+    "Стимпанк": "sf_stimpank",
+    "Тёмное фэнтези": "dark_fantasy",
+    "Ужасы": "sf_horror",  # FIXED: was "ugasi"
+    "Фантастика": "sf_etc",
+    "Фэнтези": "sf_fantasy",  # FIXED: was "fentezi"
+    "Эпическая фантастика": "sf_epic",
+    "Юмористическая фантастика": "sf_humor",
+    
+    # Детективы и триллеры
+    "Артефакт-детективы": "det_artifact",
+    "Боевик": "det_action",
+    "Дамский детективный роман": "det_lady",
+    "Детективы": "detective",
+    "Детективы и Триллеры": "detective",
+    "Иронический детектив": "det_irony",
+    "Исторический детектив": "det_history",
+    "Классический детектив": "det_classic",
+    "Криминальный детектив": "det_crime",
+    "Крутой детектив": "det_hard",
+    "Политический детектив": "det_political",
+    "Полицейский детектив": "det_police",
+    "Про маньяков": "det_maniac",
+    "Советский детектив": "det_su",
+    "Триллер": "thriller",
+    "Шпионский детектив": "det_espionage",
+    
+    # Любовные романы
+    "Исторические любовные романы": "love_history",
+    "Короткие любовные романы": "love_short",
+    "Любовное фэнтези": "love_sf",
+    "Любовные романы": "love",
+    "Остросюжетные любовные романы": "love_detective",
+    "Современные любовные романы": "love_contemporary",
+    "Эротика": "love_erotica",
+    
+    # Приключения
+    "Вестерн": "adv_indian",
+    "Исторические приключения": "adv_history",
+    "Морские приключения": "adv_maritime",
+    "Приключения": "adventure",
+    "Природа и животные": "adv_animal",
+    "Путешествия и география": "adv_geo",
+    
+    # Проза
+    "Историческая проза": "prose_history",
+    "Классическая проза": "prose_classic",
+    "Проза": "prose",
+    "Проза о войне": "prose_military",
+    "Современная проза": "prose_contemporary",
+    "Русская классика": "prose_rus_classic",
+    "Советская классика": "prose_su_classics",
+    
+    # Детская литература
+    "Детская литература": "children",
+    "Детская образовательная литература": "child_education",
+    "Детская проза: приключения": "child_adv",
+    "Детская фантастика": "child_sf",
+    "Зарубежная литература для детей": "foreign_children",
+    "Классическая детская литература": "child_classical",
+    "Народные сказки": "folk_tale",
+    "Сказки зарубежных писателей": "child_tale_foreign_writers",
+    "Сказки отечественных писателей": "child_tale_russian_writers",
+    "Стихи для детей и подростков": "child_verse",
+    
+    # Наука и Образование
+    "История": "sci_history",
+    "Литературоведение": "sci_philology",
+    "Математика": "sci_math",
+    "Наука и Образование": "science",
+    "Политика": "sci_politics",
+    "Психология": "sci_psychology",
+    "Физика": "sci_phys",
+    "Философия": "sci_philosophy",
+    "Языкознание": "sci_linguistic",
+    
+    # Поэзия и Юмор
+    "Анекдоты": "humor_anecdote",
+    "Классическая поэзия": "poetry_classical",
+    "Поэзия": "poetry",
+    "Юмор": "humor",
+    "Юмористическая проза": "humor_prose",
+    "Юмористические стихи": "humor_verse",
+    
+    # Документальная литература
+    "Биографии и мемуары": "nonf_biography",
+    "Военная документалистика": "nonf_military",
+    "Документальная литература": "nonfiction",
+    "Публицистика": "nonf_publicism",
+    
+    # Религия и Эзотерика
+    "Православие": "religion_orthodoxy",
+    "Религия": "religion",
+    "Религия и Эзотерика": "religion",
+    "Самосовершенствование": "religion_self",
+    "Эзотерика": "religion_esoterics",
+    
+    # Деловая литература
+    "Деловая литература": "economics_ref",
+    "Карьера, кадры": "popular_business",
+    "Маркетинг, PR": "org_behavior",
+    "Финансы": "banking",
+    "Экономика": "economics",
+    
+    # Дом и семья
+    "Боевые искусства, спорт": "home_sport",
+    "Домашние животные": "home_pets",
+    "Дом и семья": "home",
+    "Здоровье": "home_health",
+    "Кулинария": "home_cooking",
+    "Педагогика, воспитание": "sci_pedagogy",
+    "Популярная психология": "sci_psychology_popular",
+    "Семейные отношения, секс": "home_sex",
+    "Хобби и ремесла": "home_crafts",
+    
+    # Искусство и Культура
+    "Искусство и Дизайн": "design",
+    "Искусство и Культура": "art",
+    "Кино": "cine",
+    "Культурология": "sci_culture",
+    "Музыка": "music",
+    
+    # Компьютеры и Интернет
+    "Интернет и Сети": "comp_www",
+    "Компьютеры и Интернет": "computers",
+    "Программирование": "comp_db",
+}
+
+ROYALLIB_GENRE_MAPPING = {
+    "Деловая литература": "delovaya_literatura",
+    "Детективы и триллеры": "detektivi_i_trilleri",
+    "Детективы и Триллеры": "detektivi_i_trilleri",
+    "Детская литература": "detskoe",
+    "Документальная литература": "dokumentalnaya_literatura",
+    "Дом и семья": "domovodstvo_dom_i_semya",
+    "Искусство и Культура": "iskusstvo_i_dizayn",
+    "Компьютеры и Интернет": "kompyuteri_i_internet",
+    "Любовные романы": "lyubovnie_romani",
+    "Наука и Образование": "nauka_obrazovanie",
+    "Поэзия": "poeziya",
+    "Поэзия и Юмор": "poeziya",
+    "Приключения": "priklyucheniya",
+    "Проза": "proza",
+    "Религия и Эзотерика": "religiya_i_duhovnost",
+    "Фантастика": "fantastika",
+    "Юмор": "yumor"
 }
 
 class Suggestion(BaseModel):
@@ -212,41 +242,110 @@ class Suggestion(BaseModel):
     source_url: str
     type: str # movie, book
 
+@router.get("/search")
+def search_books(query: str, provider: str = "flibusta", limit: int = 25):
+    """Search for books by title, author, or keyword"""
+    if not query or len(query) < 2:
+        raise HTTPException(status_code=400, detail="Query too short")
+    
+    base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
+    print(f"DEBUG: Searching '{query}' with provider={provider}, base_url={base_url}")
+    
+    if "royallib" in base_url:
+        return search_royallib(query, base_url, limit)
+    elif "coollib" in base_url:
+        return search_coollib(query, base_url, limit)
+    else:
+        return search_flibusta(query, base_url, limit)
+
 @router.get("/browse")
-def browse_content(ctype: str, genre: str):
-    """Browse content list based on genre"""
+def browse_content(ctype: str, genre: str, provider: str = "flibusta"):
+    """Browse content list based on genre and provider"""
     if ctype == "books":
-        return browse_flibusta_genre(genre)
+        base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
+        print(f"DEBUG: Browsing with provider={provider}, base_url={base_url}")
+        return browse_library_genre(genre, base_url)
     # Placeholder for movies
     return []
 
 @router.get("/details")
-def get_details(book_id: str):
+def get_details(book_id: str, provider: str = "flibusta"):
     """Get full details for a specific book"""
-    return scrape_book_details(book_id)
+    base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
+    # Ensure function exists (it's defined below)
+    return scrape_book_details(book_id, base_url)
 
 @router.get("/suggest")
-def suggest_content(ctype: str, genre: str):
+def suggest_content(ctype: str, genre: str, provider: str = "flibusta"):
     """Suggest a random piece of content based on genre"""
     if ctype == "books":
-        return suggest_book(genre)
+        return suggest_book(genre, provider)
     elif ctype == "movies":
         return suggest_movie(genre)
     else:
         raise HTTPException(status_code=400, detail="Invalid content type")
 
-def suggest_book(genre_name: str):
-    """Try multiple sources for Russian books"""
+def suggest_book(genre_name: str, provider: str = "flibusta"):
+    """Suggest a random book from a genre using search"""
     
-    # Source 1: Flibusta OPDS (Browsing by genre code)
-    result = try_flibusta_genre(genre_name)
-    if result:
-        return result
+    # Map genre to search keywords
+    genre_keywords = {
+        "Фантастика": ["фантастика", "sci-fi", "научная фантастика"],
+        "Детективы и триллеры": ["детектив", "триллер", "криминал"],
+        "Любовные романы": ["роман", "любовь", "романтика"],
+        "Приключения": ["приключения", "adventure"],
+        "Ужасы": ["ужасы", "хоррор", "мистика"],
+        "Проза": ["проза", "роман"],
+        "Поэзия": ["поэзия", "стихи"],
+        "Юмор": ["юмор", "комедия", "сатира"],
+        "Наука и Образование": ["наука", "научпоп", "образование"],
+        "Детская литература": ["детская", "сказка"],
+    }
     
-    # Do NOT fallback to search by keyword (try_flibusta_search) because it results in 
-    # finding books with the genre name in the title, which is wrong.
+    # Get keywords for genre, or use genre name itself
+    keywords = genre_keywords.get(genre_name, [genre_name.lower()])
     
-    return None
+    # Try each keyword until we get results
+    for keyword in keywords:
+        try:
+            print(f"DEBUG: Suggesting book for genre '{genre_name}' using keyword '{keyword}'")
+            
+            # Try search first
+            base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
+            
+            if provider == "royallib":
+                books = search_royallib(keyword, base_url, limit=30)
+            elif provider == "coollib":
+                books = search_coollib(keyword, base_url, limit=30)
+            else:
+                books = search_flibusta(keyword, base_url, limit=30)
+            
+            if books and len(books) > 0:
+                # Pick a random book
+                random_book = random.choice(books)
+                print(f"DEBUG: Selected random book: {random_book['title']}")
+                
+                # Get full details
+                details = scrape_book_details(random_book['id'], base_url)
+                if details:
+                    return details
+            
+        except Exception as e:
+            print(f"DEBUG: Error suggesting book with keyword '{keyword}': {e}")
+            continue
+    
+    # Fallback: try browse (might still work for some providers)
+    try:
+        result = try_flibusta_genre(genre_name)
+        if result:
+            return result
+    except:
+        pass
+    
+    # Last resort: return a curated classic
+    print(f"WARNING: Could not suggest book for genre '{genre_name}', using fallback")
+    return get_russian_classic_by_genre(genre_name)
+
 
 @router.get("/cover")
 def get_cover_url(book_id: str):
@@ -279,98 +378,229 @@ def get_book_image_url(book_id: str):
             return src if src.startswith('http') else f"{base_url}{src}"
     except:
         return None
-    return None
 
-def scrape_book_details(book_id: str):
+def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
     """Scrape detailed info from a book page"""
+    from urllib.parse import urljoin, urlparse
     try:
-        response = request_flibusta(f"b/{book_id}", timeout=10)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        base_url = response.base_url
-        url = f"{base_url}/b/{book_id}"
+        # Construct URL based on provider
+        if "royallib.com" in base_url:
+            # Clean up book_id to get only the path
+            parsed = urlparse(book_id)
+            path = parsed.path if parsed.path else book_id
+            if 'royallib.com' in path:
+                 path = path.split('royallib.com')[-1]
+            if not path.startswith('/'): path = '/' + path
+            
+            url = f"https://royallib.com{path}"
+        else:
+            url = f"{base_url.rstrip('/')}/b/{book_id}"
         
-        # Title
-        title_tag = soup.find('h1', class_='title')
-        title = title_tag.get_text(strip=True) if title_tag else "Без названия"
-        # Cleanup title (remove format suffix like '(fb2)')
-        if '(' in title:
-            title = title.split('(')[0].strip()
+        print(f"DEBUG: Scraping book details from: {url}")
+        
+        title = "Без названия"
+        description = ""
+        image = None
+        title_tag = None
 
-        # Author(s)
-        # Usually links /a/XXXXX
+        # Requests with headers including referer
+        session = requests.Session()
+        session.headers.update(get_headers(referer=base_url))
+        
+        # RoyalLib doesn't usually block, but headers are good
+        if "royallib.com" in base_url:
+            session.headers.update({'Host': 'royallib.com'})
+
+        response = session.get(url, timeout=15)
+        print(f"DEBUG: Response status for {url}: {response.status_code}")
+        
+        if response.status_code == 403:
+             print("WARNING: 403 Forbidden detected. Site might be blocking requests.")
+             # Fallback attempt?
+        
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        title = "Без названия"
+        description = ""
+        image = None
+
+        if "royallib.com" in base_url:
+             # RoyalLib parsing
+             title_tag = soup.find('h1')
+             if title_tag:
+                 raw_title = title_tag.get_text(strip=True)
+                 # RoyalLib often has "Author - Title" in H1
+                 if " - " in raw_title:
+                     parts = raw_title.split(" - ", 1)
+                     author_parts = parts[0].strip()
+                     title = parts[1].strip()
+                 else:
+                     title = raw_title
+
+             description_tag = soup.find(attrs={"itemprop": "description"}) or \
+                               soup.find('div', class_='book-description')
+             
+             if description_tag: 
+                 description = description_tag.get_text("\n", strip=True)
+             
+             img_tag = soup.find(attrs={"itemprop": "image"}) or \
+                       soup.find('img', src=re.compile(r'/covers/'))
+             
+             if img_tag:
+                 src = img_tag.get('src')
+                 image = urljoin("https://royallib.com", src)
+        elif "flibusta" in base_url or "coollib" in base_url:
+             # Flibusta / CoolLib parsing
+             # Scope to main content to avoid sidebar "Navigation" etc.
+             content_area = soup.find('div', id='main') or soup.find('div', id='container') or soup
+             
+             title_tag = content_area.find('h1', class_='title') or content_area.find('h1') or content_area.find('h3')
+             if title_tag: 
+                 raw_title = title_tag.get_text(strip=True)
+                 # Ignore common sidebar headers if they get picked up
+                 if raw_title.lower() not in ['навигация', 'вход', 'поиск', 'меню']:
+                    title = raw_title
+             
+             # Description (Annotation)
+             # CoolLib PDA often uses <b>Аннотация</b> or <h2>Аннотация</h2>
+             anno_header = content_area.find(['h2', 'b', 'h3', 'strong'], string=re.compile('Аннотация', re.I))
+             if anno_header:
+                 curr = anno_header.next_sibling
+                 while curr and (not hasattr(curr, 'name') or (curr.name not in ['h2', 'h3', 'hr', 'table'])):
+                     if hasattr(curr, 'get_text'):
+                         text = curr.get_text(strip=True)
+                         if text and not text.startswith('Поделиться'):
+                             description += text + "\n"
+                     elif isinstance(curr, str):
+                         text = curr.strip()
+                         if text: description += text + "\n"
+                     curr = curr.next_sibling
+             
+             # Image (Cover)
+             img_tag = content_area.find('img', title='Cover image') or content_area.find('img', src=re.compile(r'/b/'))
+             if not img_tag:
+                 if content_area:
+                     for img in content_area.find_all('img'):
+                         src = img.get('src', '')
+                         if ('/i/' in src or '/b/' in src) and ('cover' in src or 'jpg' in src) and not 'znak.gif' in src:
+                             img_tag = img
+                             break
+             if img_tag:
+                 src = img_tag.get('src')
+                 image = src if src.startswith('http') else f"{base_url.rstrip('/')}{src}"
+        
+        # Cleanup title
+        if '(' in title: title = title.split('(')[0].strip()
+
+        # Authors
         authors = []
-        for a in soup.select('a[href^="/a/"]'):
-            # Only if it's in the top part (not comments)
-            # This is heuristic, usually author comes before the title or right after
-            if not a.find_parent(class_='comment'):
+        if "royallib.com" in base_url:
+            for a in soup.select('a[href*="/author/"]'):
                 name = a.get_text(strip=True)
                 if name and name not in authors and len(name) > 2:
                     authors.append(name)
-        # Take first 1-2 authors
+        else:
+            # Scope authors to content area usually
+            search_area = soup.find('div', id='main') or soup
+            for a in search_area.select('a[href^="/a/"]'):
+                if not a.find_parent(class_='comment') and not a.find_parent(class_='sidebar'):
+                    name = a.get_text(strip=True)
+                    if name and name not in authors and len(name) > 2 and 'читать' not in name.lower():
+                        authors.append(name)
+        
         author = ", ".join(authors[:2]) if authors else "Неизвестен"
 
-        # Image (Cover)
-        # <img src="/i/1/693501/_cover.jpg" ... title="Cover image" ...>
-        image = None
-        img_tag = soup.find('img', title='Cover image')
-        if not img_tag:
-            # Try finding any image with valid src in the main block
-            main_block = soup.find('div', id='main')
-            if main_block:
-                for img in main_block.find_all('img'):
-                    src = img.get('src', '')
-                    if '/i/' in src and ('cover' in src or 'jpg' in src) and not 'znak.gif' in src:
-                        img_tag = img
-                        break
-        
-        if img_tag:
-            src = img_tag.get('src')
-            image = src if src.startswith('http') else f"{base_url}{src}"
-
         # Year
-        # Search for text "год издания" or similar regex in the content
         year = None
-        text_content = soup.get_text()
-        import re
-        # "издание 2021 г."
-        year_match = re.search(r'издание\s+(\d{4})\s*г', text_content)
-        if year_match:
-            year = int(year_match.group(1))
-        else:
-            year_match = re.search(r'(\d{4})\s*г\.', text_content)
+        # ... (Year logic usually fine) ...
+        # (omitted for brevity, assume existing year logic works or requires less change)
+        
+        if not year:
+            text_content = soup.get_text()
+            year_match = re.search(r'(?:издание|год|выпуск)[\s:]+(\d{4})', text_content, re.I)
+            if not year_match:
+                year_match = re.search(r'(\d{4})\s*г\.', text_content)
             if year_match:
                 year = int(year_match.group(1))
 
-        # Description
-        # <h2>Аннотация</h2><p>...</p>
-        description = ""
-        anno_header = soup.find('h2', string=re.compile('Аннотация', re.I))
-        if anno_header:
-            # Get next siblings until next header or hr
-            curr = anno_header.find_next_sibling()
-            while curr and curr.name != 'h2' and curr.name != 'hr':
-                if curr.name == 'p':
-                    description += curr.get_text(strip=True) + "\n"
-                curr = curr.find_next_sibling()
-        
         if not description:
-             # Fallback
              description = "Описание отсутствует"
 
-        # Download Links
-        # <a href="/b/693501/fb2">(fb2)</a>
+        # Download/Read URL
         download_url = None
-        preferred_formats = ['epub', 'fb2', 'mobi']
-        links = {}
-        
-        for fmt in preferred_formats:
-            link = soup.find('a', href=f"/b/{book_id}/{fmt}")
-            if link:
-                links[fmt] = f"{base_url}/b/{book_id}/{fmt}"
-        
-        if 'epub' in links: download_url = links['epub']
-        elif 'fb2' in links: download_url = links['fb2']
-        elif 'mobi' in links: download_url = links['mobi']
+        if "royallib.com" in base_url:
+            # ... (RoyalLib logic) ...
+            pass # Skipping RoyalLib edits here as they are fine
+            # RoyalLib provides ZIPs for formats. We prefer FB2 or EPUB.
+            # Buttons look like: "Скачать в формате FB2"
+            for fmt in ['fb2', 'epub', 'txt']:
+                download_link = soup.find('a', string=re.compile(rf'Скачать в формате {fmt.upper()}', re.I))
+                if download_link:
+                    download_url = urljoin("https://royallib.com", download_link['href'])
+                    break
+            
+            if not download_url:
+                 # Check for general download links
+                 download_link = soup.find('a', href=re.compile(r'/get/(fb2|epub|txt)/'))
+                 if download_link:
+                     download_url = urljoin("https://royallib.com", download_link['href'])
+        elif "coollib" in base_url:
+            # Coollib uses /b/[id]-[slug]/download or /b/[id]-[slug]/download_new
+            # Prioritize explicit formats that user requested (fb2, epub)
+            # Look for links with text containing (fb2), (epub)
+            found_url = None
+            potential_links = []
+            
+            # 1. Gather potential links
+            # Explicit text links
+            for fmt in ['fb2', 'epub']:
+                link = soup.find('a', string=re.compile(rf'\({fmt}\)', re.I))
+                if link: potential_links.append((fmt, link))
+            
+            # Path based links
+            for fmt in ['fb2', 'epub']:
+                link = soup.find('a', href=re.compile(rf'/b/.+/{fmt}$'))
+                if link: potential_links.append((fmt, link))
+                
+            # Generic download
+            link = soup.find('a', href=re.compile(r'/b/.+/download'))
+            if link: potential_links.append(('generic', link))
+
+            # 2. Select best valid link
+            for fmt, link in potential_links:
+                href = link.get('href')
+                if not href: continue
+                
+                # Check for external/store links (Litres, etc)
+                if 'litres.ru' in href or 'my-shop.ru' in href:
+                    print(f"DEBUG: Ignoring external store link: {href}")
+                    continue
+                
+                full_url = f"{base_url.rstrip('/')}{href}" if not href.startswith('http') else href
+                
+                # If we found a preferred format (fb2/epub) that is internal, take it
+                if fmt in ['fb2', 'epub']:
+                    found_url = full_url
+                    break
+                
+                # If generic, keep it as fallback (unless we already have a better one)
+                if fmt == 'generic' and not found_url:
+                    found_url = full_url
+
+            download_url = found_url
+        else: # Flibusta
+            # Flibusta - check formats or download links
+            # PDA version uses download_fbd or download paths
+            read_btn = soup.find('a', href=re.compile(r'/read/|/view/'))
+            if read_btn:
+                download_url = f"{base_url.rstrip('/')}{read_btn['href']}" if not read_btn['href'].startswith('http') else read_btn['href']
+            else:
+                for fmt in ['epub', 'fb2', 'mobi']:
+                    link = soup.find('a', href=re.compile(rf'/b/{book_id}/{fmt}|download'))
+                    if link:
+                        download_url = f"{base_url.rstrip('/')}{link['href']}" if not link['href'].startswith('http') else link['href']
+                        break
 
         return Suggestion(
             title=title,
@@ -382,102 +612,389 @@ def scrape_book_details(book_id: str):
             source_url=url,
             type="book"
         )
-
     except Exception as e:
         print(f"Error scraping book {book_id}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
-def browse_flibusta_genre(genre_name: str):
-    """Browse Flibusta genre page to find a list of 20 books"""
-    # 1. Flatten the GENRE_MAPPING to find the code
-    f_genre = None
-    for category, subgenres in GENRE_MAPPING.items():
-        if genre_name in subgenres:
-            f_genre = subgenres[genre_name]
-            break
-            
-    if not f_genre:
-        f_genre = "sf"
+def browse_library_genre(genre_name: str, base_url: str):
+    """Browse library genre page using HTML scraping"""
+    # Direct lookup in flat GENRE_MAPPING
+    genre_slug = GENRE_MAPPING.get(genre_name, "sf")  # Default to sci-fi if not found
     
-    # Use HTML scraping directly as it is more reliable than OPDS without auth
+    print(f"DEBUG: Genre '{genre_name}' → slug '{genre_slug}'")
+    
+    # Use HTML scraping
     try:
-        response = request_flibusta(f"g/{f_genre}", timeout=15)
+        if "royallib.com" in base_url:
+            # RoyalLib uses different genre codes
+            actual_genre = ROYALLIB_GENRE_MAPPING.get(genre_name, genre_slug)
+            browse_url = f"{base_url.rstrip('/')}/genre/{actual_genre}/"
+        else:
+            # Flibusta/CoolLib use standard FB2 slugs
+            browse_url = f"{base_url.rstrip('/')}/g/{genre_slug}"
+            
+        print(f"Browsing genre HTML: {browse_url} (slug: {genre_slug})")
+        
+        # Coollib is slower, needs longer timeout
+        timeout = 30 if "coollib" in base_url else 10
+        
+        # Use session to manage headers and disable system proxies
+        session = requests.Session()
+        session.trust_env = False  # Disable system/env proxies to avoid ProxyError
+        session.headers.update(get_headers(referer=base_url))
+        
+        response = session.get(browse_url, timeout=timeout)
+        response.raise_for_status()
+        
         soup = BeautifulSoup(response.content, 'html.parser')
-        base_url = response.base_url
-        main = soup.find('div', id='main')
+        # Try different container IDs used by various providers
+        # Coollib uses div#postconn or article or div.oneotzb, Flibusta uses div#main
+        main = soup.find('div', id='postconn') or \
+               soup.find('div', class_='oneotzb') or \
+               soup.find('article') or \
+               soup.find('div', id='main') or \
+               soup.find('div', class_='main') or \
+               soup.find('div', id='content') or \
+               soup.find('div', class_='content') or \
+               soup.find('div', id='container') or \
+               soup.find('div', class_='page') or \
+               soup.find('div', id='dle-content') or \
+               soup.find('div', class_='DLE-content') or \
+               soup.find('main')
+               
         if not main: 
-            print("No main div found")
-            return []
+            print(f"No main container found on {base_url}, falling back to full page")
+            main = soup
+        else:
+            # Debug: log which container was found
+            container_id = main.get('id', '')
+            container_class = main.get('class', [])
+            print(f"DEBUG: Found container - id='{container_id}', class='{container_class}'")
 
         books = []
-        import re
-        # Find all book links: /b/XXXXXX
-        # Regex explanation: starts with /b/, followed by digits, end of string (or params)
-        # We process 'a' tags.
-        
-        # In the genre list, books are listed usually in a form or just line by line
-        # <a href="/b/123">Title</a>
-        
         seen_ids = set()
         
-        for a in main.find_all('a', href=re.compile(r'^/b/\d+$')):
+        # Pattern for book links: /b/123 or /books/123 or /123-title.html
+        # We look for links containing a numeric ID
+        # For iKnigi, we can also scrape description snippets from .shortnews-body
+        # Pattern for book links: /book/author/title.html
+        if "royallib.com" in base_url:
+            # RoyalLib genre pages have tables or simple lists
+            items = main.select('a[href*="/book/"]')
+            
+            for a in items:
+                href = a['href']
+                if not href.endswith('.html'): continue
+                
+                # Extract ID (the full path starting from /book/)
+                book_id = href.split('royallib.com')[-1] if 'royallib.com' in href else href
+                if not book_id.startswith('/'): book_id = '/' + book_id
+                
+                if book_id in seen_ids: continue
+                
+                title = a.get_text(strip=True)
+                if not title or len(title) < 2: continue
+
+                # Author is usually the next link or in the same row
+                author = "Неизвестен"
+                # Heuristic: RoyalLib usually lists author before or after title
+                # Let's try to find author link nearby
+                row = a.find_parent('tr')
+                if row:
+                    author_a = row.select_one('a[href*="/author/"]')
+                    if author_a: author = author_a.get_text(strip=True)
+                
+                books.append({
+                    "id": book_id,
+                    "title": title,
+                    "author": author,
+                    "description": "Описание подгрузится при выборе",
+                    "image": None,
+                    "source_url": f"https://royallib.com{book_id}"
+                })
+                seen_ids.add(book_id)
+        else:
+            # Flibusta/CoolLib standard scraping
+            print(f"DEBUG: Parsing {base_url}, looking for book links...")
+            
+            # Count all links for debugging
+            all_links = main.find_all('a', href=True)
+            print(f"DEBUG: Found {len(all_links)} total links in main container")
+            
+            # Try to find book links
+            book_links_found = 0
+            for a in all_links:
+                href = a['href']
+                book_id = None
+                
+                # More flexible book ID extraction
+                # Handles both /b/123 (Flibusta) and /b/123-author-title (Coollib)
+                if '/b/' in href:
+                    match = re.search(r'/b/(\d+)', href)
+                    if match: 
+                        book_id = match.group(1)
+                        book_links_found += 1
+                
+                if not book_id or book_id in seen_ids: 
+                    continue
+                
+                title = a.get_text(strip=True)
+                if not title or len(title) < 2 or title.startswith('(') or title.isdigit():
+                    continue
+                
+                author = "Неизвестен"
+                # Try to find author in various ways
+                # For Coollib: author link comes AFTER the book title in the same div.boline
+                # For Flibusta: author link comes BEFORE the book title
+                
+                # Check parent element for author (works for both)
+                parent = a.find_parent(['div', 'li', 'tr'])
+                if parent:
+                    # Find all author links in the parent
+                    author_links = parent.find_all('a', href=re.compile(r'/a/|/author/'))
+                    for author_link in author_links:
+                        if author_link != a:  # Not the book link itself
+                            author_text = author_link.get_text(strip=True)
+                            if author_text and len(author_text) > 2:
+                                author = author_text
+                                break
+                
+                # Fallback: check next sibling link
+                if author == "Неизвестен":
+                    next_a = a.find_next('a', href=True)
+                    if next_a and ('/a/' in next_a['href'] or 'avtor-' in next_a['href'] or '/author/' in next_a['href']):
+                        author = next_a.get_text(strip=True)
+
+                books.append({
+                    "id": book_id,
+                    "title": title,
+                    "author": author,
+                    "image": None,
+                    "source_url": f"{base_url.rstrip('/')}/b/{book_id}"
+                })
+                seen_ids.add(book_id)
+                
+                if len(books) >= 60:
+                    break
+            
+            print(f"DEBUG: Found {book_links_found} book links, extracted {len(books)} valid books")
+        
+        # Randomize and limit to 10 as requested
+        if len(books) > 10:
+            books = random.sample(books, 10)
+        
+        if len(books) == 0:
+            print(f"WARNING: No books found for genre '{genre_name}' on {base_url}")
+            if "coollib" in base_url:
+                print("INFO: Coollib may be unavailable or changed structure. Try Flibusta or RoyalLib instead.")
+            
+        print(f"Found {len(books)} books via HTML scraping from {base_url}")
+        return books
+
+    except Exception as e:
+        print(f"Library browse failed for {base_url}: {e}")
+        return []
+
+def try_flibusta_genre(genre_name: str):
+    """Legacy helper for suggestions"""
+    base_url = PROVIDERS["flibusta"]
+    books = browse_library_genre(genre_name, base_url)
+    if books:
+        random_book = random.choice(books)
+        return scrape_book_details(random_book['id'], base_url)
+    return None
+
+def search_flibusta(query: str, base_url: str, limit: int = 25):
+    """Search Flibusta for books"""
+    try:
+        # Flibusta search URL pattern
+        search_url = f"{base_url.rstrip('/')}/booksearch?ask={quote(query)}"
+        print(f"Searching Flibusta: {search_url}")
+        
+        response = request_flibusta(f"booksearch?ask={quote(query)}")
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        books = []
+        seen_ids = set()
+        
+        # Find all book links
+        main = soup.find('div', id='main') or soup
+        for a in main.find_all('a', href=True):
             href = a['href']
-            book_id = href.split('/')[-1]
+            book_id = None
+            
+            if '/b/' in href:
+                match = re.search(r'/b/(\d+)', href)
+                if match:
+                    book_id = match.group(1)
+            
+            if not book_id or book_id in seen_ids:
+                continue
+            
+            title = a.get_text(strip=True)
+            if not title or len(title) < 2 or title.startswith('(') or title.isdigit():
+                continue
+            
+            # Try to find author
+            author = "Неизвестен"
+            next_a = a.find_next('a', href=True)
+            if next_a and '/a/' in next_a['href']:
+                author = next_a.get_text(strip=True)
+            
+            books.append({
+                "id": book_id,
+                "title": title,
+                "author": author,
+                "description": "Описание подгрузится при выборе",
+                "image": None,
+                "source_url": f"{base_url.rstrip('/')}/b/{book_id}"
+            })
+            seen_ids.add(book_id)
+            
+            if len(books) >= limit:
+                break
+        
+        print(f"Found {len(books)} books on Flibusta")
+        return books
+        
+    except Exception as e:
+        print(f"Flibusta search failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def search_coollib(query: str, base_url: str, limit: int = 25):
+    """Search Coollib for books"""
+    try:
+        # Coollib PDA search URL
+        search_url = f"{base_url.rstrip('/')}/search?q={quote(query)}"
+        print(f"Searching Coollib: {search_url}")
+        
+        response = requests.get(search_url, headers=get_headers(referer=base_url), timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        books = []
+        seen_ids = set()
+        
+        # Coollib uses /b/ links for books
+        main = soup.find('div', id='main') or soup.find('div', class_='content') or soup
+        
+        for a in main.find_all('a', href=True):
+            href = a['href']
+            book_id = None
+            
+            if '/b/' in href:
+                match = re.search(r'/b/(\d+)', href)
+                if match:
+                    book_id = match.group(1)
+            
+            if not book_id or book_id in seen_ids:
+                continue
+            
+            title = a.get_text(strip=True)
+            if not title or len(title) < 2 or title.startswith('(') or title.isdigit():
+                continue
+            
+            # Try to find author
+            author = "Неизвестен"
+            next_a = a.find_next('a', href=True)
+            if next_a and ('/a/' in next_a['href'] or 'author' in next_a['href']):
+                author = next_a.get_text(strip=True)
+            
+            books.append({
+                "id": book_id,
+                "title": title,
+                "author": author,
+                "description": "Описание подгрузится при выборе",
+                "image": None,
+                "source_url": f"{base_url.rstrip('/')}/b/{book_id}"
+            })
+            seen_ids.add(book_id)
+            
+            if len(books) >= limit:
+                break
+        
+        print(f"Found {len(books)} books on Coollib")
+        return books
+        
+    except Exception as e:
+        print(f"Coollib search failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def search_royallib(query: str, base_url: str, limit: int = 25):
+    """Search RoyalLib for books"""
+    try:
+        # RoyalLib search URL
+        search_url = f"{base_url.rstrip('/')}/search/?q={quote(query)}"
+        print(f"Searching RoyalLib: {search_url}")
+        
+        session = requests.Session()
+        session.headers.update(get_headers(referer=base_url))
+        session.headers.update({'Host': 'royallib.com'})
+        
+        response = session.get(search_url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        books = []
+        seen_ids = set()
+        
+        # RoyalLib uses /book/ links
+        main = soup.find('div', id='content') or soup.find('main') or soup
+        
+        for a in main.find_all('a', href=True):
+            href = a['href']
+            
+            if '/book/' not in href or not href.endswith('.html'):
+                continue
+            
+            # Extract book ID (full path)
+            book_id = href.split('royallib.com')[-1] if 'royallib.com' in href else href
+            if not book_id.startswith('/'):
+                book_id = '/' + book_id
             
             if book_id in seen_ids:
                 continue
             
             title = a.get_text(strip=True)
-            if not title: continue
+            if not title or len(title) < 2:
+                continue
             
-            # Author is usually the next link that looks like /a/XXXX
+            # Try to find author
             author = "Неизвестен"
+            row = a.find_parent('tr') or a.find_parent('div', class_='book-item')
+            if row:
+                author_a = row.find('a', href=re.compile(r'/author/'))
+                if author_a:
+                    author = author_a.get_text(strip=True)
             
-            # Look at next siblings to find author link
-            # Sometimes it's next element, sometimes inside a small tag
-            # Simplest heuristic: check the next <a> tag
-            next_a = a.find_next('a')
-            if next_a and next_a['href'].startswith('/a/'):
-                 # Check if it's reasonably close (not part of next book entry)
-                 # This is tricky in flat lists.
-                 # But usually: Book Title <br> Author(s) OR Book Title - Author
-                 author = next_a.get_text(strip=True)
-
-            bs_obj = {
+            books.append({
                 "id": book_id,
                 "title": title,
                 "author": author,
-                "image": None, # HTML list has no images usually
-                "source_url": f"{base_url}/b/{book_id}"
-            }
-            
-            books.append(bs_obj)
+                "description": "Описание подгрузится при выборе",
+                "image": None,
+                "source_url": f"https://royallib.com{book_id}"
+            })
             seen_ids.add(book_id)
             
-            if len(books) >= 50: # Fetch a few more to be safe
+            if len(books) >= limit:
                 break
         
-        # Randomize slightly to give variety if we just took top 30
-        if len(books) > 20:
-            books = random.sample(books, 20)
-            
-        print(f"Found {len(books)} books via HTML scraping")
+        print(f"Found {len(books)} books on RoyalLib")
         return books
-
+        
     except Exception as e:
-        print(f"Flibusta HTML browse failed: {e}")
+        print(f"RoyalLib search failed: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
-# Removed scrape_genre_html as it is now integrated into the main function
-
-
-def try_flibusta_genre(genre_name: str):
-    """Get a random book details from genre"""
-    books = browse_flibusta_genre(genre_name)
-    if books:
-        random_book = random.choice(books)
-        return scrape_book_details(random_book['id'])
-    return None
 
 
 
@@ -552,10 +1069,8 @@ def suggest_movie(genre_name: str):
 def proxy_content(url: str):
     """Proxy content from external URL to avoid CORS/IP blocking"""
     try:
-        # Use headers to mimic browser
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+        # Use common headers
+        headers = get_headers(referer=url)
         response = requests.get(url, headers=headers, stream=True, timeout=30)
         response.raise_for_status()
         

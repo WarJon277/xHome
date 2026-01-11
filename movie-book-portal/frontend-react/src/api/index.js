@@ -23,7 +23,13 @@ async function request(endpoint, options = {}) {
         ...(options.headers || {})
     };
 
-    const response = await fetch(url, { ...options, headers });
+    // Support AbortSignal
+    const fetchOptions = { ...options, headers };
+    if (options.signal) {
+        fetchOptions.signal = options.signal;
+    }
+
+    const response = await fetch(url, fetchOptions);
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
         throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
@@ -266,9 +272,29 @@ export const downloadFlibustaBook = (data) => request('/flibusta/download', {
 // --- DISCOVERY ---
 // --- DISCOVERY ---
 export const fetchSuggestion = (type, genre) => request(`/discovery/suggest?ctype=${type}&genre=${encodeURIComponent(genre)}`);
+// DISCOVERY
+export async function fetchBrowse(ctype, genre, provider = 'flibusta', options = {}) {
+    try {
+        return await request(`/discovery/browse?ctype=${ctype}&genre=${encodeURIComponent(genre)}&provider=${provider}`, options);
+    } catch (e) {
+        console.error("Browse error", e);
+        throw e;
+    }
+}
 
-export const fetchBrowse = (type, genre) => request(`/discovery/browse?ctype=${type}&genre=${encodeURIComponent(genre)}`);
+export async function fetchDetails(bookId, provider = 'flibusta') {
+    try {
+        return await request(`/discovery/details?book_id=${bookId}&provider=${provider}`);
+    } catch (e) {
+        console.error("Details error", e);
+        return null;
+    }
+}
 
-export const fetchDetails = (bookId) => request(`/discovery/details?book_id=${bookId}`);
-
-export const fetchCover = (bookId) => request(`/discovery/cover?book_id=${bookId}`);
+export async function fetchCover(bookId) {
+    try {
+        return await request(`/discovery/cover?book_id=${bookId}`);
+    } catch (e) {
+        return null;
+    }
+}

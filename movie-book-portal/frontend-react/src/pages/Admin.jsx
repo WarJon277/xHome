@@ -537,8 +537,18 @@ export default function AdminPage() {
                     // Try to get filename from content-disposition if possible, or use default
                     const contentDisp = res.headers.get('Content-Disposition');
                     let filename = defaultName;
-                    if (contentDisp && contentDisp.includes('filename=')) {
-                        filename = contentDisp.split('filename=')[1].replace(/["']/g, '');
+                    if (contentDisp) {
+                        // Try filename*=UTF-8''... first
+                        const utfMatch = contentDisp.match(/filename\*=UTF-8''([^;]+)/i);
+                        if (utfMatch) {
+                            filename = decodeURIComponent(utfMatch[1]);
+                        } else {
+                            // Fallback to filename="..."
+                            const nameMatch = contentDisp.match(/filename="?([^";]+)"?/i);
+                            if (nameMatch) {
+                                filename = nameMatch[1];
+                            }
+                        }
                     }
                     if (!filename.includes('.')) {
                         // guess extension

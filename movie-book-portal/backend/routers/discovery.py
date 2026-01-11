@@ -23,23 +23,25 @@ FLIBUSTA_MIRRORS = [
 ]
 
 def get_headers(referer=None):
+    # Simplified headers to avoid WAF blocking (mismatch between requests and Chrome fingerprints)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'max-age=0',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-User': '?1',
         'Connection': 'keep-alive',
     }
     if referer:
-        headers['Referer'] = referer
+        # Extract domain for cleaner Referer
+        try:
+            from urllib.parse import urlparse
+            parts = urlparse(referer)
+            if parts.netloc:
+                headers['Referer'] = f"{parts.scheme}://{parts.netloc}/"
+            else:
+                headers['Referer'] = referer
+        except:
+            headers['Referer'] = referer
+            
     return headers
 
 def request_flibusta(path: str, timeout: int = 15):
@@ -56,7 +58,10 @@ def request_flibusta(path: str, timeout: int = 15):
         url = f"{mirror.rstrip('/')}/{path.lstrip('/')}"
         try:
             print(f"Requesting Flibusta: {url}")
-            response = requests.get(url, headers=get_headers(), timeout=8)
+            # Use session with disabled system proxy and safe headers
+            session = requests.Session()
+            session.trust_env = False
+            response = session.get(url, headers=get_headers(), timeout=8)
             if response.status_code == 200:
                 # Add base_url attribute for absolute link resolution
                 response.base_url = mirror
@@ -405,6 +410,7 @@ def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
 
         # Requests with headers including referer
         session = requests.Session()
+        session.trust_env = False # Disable system proxies to avoid errors and WAF inspection
         session.headers.update(get_headers(referer=base_url))
         
         # RoyalLib doesn't usually block, but headers are good
@@ -592,15 +598,47 @@ def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
         else: # Flibusta
             # Flibusta - check formats or download links
             # PDA version uses download_fbd or download paths
-            read_btn = soup.find('a', href=re.compile(r'/read/|/view/'))
-            if read_btn:
-                download_url = f"{base_url.rstrip('/')}{read_btn['href']}" if not read_btn['href'].startswith('http') else read_btn['href']
-            else:
-                for fmt in ['epub', 'fb2', 'mobi']:
-                    link = soup.find('a', href=re.compile(rf'/b/{book_id}/{fmt}|download'))
-                    if link:
-                        download_url = f"{base_url.rstrip('/')}{link['href']}" if not link['href'].startswith('http') else link['href']
-                        break
+            # Prioritize explicit formats (epub, fb2) over 'read' links
+            found_url = None
+            potential_links = []
+            
+            # 1. Gather potential links
+            # User prefers EPUB simple download
+            for fmt in ['epub', 'fb2', 'mobi']:
+                link = soup.find('a', href=re.compile(rf'/b/{book_id}/{fmt}$'))
+                if link: potential_links.append((fmt, link))
+                
+            # If no specific format found, try generic download
+            if not potential_links:
+                link = soup.find('a', href=re.compile(r'/b/.+/download'))
+                if link: potential_links.append(('generic', link))
+            
+            # If still nothing, fallback to read link (but this might be HTML)
+            # Only use read link if we absolutely have to, and warn user
+            if not potential_links:
+                 read_btn = soup.find('a', href=re.compile(r'/read/|/view/'))
+                 if read_btn: potential_links.append(('read', read_btn))
+
+            # 2. Select best valid link
+            for fmt, link in potential_links:
+                href = link.get('href')
+                if not href: continue
+                
+                # Check for known restricted/external patterns if any appear in hrefs
+                if 'litres' in href: continue
+
+                full_url = f"{base_url.rstrip('/')}{href}" if not href.startswith('http') else href
+                
+                # Prefer EPUB/FB2
+                if fmt in ['epub', 'fb2']:
+                    found_url = full_url
+                    break
+                
+                # Fallbacks
+                if not found_url:
+                    found_url = full_url
+            
+            download_url = found_url
 
         return Suggestion(
             title=title,
@@ -1067,13 +1105,92 @@ def suggest_movie(genre_name: str):
 
 @router.get("/proxy")
 def proxy_content(url: str):
-    """Proxy content from external URL to avoid CORS/IP blocking"""
+    """Proxy content from external URL to avoid CORS/IP blocking. Auto-unzips archives if needed."""
     try:
-        # Use common headers
-        headers = get_headers(referer=url)
-        response = requests.get(url, headers=headers, stream=True, timeout=30)
+        # Extract domain for Referer
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc
+        scheme = urlparse(url).scheme
+        referer = f"{scheme}://{domain}/"
+
+        # Use simpler headers for proxy to avoid WAF blocking
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Referer': referer
+        }
+        
+        # Verify if we should trust env (usually proxy bypass needed for Flibusta/Coollib)
+        session = requests.Session()
+        session.trust_env = False
+        
+        response = session.get(url, headers=headers, stream=True, timeout=60)
         response.raise_for_status()
         
+        content_type = response.headers.get('Content-Type', '').lower()
+        content_disp = response.headers.get('Content-Disposition', '')
+        
+        # Check if it's a zip file that needs extraction (Flibusta often gives fb2.zip)
+        # We process it if it's explicitly zip content, or if url ends in .zip, or if content-disp says zip
+        # AND it is NOT an image (to prevent breaking cover loading)
+        is_image = 'image' in content_type or url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif'))
+        is_zip = not is_image and ('zip' in content_type or '.zip' in url.lower() or '.zip' in content_disp.lower())
+        
+        if is_zip:
+            # We need to read the whole content to unzip
+            content = response.content
+            try:
+                import zipfile
+                import io
+                with zipfile.ZipFile(io.BytesIO(content)) as z:
+                    # Filter for book files
+                    files = z.namelist()
+                    # Priority: fb2, epub, mobi, txt
+                    target_file = None
+                    for ext in ['.fb2', '.epub', '.mobi', '.txt']:
+                        candidates = [f for f in files if f.lower().endswith(ext)]
+                        if candidates:
+                            target_file = candidates[0]
+                            break
+                    
+                    if target_file:
+                        print(f"DEBUG: Auto-unzipped {target_file} from {url}")
+                        extracted_content = z.read(target_file)
+                        
+                        # Guess semantic content type
+                        new_ctype = "application/octet-stream"
+                        if target_file.endswith('.fb2'): new_ctype = "application/x-fictionbook+xml"
+                        elif target_file.endswith('.epub'): new_ctype = "application/epub+zip"
+                        
+                        # Encode filename for header
+                        encoded_name = quote(target_file)
+                        
+                        from fastapi.responses import Response
+                        return Response(
+                            content=extracted_content,
+                            media_type=new_ctype,
+                            headers={
+                                'Content-Disposition': f'attachment; filename="{encoded_name}"; filename*=UTF-8\'\'{encoded_name}',
+                                'Content-Length': str(len(extracted_content))
+                            }
+                        )
+            except Exception as zip_err:
+                print(f"DEBUG: Failed to unzip content from {url}: {zip_err}")
+                # Fallback to original content (which is already in 'content' var)
+                pass
+            
+            # Fallback for failed unzip OR if we read content but didn't act on it
+            from fastapi.responses import Response
+            return Response(
+                content=content,
+                media_type=response.headers.get('Content-Type'),
+                headers={
+                    'Content-Disposition': response.headers.get('Content-Disposition', ''),
+                    'Content-Length': str(len(content))
+                }
+            )
+
+        # If not zip (and stream not consumed), stream it
         from fastapi.responses import StreamingResponse
         return StreamingResponse(
             response.iter_content(chunk_size=8192),
@@ -1084,4 +1201,11 @@ def proxy_content(url: str):
         )
     except Exception as e:
         print(f"Proxy failed for {url}: {e}")
-        raise HTTPException(status_code=400, detail="Failed to fetch content")
+        status_code = 500
+        if isinstance(e, requests.exceptions.HTTPError) and e.response:
+             status_code = e.response.status_code
+        elif isinstance(e, requests.exceptions.Timeout):
+             status_code = 504
+        
+        # Propagate error properly
+        raise HTTPException(status_code=status_code, detail=f"Failed to fetch content: {str(e)}")

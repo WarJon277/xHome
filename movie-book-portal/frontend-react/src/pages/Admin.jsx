@@ -50,41 +50,55 @@ export default function AdminPage() {
     const [browseItems, setBrowseItems] = useState([]);
     const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
 
-    // Lazy load covers effect
+    // Lazy load covers AND descriptions effect
     useEffect(() => {
         let mounted = true;
+        const timeouts = [];
         if (browseItems.length > 0 && showBrowseModal) {
-            // Check for items needing covers
-            browseItems.forEach(async (item, index) => {
-                if (!item.image && !item.coverLoaded) {
-                    try {
-                        const { url } = await import('../api').then(mod => mod.fetchCover(item.id));
-                        if (mounted && url) {
-                            setBrowseItems(prev => {
-                                const next = [...prev];
-                                // Find item by ID to be safe
-                                const idx = next.findIndex(i => i.id === item.id);
-                                if (idx !== -1) {
-                                    next[idx] = { ...next[idx], image: url, coverLoaded: true };
-                                }
-                                return next;
-                            });
+            // Check for items needing covers/details
+            browseItems.forEach((item, index) => {
+                // If we don't have the cover/description loaded yet
+                if (!item.coverLoaded) {
+                    // Stagger requests to avoid flooding the backend
+                    const tid = setTimeout(async () => {
+                        if (!mounted) return;
+                        try {
+                            const data = await fetchDetails(item.id);
+                            if (mounted && data) {
+                                setBrowseItems(prev => {
+                                    const next = [...prev];
+                                    const idx = next.findIndex(i => i.id === item.id);
+                                    if (idx !== -1) {
+                                        next[idx] = {
+                                            ...next[idx],
+                                            image: data.image,
+                                            description: data.description,
+                                            coverLoaded: true
+                                        };
+                                    }
+                                    return next;
+                                });
+                            }
+                        } catch (e) {
+                            if (mounted) {
+                                // Mark as loaded to stop retrying even if failed
+                                setBrowseItems(prev => {
+                                    const next = [...prev];
+                                    const idx = next.findIndex(i => i.id === item.id);
+                                    if (idx !== -1) next[idx] = { ...next[idx], coverLoaded: true };
+                                    return next;
+                                });
+                            }
                         }
-                    } catch (e) {
-                        // ignore failed covers
-                        if (mounted) {
-                            setBrowseItems(prev => {
-                                const next = [...prev];
-                                const idx = next.findIndex(i => i.id === item.id);
-                                if (idx !== -1) next[idx] = { ...next[idx], coverLoaded: true };
-                                return next;
-                            });
-                        }
-                    }
+                    }, index * 50);
+                    timeouts.push(tid);
                 }
             });
         }
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+            timeouts.forEach(clearTimeout);
+        };
     }, [browseItems, showBrowseModal]);
 
     // Theme State
@@ -744,7 +758,7 @@ export default function AdminPage() {
                                         >
                                             <div className="aspect-[2/3] bg-gray-900 relative">
                                                 {item.image ? (
-                                                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                                                    <img src={`/api/discovery/proxy?url=${encodeURIComponent(item.image)}`} alt={item.title} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex flex-col justify-between p-3 text-center">
                                                         <div className="text-xs text-gray-300 border-b border-gray-600 pb-2 mb-2 line-clamp-1">{item.author}</div>
@@ -753,8 +767,15 @@ export default function AdminPage() {
                                                     </div>
                                                 )}
                                                 {/* Overlay */}
-                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <div className="bg-primary text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+                                                <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-4 text-center z-10">
+                                                    {item.description ? (
+                                                        <div className="text-[10px] leading-relaxed text-gray-300 mb-3 overflow-hidden line-clamp-[10]">
+                                                            {item.description}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-gray-500 mb-4 animate-pulse">Загрузка описания...</div>
+                                                    )}
+                                                    <div className="bg-primary text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg hover:scale-105 transition-transform mt-auto">
                                                         <Download size={16} /> Выбрать
                                                     </div>
                                                 </div>

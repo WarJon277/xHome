@@ -71,7 +71,6 @@ export default function AdminPage() {
                                     if (idx !== -1) {
                                         next[idx] = {
                                             ...next[idx],
-                                            image: data.image,
                                             description: data.description,
                                             coverLoaded: true
                                         };
@@ -757,15 +756,11 @@ export default function AdminPage() {
                                             className="group relative cursor-pointer bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-primary transition-all hover:scale-105 shadow-lg"
                                         >
                                             <div className="aspect-[2/3] bg-gray-900 relative">
-                                                {item.image ? (
-                                                    <img src={`/api/discovery/proxy?url=${encodeURIComponent(item.image)}`} alt={item.title} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex flex-col justify-between p-3 text-center">
-                                                        <div className="text-xs text-gray-300 border-b border-gray-600 pb-2 mb-2 line-clamp-1">{item.author}</div>
-                                                        <div className="font-bold text-sm text-gray-100 line-clamp-4 leading-snug">{item.title}</div>
-                                                        <div className="mt-auto pt-2 opacity-50 text-gray-400"><BookOpen size={24} className="mx-auto" /></div>
-                                                    </div>
-                                                )}
+                                                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex flex-col justify-between p-3 text-center">
+                                                    <div className="text-xs text-gray-300 border-b border-gray-600 pb-2 mb-2 line-clamp-1">{item.author}</div>
+                                                    <div className="font-bold text-sm text-gray-100 line-clamp-4 leading-snug">{item.title}</div>
+                                                    <div className="mt-auto pt-2 opacity-50 text-gray-400"><BookOpen size={24} className="mx-auto" /></div>
+                                                </div>
                                                 {/* Overlay */}
                                                 <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-4 text-center z-10">
                                                     {item.description ? (

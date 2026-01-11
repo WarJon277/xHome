@@ -9,28 +9,63 @@ from pydantic import BaseModel
 
 router = APIRouter(tags=["discovery"])
 
-# --- CONFIG ---
 # Multiple mirrors in case some are blocked
 FLIBUSTA_MIRRORS = [
-    "http://flibusta.is",
     "https://flibusta.site",
-    "http://flibustahezeous3.onion.pet",  # Clearnet proxy to onion
-    "https://flibusta.su",
+    "http://flibusta.is",
+    "https://flibusta.app",
+    "https://flibusta.me",
+    "http://flibustahezeous3.onion.pet", # Clearnet proxy to onion
 ]
 
-def get_working_mirror():
-    """Find first working Flibusta mirror"""
-    for mirror in FLIBUSTA_MIRRORS:
-        try:
-            response = requests.get(f"{mirror}/opds", timeout=3)
-            if response.status_code == 200:
-                return mirror
-        except:
-            continue
-    return FLIBUSTA_MIRRORS[0]  # Fallback to first
+def get_headers():
+    user_agents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+    ]
+    return {
+        'User-Agent': random.choice(user_agents),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
+    }
 
-FLIBUSTA_BASE_URL = os.environ.get("FLIBUSTA_URL") or get_working_mirror()
-OPDS_URL = f"{FLIBUSTA_BASE_URL}/opds"
+def request_flibusta(path: str, timeout: int = 15):
+    """Try to request path from multiple mirrors"""
+    mirrors = FLIBUSTA_MIRRORS.copy()
+    random.shuffle(mirrors)
+    
+    # Prioritize environment variable if set
+    env_url = os.environ.get("FLIBUSTA_URL")
+    if env_url:
+        mirrors.insert(0, env_url)
+
+    last_error = None
+    for mirror in mirrors:
+        url = f"{mirror.rstrip('/')}/{path.lstrip('/')}"
+        try:
+            print(f"Requesting Flibusta: {url}")
+            response = requests.get(url, headers=get_headers(), timeout=timeout)
+            if response.status_code == 200:
+                # Add base_url attribute for absolute link resolution
+                response.base_url = mirror
+                return response
+            print(f"Mirror {mirror} returned status {response.status_code}")
+        except Exception as e:
+            print(f"Mirror {mirror} failed: {e}")
+            last_error = e
+            continue
+            
+    raise Exception(f"All mirrors failed. Last error: {last_error}")
 
 # Mapping frontend genres to Flibusta/TMDB genres
 # Full Flibusta Genre Mapping
@@ -218,13 +253,6 @@ def suggest_book(genre_name: str):
     
     return None
 
-def get_headers():
-    return {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
-    }
-
 @router.get("/cover")
 def get_cover_url(book_id: str):
     """Get the cover image URL for a specific book"""
@@ -235,17 +263,14 @@ def get_cover_url(book_id: str):
 
 def get_book_image_url(book_id: str):
     """Helper to scrape just the image URL from a book page"""
-    url = f"{FLIBUSTA_BASE_URL}/b/{book_id}"
     try:
-        response = requests.get(url, headers=get_headers(), timeout=5)
+        response = request_flibusta(f"b/{book_id}", timeout=5)
         soup = BeautifulSoup(response.content, 'html.parser')
+        base_url = response.base_url
         
         # Image (Cover)
-        # <img src="/i/1/693501/_cover.jpg" ... title="Cover image" ...>
-        image = None
         img_tag = soup.find('img', title='Cover image')
         if not img_tag:
-            # Try finding any image with valid src in the main block
             main_block = soup.find('div', id='main')
             if main_block:
                 for img in main_block.find_all('img'):
@@ -256,19 +281,18 @@ def get_book_image_url(book_id: str):
         
         if img_tag:
             src = img_tag.get('src')
-            image = src if src.startswith('http') else f"{FLIBUSTA_BASE_URL}{src}"
-            return image
+            return src if src.startswith('http') else f"{base_url}{src}"
     except:
         return None
     return None
 
 def scrape_book_details(book_id: str):
     """Scrape detailed info from a book page"""
-    url = f"{FLIBUSTA_BASE_URL}/b/{book_id}"
     try:
-        response = requests.get(url, headers=get_headers(), timeout=10)
-        response.raise_for_status()
+        response = request_flibusta(f"b/{book_id}", timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
+        base_url = response.base_url
+        url = f"{base_url}/b/{book_id}"
         
         # Title
         title_tag = soup.find('h1', class_='title')
@@ -306,7 +330,7 @@ def scrape_book_details(book_id: str):
         
         if img_tag:
             src = img_tag.get('src')
-            image = src if src.startswith('http') else f"{FLIBUSTA_BASE_URL}{src}"
+            image = src if src.startswith('http') else f"{base_url}{src}"
 
         # Year
         # Search for text "год издания" or similar regex in the content
@@ -318,9 +342,9 @@ def scrape_book_details(book_id: str):
         if year_match:
             year = int(year_match.group(1))
         else:
-             year_match = re.search(r'(\d{4})\s*г\.', text_content)
-             if year_match:
-                 year = int(year_match.group(1))
+            year_match = re.search(r'(\d{4})\s*г\.', text_content)
+            if year_match:
+                year = int(year_match.group(1))
 
         # Description
         # <h2>Аннотация</h2><p>...</p>
@@ -347,7 +371,7 @@ def scrape_book_details(book_id: str):
         for fmt in preferred_formats:
             link = soup.find('a', href=f"/b/{book_id}/{fmt}")
             if link:
-                links[fmt] = f"{FLIBUSTA_BASE_URL}/b/{book_id}/{fmt}"
+                links[fmt] = f"{base_url}/b/{book_id}/{fmt}"
         
         if 'epub' in links: download_url = links['epub']
         elif 'fb2' in links: download_url = links['fb2']
@@ -381,14 +405,10 @@ def browse_flibusta_genre(genre_name: str):
         f_genre = "sf"
     
     # Use HTML scraping directly as it is more reliable than OPDS without auth
-    browse_url = f"{FLIBUSTA_BASE_URL}/g/{f_genre}"
-    
     try:
-        print(f"Browsing genre HTML: {browse_url}")
-        response = requests.get(browse_url, headers=get_headers(), timeout=15)
-        response.raise_for_status()
-        
+        response = request_flibusta(f"g/{f_genre}", timeout=15)
         soup = BeautifulSoup(response.content, 'html.parser')
+        base_url = response.base_url
         main = soup.find('div', id='main')
         if not main: 
             print("No main div found")
@@ -433,7 +453,7 @@ def browse_flibusta_genre(genre_name: str):
                 "title": title,
                 "author": author,
                 "image": None, # HTML list has no images usually
-                "source_url": f"{FLIBUSTA_BASE_URL}/b/{book_id}"
+                "source_url": f"{base_url}/b/{book_id}"
             }
             
             books.append(bs_obj)

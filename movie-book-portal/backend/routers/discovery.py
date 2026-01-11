@@ -9,13 +9,9 @@ from pydantic import BaseModel
 
 router = APIRouter(tags=["discovery"])
 
-# Multiple mirrors in case some are blocked
+# Primary domain as requested
 FLIBUSTA_MIRRORS = [
-    "https://flibusta.site",
     "http://flibusta.is",
-    "https://flibusta.app",
-    "https://flibusta.me",
-    "http://flibustahezeous3.onion.pet", # Clearnet proxy to onion
 ]
 
 def get_headers():
@@ -40,14 +36,13 @@ def get_headers():
     }
 
 def request_flibusta(path: str, timeout: int = 15):
-    """Try to request path from multiple mirrors"""
+    """Try to request path from the primary domain"""
     mirrors = FLIBUSTA_MIRRORS.copy()
-    random.shuffle(mirrors)
     
     # Prioritize environment variable if set
     env_url = os.environ.get("FLIBUSTA_URL")
     if env_url:
-        mirrors.insert(0, env_url)
+        mirrors = [env_url]
 
     last_error = None
     for mirror in mirrors:

@@ -87,6 +87,8 @@ export default function BooksPage() {
                 onResume={(item) => navigate(`/books/${item.item_id}`)}
             />
 
+
+
             {loading ? (
                 <div className="text-center text-gray-500 mt-10">Загрузка...</div>
             ) : (

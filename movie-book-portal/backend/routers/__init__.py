@@ -1,1 +1,1 @@
-from . import movies, books, tvshows, gallery
+from . import movies, books, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, discovery

@@ -97,7 +97,31 @@ export const updateBook = (id, data) => request(`/books/${id}`, {
 });
 export const deleteBook = (id) => fetch(`${API_BASE}/books/${id}`, { method: 'DELETE' });
 export const searchBooks = (query) => request(`/books/search?query=${encodeURIComponent(query)}`);
-export const fetchBookPage = (bookId, page) => request(`/books/${bookId}/page/${page}`);
+export const fetchBookPage = async (bookId, page) => {
+    const url = `${API_BASE}/books/${bookId}/page/${page}`;
+    const headers = { 'X-User-Id': getDeviceId() };
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('image')) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        // clean up previous url if stored globally? No, complex. React handles it?
+        // Return structured object mimicking the JSON response
+        return {
+            content: `<div style="display:flex;justify-content:center;"><img src="${imageUrl}" style="max-width:100%;height:auto;box-shadow:0 4px 6px rgba(0,0,0,0.1);" /></div>`,
+            total: 0 // total pages might be in headers? utils.py doesn't set it in header for images. 
+            // utils.py doesn't return total pages in StreamingResponse. 
+            // So we rely on book info for total pages.
+        };
+    }
+    return response.json();
+};
 
 
 // --- GALLERY ---
@@ -231,3 +255,20 @@ export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0) => requ
 export const clearProgress = () => request('/progress/clear', { method: 'DELETE' });
 // --- DASHBOARD ---
 export const fetchDashboardData = () => request('/dashboard');
+
+// --- FLIBUSTA ---
+export const searchFlibusta = (q) => request(`/flibusta/search?q=${encodeURIComponent(q)}`);
+export const downloadFlibustaBook = (data) => request('/flibusta/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+// --- DISCOVERY ---
+// --- DISCOVERY ---
+export const fetchSuggestion = (type, genre) => request(`/discovery/suggest?ctype=${type}&genre=${encodeURIComponent(genre)}`);
+
+export const fetchBrowse = (type, genre) => request(`/discovery/browse?ctype=${type}&genre=${encodeURIComponent(genre)}`);
+
+export const fetchDetails = (bookId) => request(`/discovery/details?book_id=${bookId}`);
+
+export const fetchCover = (bookId) => request(`/discovery/cover?book_id=${bookId}`);

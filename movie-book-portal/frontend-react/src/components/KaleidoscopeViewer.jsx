@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchKaleidoscopes, fetchKaleidoscope } from '../api';
 import { Play, X, Music, Maximize2 } from 'lucide-react';
 import './KaleidoscopeTransitions.css'; // We will create this
@@ -45,7 +46,7 @@ export default function KaleidoscopeViewer() {
     };
 
     if (isPlaying && activeKaleidoscope) {
-        return <KaleidoscopePlayer kaleidoscope={activeKaleidoscope} onClose={closePlayer} />;
+        return createPortal(<KaleidoscopePlayer kaleidoscope={activeKaleidoscope} onClose={closePlayer} />, document.body);
     }
 
     return (

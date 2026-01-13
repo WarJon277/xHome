@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function InputModal({ title, initialValue = "", placeholder = "", onClose, onConfirm, confirmLabel = "Подтвердить" }) {
@@ -17,7 +18,7 @@ export default function InputModal({ title, initialValue = "", placeholder = "",
         onConfirm(value);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative animate-scale-in">
                 <button
@@ -57,6 +58,7 @@ export default function InputModal({ title, initialValue = "", placeholder = "",
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

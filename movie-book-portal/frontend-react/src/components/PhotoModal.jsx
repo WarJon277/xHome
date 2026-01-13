@@ -1,5 +1,6 @@
 import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) {
     const [isLoading, setIsLoading] = useState(true);
@@ -106,7 +107,7 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
 
     const imageUrl = safeUrl(item.file_path);
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[11000] bg-black/95 flex items-center justify-center backdrop-blur-sm">
             {/* Close Button */}
             <button
@@ -196,6 +197,7 @@ export default function PhotoModal({ item, onClose, onNext, onPrev, onDelete }) 
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

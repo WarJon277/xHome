@@ -8,6 +8,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 import re
 from urllib.parse import urlparse, urljoin, quote
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 router = APIRouter(tags=["discovery"])
 
@@ -44,6 +46,24 @@ def get_headers(referer=None):
             
     return headers
 
+def create_session():
+    """Create a requests session with retries and proxy bypass"""
+    session = requests.Session()
+    # Disable system proxies
+    session.trust_env = False
+    
+    # Configure retries
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS"]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
 def request_flibusta(path: str, timeout: int = 15):
     """Try to request path from the primary domain"""
     mirrors = FLIBUSTA_MIRRORS.copy()
@@ -59,9 +79,8 @@ def request_flibusta(path: str, timeout: int = 15):
         try:
             print(f"Requesting Flibusta: {url}")
             # Use session with disabled system proxy and safe headers
-            session = requests.Session()
-            session.trust_env = False
-            response = session.get(url, headers=get_headers(), timeout=8)
+            session = create_session()
+            response = session.get(url, headers=get_headers(), timeout=10)
             if response.status_code == 200:
                 # Add base_url attribute for absolute link resolution
                 response.base_url = mirror
@@ -409,8 +428,7 @@ def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
         title_tag = None
 
         # Requests with headers including referer
-        session = requests.Session()
-        session.trust_env = False # Disable system proxies to avoid errors and WAF inspection
+        session = create_session()
         session.headers.update(get_headers(referer=base_url))
         
         # RoyalLib doesn't usually block, but headers are good
@@ -679,8 +697,7 @@ def browse_library_genre(genre_name: str, base_url: str):
         timeout = 30 if "coollib" in base_url else 10
         
         # Use session to manage headers and disable system proxies
-        session = requests.Session()
-        session.trust_env = False  # Disable system/env proxies to avoid ProxyError
+        session = create_session()
         session.headers.update(get_headers(referer=base_url))
         
         response = session.get(browse_url, timeout=timeout)
@@ -1121,8 +1138,7 @@ def proxy_content(url: str):
         }
         
         # Verify if we should trust env (usually proxy bypass needed for Flibusta/Coollib)
-        session = requests.Session()
-        session.trust_env = False
+        session = create_session()
         
         response = session.get(url, headers=headers, stream=True, timeout=60)
         response.raise_for_status()

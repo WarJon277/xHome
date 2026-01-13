@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Folder, ArrowLeft, Check, Home } from 'lucide-react';
 import { fetchPhotos } from '../api';
 
@@ -50,7 +51,7 @@ export default function MoveModal({ item, currentPath, onClose, onMove }) {
         onMove(browsePath);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
             <div className="bg-[#1a1a1a] rounded-xl max-w-md w-full border border-gray-700 overflow-hidden flex flex-col max-h-[80vh]">
                 <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-[#252525]">
@@ -128,6 +129,7 @@ export default function MoveModal({ item, currentPath, onClose, onMove }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

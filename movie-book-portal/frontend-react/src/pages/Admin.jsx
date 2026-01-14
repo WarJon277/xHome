@@ -123,6 +123,7 @@ export default function AdminPage() {
     // Browse/Suggestion State
     const [showBrowseModal, setShowBrowseModal] = useState(false);
     const browseAbortController = useRef(null);
+    const filesFetchAbortController = useRef(null); // Track file fetch abort for when modal closes
     const modalOpenRef = useRef(false); // Track modal state for async operations
 
     // Sync ref
@@ -497,8 +498,14 @@ export default function AdminPage() {
 
     // Cleanup on unmount or modal close
     useEffect(() => {
-        if (!showBrowseModal && browseAbortController.current) {
-            browseAbortController.current.abort();
+        if (!showBrowseModal) {
+            if (browseAbortController.current) {
+                browseAbortController.current.abort();
+            }
+            // Also abort any ongoing file fetches when modal closes
+            if (filesFetchAbortController.current) {
+                filesFetchAbortController.current.abort();
+            }
         }
     }, [showBrowseModal]);
 
@@ -507,9 +514,19 @@ export default function AdminPage() {
         setShowBrowseModal(false);
         setIsSuggesting(true); // Reuse loading state on the button or global
 
+        // Create new abort controller for file fetches
+        filesFetchAbortController.current = new AbortController();
+        const signal = filesFetchAbortController.current.signal;
+
         try {
             // 2. Fetch full details for selected item - PASS THE PROVIDER!
             const data = await fetchDetails(item.id, browseProvider);
+
+            // Check if modal was closed - if so, abort
+            if (signal.aborted) {
+                console.log("Modal closed, aborting file fetch");
+                return;
+            }
 
             setFormData({
                 ...formData,
@@ -525,7 +542,8 @@ export default function AdminPage() {
             const fetchFileViaProxy = async (url, defaultName) => {
                 if (!url) return null;
                 try {
-                    const res = await fetch(`/api/discovery/proxy?url=${encodeURIComponent(url)}`);
+                    // Pass signal to abort request when modal is closed
+                    const res = await fetch(`/api/discovery/proxy?url=${encodeURIComponent(url)}`, { signal });
                     if (!res.ok) throw new Error('Proxy fetch failed');
                     const blob = await res.blob();
 
@@ -558,26 +576,75 @@ export default function AdminPage() {
                     }
                     return new File([blob], filename, { type: blob.type });
                 } catch (e) {
+                    if (e.name === 'AbortError') {
+                        console.log("File fetch aborted (modal closed)");
+                        return null;
+                    }
                     console.error("Failed to fetch file via proxy:", url, e);
                     return null;
                 }
             };
 
             // 3. Fetch Thumbnail
+            let thumbFile = null;
             if (data.image) {
-                const thumbFile = await fetchFileViaProxy(data.image, `cover_${data.title}.jpg`);
-                if (thumbFile) setThumbnail(thumbFile);
+                thumbFile = await fetchFileViaProxy(data.image, `cover_${data.title}.jpg`);
             }
 
             // 4. Fetch Book File
+            let bookFile = null;
             if (data.type === 'book' && data.download_url) {
-                const bookFile = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
-                if (bookFile) setMainFile(bookFile);
+                bookFile = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
             }
 
-            alert(`Книга "${data.title}" загружена!\nФайлы прикреплены.`);
+            // Check if files were successfully attached
+            if (contentType === 'books') {
+                // For books, we need at least the book file
+                if (!bookFile && !thumbFile) {
+                    // Show dialog to retry or continue
+                    const retryChoice = confirm(
+                        'Не удалось загрузить файлы книги или обложки.\n\n' +
+                        'Нажмите ОК, чтобы повторить попытку загрузки файлов,\n' +
+                        'или Отмена, чтобы продолжить без файлов.'
+                    );
+                    
+                    if (retryChoice) {
+                        // Retry fetching files
+                        if (!thumbFile && data.image) {
+                            thumbFile = await fetchFileViaProxy(data.image, `cover_${data.title}.jpg`);
+                        }
+                        if (!bookFile && data.download_url) {
+                            bookFile = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
+                        }
+                    }
+                }
+
+                // Check again after retry
+                if (!bookFile && !thumbFile) {
+                    alert('⚠️ Предупреждение: Не удалось загрузить ни файл книги, ни обложку.\n\nВы можете добавить их вручную позже.');
+                }
+            }
+
+            // Set files even if one or both are null
+            if (thumbFile) setThumbnail(thumbFile);
+            if (bookFile) setMainFile(bookFile);
+
+            // Show success message with info about attached files
+            const filesInfo = [];
+            if (bookFile) filesInfo.push('📖 файл книги');
+            if (thumbFile) filesInfo.push('🖼️ обложка');
+            
+            const message = filesInfo.length > 0 
+                ? `Книга "${data.title}" загружена!\nПрикреплены: ${filesInfo.join(', ')}`
+                : `Книга "${data.title}" загружена!\n⚠️ Файлы прикреплены не были, добавьте их вручную.`;
+            
+            alert(message);
 
         } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log("Operation cancelled");
+                return;
+            }
             console.error("Details fetch failed:", err);
             alert("Не удалось загрузить детали книги.");
         } finally {

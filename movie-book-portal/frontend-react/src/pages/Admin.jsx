@@ -9,7 +9,7 @@ import {
     uploadMovieFile, uploadTvshowFile, uploadEpisodeFile,
     createEpisode,
     fetchTheme, updateTheme, resetTheme, fetchStats, uploadBookFile,
-    fetchSuggestion, fetchBrowse, fetchDetails
+    fetchSuggestion, fetchBrowse, fetchDetails, fetchSearch
 } from '../api';
 import { X, Download, BookOpen } from 'lucide-react';
 import KaleidoscopeManager from '../components/KaleidoscopeManager';
@@ -135,8 +135,44 @@ export default function AdminPage() {
     const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
     const [browseProvider, setBrowseProvider] = useState('royallib');
     const [searchQuery, setSearchQuery] = useState(''); // Search by title or author
+    const [isSearching, setIsSearching] = useState(false);
+    const searchAbortController = useRef(null);
 
-    // Lazy load covers AND descriptions effect
+    // Search effect - when searchQuery changes, search for books
+    useEffect(() => {
+        if (!searchQuery.trim() || !showBrowseModal) {
+            setIsSearching(false);
+            return;
+        }
+
+        // Debounce search
+        const timeoutId = setTimeout(async () => {
+            if (searchAbortController.current) {
+                searchAbortController.current.abort();
+            }
+            
+            searchAbortController.current = new AbortController();
+            const signal = searchAbortController.current.signal;
+
+            try {
+                setIsSearching(true);
+                const results = await fetchSearch(searchQuery, browseProvider, { signal });
+                if (Array.isArray(results) && results.length > 0) {
+                    setBrowseItems(results.map(i => ({ ...i, coverLoaded: false })));
+                } else {
+                    setBrowseItems([]);
+                }
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    console.error("Search failed:", e);
+                }
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500); // Wait 500ms after user stops typing
+
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, browseProvider, showBrowseModal]);
     useEffect(() => {
         let mounted = true;
         const timeouts = [];
@@ -998,32 +1034,27 @@ export default function AdminPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                            {isLoadingBrowse ? (
+                            {isLoadingBrowse || isSearching ? (
                                 <div className="flex flex-col items-center justify-center py-20">
                                     <Loader2 className="animate-spin mb-4 text-primary" size={48} />
-                                    <p className="text-gray-400">Ищем книги на Flibusta...</p>
+                                    <p className="text-gray-400">{searchQuery ? 'Поиск книг...' : 'Ищем книги на Flibusta...'}</p>
                                 </div>
                             ) : browseItems.length === 0 ? (
                                 <div className="text-center py-20 text-gray-400">
-                                    Книги не найдены. Попробуйте другой жанр.
+                                    {searchQuery ? (
+                                        <>
+                                            <p>По запросу "{searchQuery}" книги не найдены</p>
+                                            <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p>Книги не найдены. Попробуйте другой жанр.</p>
+                                        </>
+                                    )}
                                 </div>
-                            ) : (() => {
-                                const filteredItems = browseItems.filter(item => {
-                                    const query = searchQuery.toLowerCase();
-                                    return (
-                                        item.title?.toLowerCase().includes(query) ||
-                                        item.author?.toLowerCase().includes(query)
-                                    );
-                                });
-                                
-                                return filteredItems.length === 0 ? (
-                                    <div className="text-center py-20 text-gray-400">
-                                        <p>По запросу "{searchQuery}" книги не найдены</p>
-                                        <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {filteredItems.map(item => (
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {browseItems.map(item => (
                                         <div
                                             key={item.id}
                                             onClick={() => handleSelectSuggestion(item)}
@@ -1060,9 +1091,8 @@ export default function AdminPage() {
                                             </div>
                                         </div>
                                     ))}
-                                    </div>
-                                );
-                            })()}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

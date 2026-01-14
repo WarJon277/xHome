@@ -282,6 +282,15 @@ export async function fetchBrowse(ctype, genre, provider = 'flibusta', options =
     }
 }
 
+export async function fetchSearch(query, provider = 'flibusta', options = {}) {
+    try {
+        return await request(`/discovery/search?query=${encodeURIComponent(query)}&provider=${provider}`, options);
+    } catch (e) {
+        console.error("Search error", e);
+        throw e;
+    }
+}
+
 export async function fetchDetails(bookId, provider = 'flibusta') {
     try {
         return await request(`/discovery/details?book_id=${bookId}&provider=${provider}`);

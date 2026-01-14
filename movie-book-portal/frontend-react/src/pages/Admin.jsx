@@ -134,6 +134,7 @@ export default function AdminPage() {
     const [browseItems, setBrowseItems] = useState([]);
     const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
     const [browseProvider, setBrowseProvider] = useState('royallib');
+    const [searchQuery, setSearchQuery] = useState(''); // Search by title or author
 
     // Lazy load covers AND descriptions effect
     useEffect(() => {
@@ -500,6 +501,8 @@ export default function AdminPage() {
     // Cleanup on unmount or modal close
     useEffect(() => {
         if (!showBrowseModal) {
+            // Clear search when modal closes
+            setSearchQuery('');
             if (browseAbortController.current) {
                 browseAbortController.current.abort();
             }
@@ -983,6 +986,17 @@ export default function AdminPage() {
                             </div>
                         </div>
 
+                        {/* Search Bar */}
+                        <div className="p-4 border-b border-gray-700 bg-gray-800/50">
+                            <input
+                                type="text"
+                                placeholder="🔍 Поиск по названию или автору..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full p-3 bg-gray-800 rounded border border-gray-600 focus:border-primary outline-none text-white transition-colors"
+                            />
+                        </div>
+
                         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                             {isLoadingBrowse ? (
                                 <div className="flex flex-col items-center justify-center py-20">
@@ -993,9 +1007,23 @@ export default function AdminPage() {
                                 <div className="text-center py-20 text-gray-400">
                                     Книги не найдены. Попробуйте другой жанр.
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {browseItems.map(item => (
+                            ) : (() => {
+                                const filteredItems = browseItems.filter(item => {
+                                    const query = searchQuery.toLowerCase();
+                                    return (
+                                        item.title?.toLowerCase().includes(query) ||
+                                        item.author?.toLowerCase().includes(query)
+                                    );
+                                });
+                                
+                                return filteredItems.length === 0 ? (
+                                    <div className="text-center py-20 text-gray-400">
+                                        <p>По запросу "{searchQuery}" книги не найдены</p>
+                                        <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {filteredItems.map(item => (
                                         <div
                                             key={item.id}
                                             onClick={() => handleSelectSuggestion(item)}
@@ -1032,8 +1060,9 @@ export default function AdminPage() {
                                             </div>
                                         </div>
                                     ))}
-                                </div>
-                            )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

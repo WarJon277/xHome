@@ -125,6 +125,7 @@ export default function AdminPage() {
     const browseAbortController = useRef(null);
     const filesFetchAbortController = useRef(null); // Track file fetch abort for when modal closes
     const modalOpenRef = useRef(false); // Track modal state for async operations
+    const isSelectingBookRef = useRef(false); // Flag to indicate if modal is being closed due to book selection
 
     // Sync ref
     useEffect(() => {
@@ -502,15 +503,20 @@ export default function AdminPage() {
             if (browseAbortController.current) {
                 browseAbortController.current.abort();
             }
-            // Also abort any ongoing file fetches when modal closes
-            if (filesFetchAbortController.current) {
+            // Only abort file fetches if modal was closed NOT due to book selection
+            // If selecting a book, isSelectingBookRef will be true and we continue loading
+            if (filesFetchAbortController.current && !isSelectingBookRef.current) {
                 filesFetchAbortController.current.abort();
             }
+            // Reset the flag after handling
+            isSelectingBookRef.current = false;
         }
     }, [showBrowseModal]);
 
     const handleSelectSuggestion = async (item) => {
         // item has { id, title, author, source_url }
+        // Mark that we're selecting a book so cleanup effect doesn't abort
+        isSelectingBookRef.current = true;
         setShowBrowseModal(false);
         setIsSuggesting(true); // Reuse loading state on the button or global
 

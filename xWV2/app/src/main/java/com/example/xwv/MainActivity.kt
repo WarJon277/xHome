@@ -28,14 +28,29 @@ import android.os.Environment
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.RelativeLayout
+import android.widget.ImageView
+import android.widget.TextView
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var progressBar: ProgressBar
+    // private lateinit var progressBar: ProgressBar // Removed
+    private lateinit var loadingLayout: RelativeLayout
+    private lateinit var loadingImage: ImageView
+    private lateinit var loadingText: TextView
+    
     private var doubleBackToExitPressedOnce = false
     private val handler = Handler(Looper.getMainLooper())
     private var isPrimaryUrlLoaded = false
+    
+    // Timeout logic
+    private val timeoutHandler = Handler(Looper.getMainLooper())
+    private var timeoutRunnable: Runnable? = null
+    private var pulseAnimator: ObjectAnimator? = null
 
     // Для загрузки файлов
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
@@ -57,7 +72,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView = findViewById(R.id.webview)
-        progressBar = findViewById(R.id.progressBar)
+        loadingLayout = findViewById(R.id.loadingLayout)
+        loadingImage = findViewById(R.id.loadingImage)
+        loadingText = findViewById(R.id.loadingText)
 
         setupWebView()
 
@@ -99,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         // Clear cache on start to avoid white screen issues after portal updates
         webView.clearCache(false)
 
-        val primaryUrl = "http://192.168.0.182:5050/"
+        val primaryUrl = "http://192.168.0.239:5050/"
         val fallbackUrl = "https://dev.tpw-xxar.ru"
 
         if (isNetworkAvailable()) {
@@ -120,6 +137,28 @@ class MainActivity : AppCompatActivity() {
     private fun loadUrlWithFallback(primaryUrl: String, fallbackUrl: String) {
         isPrimaryUrlLoaded = false
         webView.loadUrl(primaryUrl)
+    }
+
+    private fun startLoadingAnimation() {
+        if (pulseAnimator == null) {
+            pulseAnimator = ObjectAnimator.ofPropertyValuesHolder(
+                loadingImage,
+                PropertyValuesHolder.ofFloat("scaleX", 1.2f),
+                PropertyValuesHolder.ofFloat("scaleY", 1.2f)
+            ).apply {
+                duration = 600
+                repeatCount = ObjectAnimator.INFINITE
+                repeatMode = ObjectAnimator.REVERSE
+                interpolator = AccelerateDecelerateInterpolator()
+            }
+        }
+        pulseAnimator?.start()
+    }
+
+    private fun stopLoadingAnimation() {
+        pulseAnimator?.cancel()
+        loadingImage.scaleX = 1.0f
+        loadingImage.scaleY = 1.0f
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -237,12 +276,36 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                progressBar.visibility = View.VISIBLE
+                
+                // Show custom loading with animation
+                loadingLayout.visibility = View.VISIBLE
+                startLoadingAnimation()
+                
+                // Start timeout timer for local server
+                if (url?.contains("192.168.0.239") == true) {
+                    timeoutRunnable = Runnable {
+                        if (!isPrimaryUrlLoaded) {
+                            Log.w("WebView", "Timeout reaching local server")
+                            stopLoadingAnimation()
+                            // Cancel loading and switch to fallback
+                            webView.stopLoading()
+                            Toast.makeText(this@MainActivity, "Локальный сервер не отвечает. Переход на резерв...", Toast.LENGTH_SHORT).show()
+                            webView.loadUrl("https://dev.tpw-xxar.ru")
+                        }
+                    }
+                    // 2.5 seconds timeout
+                    timeoutHandler.postDelayed(timeoutRunnable!!, 2500) 
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                progressBar.visibility = View.GONE
+                
+                // Hide loading and stop animation
+                loadingLayout.visibility = View.GONE
+                stopLoadingAnimation()
+                timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                
                 isPrimaryUrlLoaded = true
             }
 
@@ -253,8 +316,10 @@ class MainActivity : AppCompatActivity() {
 
                 // If primary URL fails to load initially
                 if (request?.isForMainFrame == true) {
-                    if (!isPrimaryUrlLoaded && url.contains("192.168.0.182:5050")) {
-                        runOnUiThread {
+                    if (!isPrimaryUrlLoaded && url.contains("192.168.0.239")) {
+                         timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                         stopLoadingAnimation()
+                         runOnUiThread {
                             Toast.makeText(this@MainActivity, "Ошибка сервера. Переход на резерв...", Toast.LENGTH_LONG).show()
                             webView.loadUrl("https://dev.tpw-xxar.ru")
                         }
@@ -262,13 +327,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 // Detection of "White Screen" due to missing scripts (404)
-                // If a chunk fails to load from our domains, maybe we should force a reload
                 if (url.contains(".js") || url.contains(".css")) {
-                    if (url.contains("192.168.0.182:5050") || url.contains("tpw-xxar.ru")) {
-                        // Error code 404 is not directly in WebResourceError in older APIs, 
-                        // but we can check description or just any error on a script
+                    if (url.contains("192.168.0.239") || url.contains("tpw-xxar.ru")) {
                         Log.w("WebViewError", "Resource failed: $url")
-                        // Optional: trigger a refresh if the user is seeing a white screen
                     }
                 }
             }

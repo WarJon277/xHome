@@ -1,5 +1,6 @@
 import { X, AlertTriangle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function ConfirmationModal({ title, message, onClose, onConfirm, confirmLabel = "Удалить", isDanger = false }) {
     const confirmButtonRef = useRef(null);
@@ -11,7 +12,7 @@ export default function ConfirmationModal({ title, message, onClose, onConfirm, 
         }
     }, []);
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative animate-scale-in">
                 <button
@@ -42,14 +43,15 @@ export default function ConfirmationModal({ title, message, onClose, onConfirm, 
                         ref={confirmButtonRef}
                         onClick={onConfirm}
                         className={`flex-1 px-4 py-3 rounded-xl text-white font-bold shadow-lg transition-all transform hover:scale-105 active:scale-95 ${isDanger
-                                ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
-                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                            ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
                             }`}
                     >
                         {confirmLabel}
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

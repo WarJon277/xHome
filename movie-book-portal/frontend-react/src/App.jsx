@@ -10,6 +10,7 @@ import BooksPage from './pages/Books';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
 import Dashboard from './pages/Dashboard';
+import ServerStatus from './pages/ServerStatus';
 import Player from './components/Player';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const MainContentWithTransition = () => {
         <Route path="/books" element={<BooksPage />} />
         <Route path="/books/:id" element={<Reader />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/server-status" element={<ServerStatus />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>

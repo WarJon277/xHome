@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Activity } from 'lucide-react';
 import {
     fetchMovies, fetchBooks, fetchTvshows,
     createMovie, createBook, createTvshow,
@@ -140,36 +140,50 @@ export default function AdminPage() {
 
     // Search effect - when searchQuery changes, search for books
     useEffect(() => {
-        if (!searchQuery.trim() || !showBrowseModal) {
+        const query = searchQuery.trim();
+        console.log("Search effect triggered:", { query, modalOpen: showBrowseModal, browseProvider });
+
+        if (!query || !showBrowseModal) {
             setIsSearching(false);
             return;
         }
+
+        console.log("Starting search with query:", query);
 
         // Debounce search
         const timeoutId = setTimeout(async () => {
             if (searchAbortController.current) {
                 searchAbortController.current.abort();
             }
-            
+
             searchAbortController.current = new AbortController();
             const signal = searchAbortController.current.signal;
 
             try {
                 setIsSearching(true);
-                const results = await fetchSearch(searchQuery, browseProvider, { signal });
-                if (Array.isArray(results) && results.length > 0) {
-                    setBrowseItems(results.map(i => ({ ...i, coverLoaded: false })));
+                console.log("Making search request to API:", { query, browseProvider });
+                const results = await fetchSearch(query, browseProvider, { signal });
+                console.log("Search API response:", results);
+
+                if (!signal.aborted) {
+                    if (Array.isArray(results) && results.length > 0) {
+                        console.log("Setting browse items with results:", results);
+                        setBrowseItems(results.map(i => ({ ...i, coverLoaded: false })));
+                    } else {
+                        console.log("Empty or invalid results");
+                        setBrowseItems([]);
+                    }
                 } else {
-                    setBrowseItems([]);
+                    console.log("Search was aborted");
                 }
             } catch (e) {
                 if (e.name !== 'AbortError') {
-                    console.error("Search failed:", e);
+                    console.error("Search failed with error:", e);
                 }
             } finally {
                 setIsSearching(false);
             }
-        }, 500); // Wait 500ms after user stops typing
+        }, 300); // Reduced debounce time for faster feedback
 
         return () => clearTimeout(timeoutId);
     }, [searchQuery, browseProvider, showBrowseModal]);
@@ -652,7 +666,7 @@ export default function AdminPage() {
                         'Нажмите ОК, чтобы повторить попытку загрузки файлов,\n' +
                         'или Отмена, чтобы продолжить без файлов.'
                     );
-                    
+
                     if (retryChoice) {
                         // Retry fetching files
                         if (!thumbFile && data.image) {
@@ -678,11 +692,11 @@ export default function AdminPage() {
             const filesInfo = [];
             if (bookFile) filesInfo.push('📖 файл книги');
             if (thumbFile) filesInfo.push('🖼️ обложка');
-            
-            const message = filesInfo.length > 0 
+
+            const message = filesInfo.length > 0
                 ? `Книга "${data.title}" загружена!\nПрикреплены: ${filesInfo.join(', ')}`
                 : `Книга "${data.title}" загружена!\n⚠️ Файлы прикреплены не были, добавьте их вручную.`;
-            
+
             alert(message);
 
         } catch (err) {
@@ -844,12 +858,23 @@ export default function AdminPage() {
 
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard title="Фильмы" value={stats.movies} />
-                    <StatCard title="Книги" value={stats.books} />
-                    <StatCard title="Сериалы" value={stats.tvshows} />
-                    <StatCard title="Фото" value={stats.photos} />
-                </div>
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <StatCard title="Фильмы" value={stats.movies} />
+                        <StatCard title="Книги" value={stats.books} />
+                        <StatCard title="Сериалы" value={stats.tvshows} />
+                        <StatCard title="Фото" value={stats.photos} />
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => navigate('/server-status')}
+                            className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-bold"
+                        >
+                            <Activity size={20} /> Статус Сервера
+                        </button>
+                    </div>
+                </>
             )}
 
             {/* Content Tab */}
@@ -1039,18 +1064,15 @@ export default function AdminPage() {
                                     <Loader2 className="animate-spin mb-4 text-primary" size={48} />
                                     <p className="text-gray-400">{searchQuery ? 'Поиск книг...' : 'Ищем книги на Flibusta...'}</p>
                                 </div>
-                            ) : browseItems.length === 0 ? (
+                            ) : searchQuery.trim() && browseItems.length === 0 ? (
                                 <div className="text-center py-20 text-gray-400">
-                                    {searchQuery ? (
-                                        <>
-                                            <p>По запросу "{searchQuery}" книги не найдены</p>
-                                            <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p>Книги не найдены. Попробуйте другой жанр.</p>
-                                        </>
-                                    )}
+                                    <p>По запросу "{searchQuery}" книги не найдены</p>
+                                    <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
+                                </div>
+                            ) : !searchQuery.trim() && browseItems.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    <p>Используйте поле поиска выше для поиска книг</p>
+                                    <p className="text-sm mt-2">Можно искать по названию или автору</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

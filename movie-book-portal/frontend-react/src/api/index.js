@@ -284,9 +284,13 @@ export async function fetchBrowse(ctype, genre, provider = 'flibusta', options =
 
 export async function fetchSearch(query, provider = 'flibusta', options = {}) {
     try {
-        return await request(`/discovery/search?query=${encodeURIComponent(query)}&provider=${provider}`, options);
+        const url = `/discovery/search?query=${encodeURIComponent(query)}&provider=${provider}`;
+        console.log("fetchSearch calling:", { url, query, provider });
+        const result = await request(url, options);
+        console.log("fetchSearch result:", result);
+        return result;
     } catch (e) {
-        console.error("Search error", e);
+        console.error("Search error:", e);
         throw e;
     }
 }

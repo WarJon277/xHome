@@ -13,7 +13,7 @@ from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 from database_kaleidoscope import create_kaleidoscope_tables
 
-from routers import movies, books, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, discovery
+from routers import movies, books, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, discovery, system
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -150,4 +150,5 @@ app.include_router(dashboard.router, prefix="/api")
 app.include_router(flibusta.router, prefix="/api")
 # Register discovery with explicit sub-prefix
 app.include_router(discovery.router, prefix="/api/discovery")
+app.include_router(system.router, prefix="/api")
 

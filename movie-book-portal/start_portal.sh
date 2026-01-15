@@ -5,7 +5,7 @@ PROJECT_ROOT="/home/xxar/xHomePro/xHome/movie-book-portal"
 BACKEND_DIR="$PROJECT_ROOT/backend"
 FRONTEND_DIR="$PROJECT_ROOT/frontend-react"
 PYTHON_VENV="$PROJECT_ROOT/venv/bin/python"
-LOG_DIR="$HOME"
+LOG_DIR="/home/xxar/xHomePro/xHome"
 
 echo "=== Starting Media Portal Services ==="
 

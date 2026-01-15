@@ -138,10 +138,55 @@ def get_system_stats(project_path: str, show_data_disk=False):
     # Project Folder Size
     project_size = get_directory_size(project_path)
 
+    # OS Info
+    boot_time = psutil.boot_time()
+    import time
+    uptime = time.time() - boot_time
+
+    os_info = {
+        "system": platform.system(),
+        "release": platform.release(),
+        "version": platform.version(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "node": platform.node()
+    }
+
+    # CPU Detailed
+    cpu_info = {
+        "physical_cores": psutil.cpu_count(logical=False),
+        "total_cores": psutil.cpu_count(logical=True),
+        "frequency": psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None
+    }
+
+    # Swap usage
+    swap = psutil.swap_memory()
+    swap_stats = {
+        "total": swap.total,
+        "used": swap.used,
+        "free": swap.free,
+        "percent": swap.percent
+    }
+
+    # Network IO
+    net_io = psutil.net_io_counters()
+    net_stats = {
+        "bytes_sent": net_io.bytes_sent,
+        "bytes_recv": net_io.bytes_recv,
+        "packets_sent": net_io.packets_sent,
+        "packets_recv": net_io.packets_recv
+    }
+
     return {
         "cpu_percent": cpu_percent,
+        "cpu_info": cpu_info,
         "ram": ram_stats,
+        "swap": swap_stats,
         "disk": disk_stats,
         "temperature": temps,
-        "project_size": project_size
+        "project_size": project_size,
+        "os_info": os_info,
+        "uptime": uptime,
+        "boot_time": boot_time,
+        "network": net_stats
     }

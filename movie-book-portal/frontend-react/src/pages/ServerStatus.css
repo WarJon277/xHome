@@ -1,74 +1,101 @@
 .server-status-page {
     padding: 20px;
     color: var(--text-color, #fff);
-    /* Use CSS variable if available or fallback */
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
 .page-title {
     text-align: center;
+    margin-bottom: 20px;
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(to right, var(--accent-color, #e50914), #f44336);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.system-info-header {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
     margin-bottom: 30px;
-    font-size: 2rem;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item {
+    display: flex;
+    gap: 10px;
+    font-size: 0.95rem;
+}
+
+.info-item .label {
+    color: var(--text-muted, #aaa);
+    font-weight: bold;
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 20px;
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-color, #e50914);
 }
 
 .stat-card h2 {
     margin-top: 0;
     margin-bottom: 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 10px;
-    font-size: 1.5rem;
+    padding-bottom: 12px;
+    font-size: 1.4rem;
+    color: var(--accent-color, #e50914);
 }
 
 .stat-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 1.1rem;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 1.05rem;
 }
 
-.label {
-    font-weight: bold;
-    color: var(--text-muted, #aaa);
+.stat-item .label {
+    color: var(--text-muted, #bbb);
+}
+
+.stat-item .value {
+    font-weight: 600;
 }
 
 .progress-bar-container {
     background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    height: 10px;
+    border-radius: 10px;
+    height: 12px;
     margin-top: 15px;
     overflow: hidden;
+    position: relative;
 }
 
 .progress-bar {
     height: 100%;
-    transition: width 0.5s ease-in-out;
-}
-
-.temperatures {
-    margin-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 10px;
-}
-
-.temperatures h3 {
-    font-size: 1.2rem;
-    margin-bottom: 10px;
+    transition: width 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Mobile Adaptation */
@@ -77,11 +104,21 @@
         padding: 10px;
     }
 
+    .page-title {
+        font-size: 1.8rem;
+    }
+
+    .system-info-header {
+        gap: 15px;
+        flex-direction: column;
+        align-items: center;
+    }
+
     .stats-grid {
         grid-template-columns: 1fr;
     }
 
     .stat-card {
-        padding: 15px;
+        padding: 20px;
     }
 }

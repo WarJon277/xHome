@@ -5,7 +5,7 @@ import os
 router = APIRouter(prefix="/system", tags=["system"])
 
 @router.get("/stats")
-async def get_stats():
+async def get_stats(show_data_disk: bool = False):
     # Calculate project root (assuming backend/routers/ is where this file could be, 
     # but imports suggest we are running from backend dir or similar)
     # The file we are writing is backend/routers/system.py
@@ -22,4 +22,4 @@ async def get_stats():
     backend_dir = os.path.dirname(current_dir)
     project_root = os.path.dirname(backend_dir)
     
-    return get_system_stats(project_root)
+    return get_system_stats(project_root, show_data_disk=show_data_disk)

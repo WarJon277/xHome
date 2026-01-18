@@ -3,7 +3,9 @@ from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL_BOOKS = "sqlite:///./books.db"  # Отдельный файл!
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL_BOOKS = f"sqlite:///{os.path.join(BASE_DIR, 'books.db')}"
 
 engine_books = create_engine(DATABASE_URL_BOOKS, connect_args={"check_same_thread": False})
 SessionLocalBooks = sessionmaker(autocommit=False, autoflush=False, bind=engine_books)

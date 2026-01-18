@@ -5,10 +5,11 @@ import random
 
 from database import Movie, get_db as get_db_movies
 from database_books import Book
+from database_audiobooks import Audiobook
 from database_tvshows import Tvshow, Episode
 from database_gallery import Photo, get_db_gallery
 from database_progress import PlaybackProgress, get_db_progress
-from dependencies import get_db as get_db_main, get_db_books_simple, get_db_tvshows_simple
+from dependencies import get_db as get_db_main, get_db_books_simple, get_db_tvshows_simple, get_db_audiobooks_simple
 
 import os
 import hashlib
@@ -24,6 +25,7 @@ def get_dashboard_data(
     db_movies: Session = Depends(get_db_movies),
     db_books: Session = Depends(get_db_books_simple),
     db_tvshows: Session = Depends(get_db_tvshows_simple),
+    db_audiobooks: Session = Depends(get_db_audiobooks_simple),
     db_gallery: Session = Depends(get_db_gallery),
     db_progress: Session = Depends(get_db_progress)
 ):
@@ -67,8 +69,18 @@ def get_dashboard_data(
                     if tvshow:
                         item_data["title"] = f"{tvshow.title} - S{episode.season_number:02d}E{episode.episode_number:02d}"
                         item_data["tvshow_id"] = episode.tvshow_id
+                    if tvshow:
+                        item_data["title"] = f"{tvshow.title} - S{episode.season_number:02d}E{episode.episode_number:02d}"
+                        item_data["tvshow_id"] = episode.tvshow_id
                         item_data["thumbnail"] = tvshow.thumbnail_path
                         continue_watching.append(item_data)
+                        
+            elif p.item_type == "audiobook":
+                item = db_audiobooks.query(Audiobook).filter(Audiobook.id == p.item_id).first()
+                if item:
+                    item_data["title"] = item.title
+                    item_data["thumbnail"] = item.thumbnail_path
+                    continue_watching.append(item_data)
         except Exception:
             continue
             
@@ -78,6 +90,7 @@ def get_dashboard_data(
     # 2. New Arrivals (Latest added items from each category)
     new_movies = db_movies.query(Movie).order_by(Movie.id.desc()).limit(3).all()
     new_books = db_books.query(Book).order_by(Book.id.desc()).limit(3).all()
+    new_audiobooks = db_audiobooks.query(Audiobook).order_by(Audiobook.id.desc()).limit(3).all()
     new_tvshows = db_tvshows.query(Tvshow).order_by(Tvshow.id.desc()).limit(3).all()
     
     new_arrivals = []
@@ -85,6 +98,8 @@ def get_dashboard_data(
         new_arrivals.append({"id": m.id, "title": m.title, "thumbnail": m.thumbnail_path, "type": "movie"})
     for b in new_books:
         new_arrivals.append({"id": b.id, "title": b.title, "thumbnail": b.thumbnail_path, "type": "book"})
+    for a in new_audiobooks:
+        new_arrivals.append({"id": a.id, "title": a.title, "thumbnail": a.thumbnail_path, "type": "audiobook"})
     for t in new_tvshows:
         new_arrivals.append({"id": t.id, "title": t.title, "thumbnail": t.thumbnail_path, "type": "tvshow"})
     
@@ -100,6 +115,9 @@ def get_dashboard_data(
     
     for m in all_movies:
         rec_pool.append({"id": m.id, "title": m.title, "thumbnail": m.thumbnail_path, "type": "movie"})
+    all_audiobooks = db_audiobooks.query(Audiobook.id, Audiobook.title, Audiobook.thumbnail_path).all()
+    for a in all_audiobooks:
+        rec_pool.append({"id": a.id, "title": a.title, "thumbnail": a.thumbnail_path, "type": "audiobook"})
     for b in all_books:
         rec_pool.append({"id": b.id, "title": b.title, "thumbnail": b.thumbnail_path, "type": "book"})
         
@@ -151,6 +169,7 @@ def get_dashboard_data(
     stats = {
         "movies_count": db_movies.query(func.count(Movie.id)).scalar(),
         "books_count": db_books.query(func.count(Book.id)).scalar(),
+        "audiobooks_count": db_audiobooks.query(func.count(Audiobook.id)).scalar(),
         "tvshows_count": db_tvshows.query(func.count(Tvshow.id)).scalar(),
         "photos_count": photo_count
     }

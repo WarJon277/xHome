@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Home, Film, Tv, Image, Book, Settings, Menu, X } from 'lucide-react';
+import { Home, Film, Tv, Image, Book, Settings, Menu, X, Music } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTvNavigation } from './hooks/useTvNavigation';
 import MoviesPage from './pages/Movies';
@@ -7,6 +7,7 @@ import GalleryPage from './pages/Gallery';
 import TvShowsPage from './pages/TvShows';
 import TvShowDetails from './pages/TvShowDetails';
 import BooksPage from './pages/Books';
+import AudiobooksPage from './pages/Audiobooks';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
 import Dashboard from './pages/Dashboard';
@@ -28,6 +29,7 @@ const MainContentWithTransition = () => {
         <Route path="/tvshows/:id" element={<TvShowDetails />} />
         <Route path="/books" element={<BooksPage />} />
         <Route path="/books/:id" element={<Reader />} />
+        <Route path="/audiobooks" element={<AudiobooksPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/server-status" element={<ServerStatus />} />
         <Route path="/gallery" element={<GalleryPage />} />
@@ -109,6 +111,7 @@ function App() {
     { to: "/tvshows", icon: <Tv size={24} />, label: "Сериалы" },
     { to: "/gallery", icon: <Image size={24} />, label: "Галерея" },
     { to: "/books", icon: <Book size={24} />, label: "Книги" },
+    { to: "/audiobooks", icon: <Music size={24} />, label: "Аудиокниги" },
     { to: "/admin", icon: <Settings size={24} />, label: "Админ" },
   ];
 

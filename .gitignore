@@ -21,6 +21,7 @@ cat > .gitignore << 'EOF'
 *.ts
 *.m2ts
 *.divx
+*.mp3
 
 *.epub
 *.out
@@ -29,7 +30,7 @@ cat > .gitignore << 'EOF'
 *.jpeg
 *.apk
 *.dm
-
+*.md
 # Python кэш
 __pycache__/
 *.py[cod]

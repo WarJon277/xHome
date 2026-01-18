@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Music } from 'lucide-react';
 import {
-    fetchMovies, fetchBooks, fetchTvshows,
-    createMovie, createBook, createTvshow,
-    updateMovie, updateBook, updateTvshow,
-    deleteMovie, deleteBook, deleteTvshow,
-    uploadMovieFile, uploadTvshowFile, uploadEpisodeFile,
+    fetchMovies, fetchBooks, fetchTvshows, fetchAudiobooks,
+    createMovie, createBook, createTvshow, createAudiobook,
+    updateMovie, updateBook, updateTvshow, updateAudiobook,
+    deleteMovie, deleteBook, deleteTvshow, deleteAudiobook,
+    uploadMovieFile, uploadTvshowFile, uploadEpisodeFile, uploadAudiobookFile, uploadAudiobookThumbnail,
     createEpisode,
     fetchTheme, updateTheme, resetTheme, fetchStats, uploadBookFile,
-    fetchSuggestion, fetchBrowse, fetchDetails, fetchSearch
+    fetchSuggestion, fetchBrowse, fetchDetails, fetchSearch, searchAudioboo, fetchAudiobooDetails, downloadFromAudioboo
 } from '../api';
 import { X, Download, BookOpen } from 'lucide-react';
 import KaleidoscopeManager from '../components/KaleidoscopeManager';
@@ -89,13 +89,38 @@ const PROVIDERS_LIST = [
     { id: 'royallib', name: 'RoyalLib.com' }
 ];
 
+const AUDIOBOOK_PROVIDERS_LIST = [
+    { id: 'audioboo', name: 'Audioboo.org' }
+];
+
+const AUDIOBOOK_GENRES = [
+    "Альтернативная история", "Античность", "Аудиоспектакль", "Бизнес", "Биография",
+    "Боевик", "Война", "Вселенная метро 2033", "Детектив", "Детская литература",
+    "Драма", "Интервью", "История", "Классика", "Лекция", "ЛФФР", "Мемуары",
+    "Медицина", "Мистика", "Новелла", "Повесть", "Попаданцы", "Познавательная литература",
+    "Постапокалипсис", "Поэзия", "Притча", "Приключения", "Проза", "Психология",
+    "Публицистика", "Ранобэ", "Религия", "Роман", "Сказка", "Стихи", "Триллер",
+    "Трэш", "Трєш", "Ужасы", "Учебник", "Фантастика", "Философия", "Фэнтези", "Хоррор",
+    "Эзотерика", "Эротика", "Этногенез", "Юмор", "LitRPG", "Warhammer 40000", "S.T.A.L.K.E.R."
+];
+
 export default function AdminPage() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [stats, setStats] = useState({ movies: 0, books: 0, tvshows: 0, photos: 0 });
 
     // Content Management State
-    const [contentType, setContentType] = useState('movies'); // movies, books, tvshows
+    const [contentType, setContentType] = useState('movies'); // movies, books, audiobooks
+    const [browseProvider, setBrowseProvider] = useState('flibusta');
+
+    // Switch provider when content type changes
+    useEffect(() => {
+        if (contentType === 'audiobooks') {
+            setBrowseProvider('audioboo');
+        } else if (contentType === 'books') {
+            setBrowseProvider('flibusta');
+        }
+    }, [contentType]);
     const [items, setItems] = useState([]);
     const [isLoadingItems, setIsLoadingItems] = useState(false);
     const [loadError, setLoadError] = useState(null);
@@ -110,6 +135,7 @@ export default function AdminPage() {
         year: '',
         director: '',
         author: '',
+        narrator: '',
         rating: '',
         description: '',
         genre: 'Общее'
@@ -126,6 +152,8 @@ export default function AdminPage() {
     const filesFetchAbortController = useRef(null); // Track file fetch abort for when modal closes
     const modalOpenRef = useRef(false); // Track modal state for async operations
     const isSelectingBookRef = useRef(false); // Flag to indicate if modal is being closed due to book selection
+    const searchAbortController = useRef(null);
+    const prefetchAbortController = useRef(null);
 
     // Sync ref
     useEffect(() => {
@@ -133,15 +161,80 @@ export default function AdminPage() {
     }, [showBrowseModal]);
     const [browseItems, setBrowseItems] = useState([]);
     const [isLoadingBrowse, setIsLoadingBrowse] = useState(false);
-    const [browseProvider, setBrowseProvider] = useState('royallib');
-    const [searchQuery, setSearchQuery] = useState(''); // Search by title or author
+    const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const searchAbortController = useRef(null);
+    const [pendingDownload, setPendingDownload] = useState(null);
+    const searchTimeoutRef = useRef(null);
 
-    // Search effect - when searchQuery changes, search for books
+    // ... (rest of methods)
+
+    const handleBrowse = async (isRefresh = false) => {
+        console.log("handleBrowse called", { isRefresh, genre: formData.genre, provider: browseProvider });
+
+        if (!formData.genre || formData.genre.toLowerCase() === 'общее') {
+            alert('Пожалуйста, выберите конкретный жанр');
+            return;
+        }
+
+        // Clean up previous request if any
+        if (browseAbortController.current) {
+            browseAbortController.current.abort();
+        }
+
+        // Create new AbortController
+        browseAbortController.current = new AbortController();
+        const signal = browseAbortController.current.signal;
+
+        if (!isRefresh) {
+            setShowBrowseModal(true);
+        }
+
+        setIsLoadingBrowse(true);
+        setBrowseItems([]);
+
+        try {
+            let activeGenreName = formData.genre;
+
+            // Validation/Fallback logic
+            if (contentType === 'audiobooks') {
+                if (!AUDIOBOOK_GENRES.includes(activeGenreName) && !GENRE_OPTIONS["Фантастика"].includes(activeGenreName)) {
+                    // If current likely not valid, default to first
+                    // But we trust formData.genre if it was selected from dropdown
+                }
+            } else {
+                if (!Object.values(GENRE_OPTIONS).flat().includes(activeGenreName)) {
+                    activeGenreName = 'Научная фантастика';
+                }
+            }
+
+            console.log("Fetching browse items...", { genre: activeGenreName, provider: browseProvider, contentType });
+
+            const targetType = contentType === 'audiobooks' ? 'audiobooks' : 'books';
+
+            const items = await fetchBrowse(targetType, activeGenreName, browseProvider, { signal, refresh: isRefresh });
+            console.log("Items fetched:", items);
+
+            if (!modalOpenRef.current) return;
+
+            if (Array.isArray(items)) {
+                setBrowseItems(items.map(i => ({ ...i, coverLoaded: false })));
+            } else {
+                setBrowseItems([]);
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            console.error("Browse failed:", e);
+            alert(`Не удалось загрузить список: ${e.message}`);
+            if (!isRefresh) setShowBrowseModal(false);
+        } finally {
+            if (!signal.aborted) setIsLoadingBrowse(false);
+        }
+    };
+
+
     useEffect(() => {
         const query = searchQuery.trim();
-        console.log("Search effect triggered:", { query, modalOpen: showBrowseModal, browseProvider });
+        console.log("Search effect triggered:", { query, modalOpen: showBrowseModal, browseProvider, contentType });
 
         if (!query || !showBrowseModal) {
             setIsSearching(false);
@@ -161,8 +254,16 @@ export default function AdminPage() {
 
             try {
                 setIsSearching(true);
-                console.log("Making search request to API:", { query, browseProvider });
-                const results = await fetchSearch(query, browseProvider, { signal });
+                console.log("Making search request to API:", { query, browseProvider, contentType });
+
+                let results;
+                if (contentType === 'audiobooks' && browseProvider === 'audioboo') {
+                    // Use special search for audioboo
+                    results = await searchAudioboo(query, { signal });
+                } else {
+                    // Use regular book search
+                    results = await fetchSearch(query, browseProvider, { signal });
+                }
                 console.log("Search API response:", results);
 
                 if (!signal.aborted) {
@@ -186,21 +287,29 @@ export default function AdminPage() {
         }, 300); // Reduced debounce time for faster feedback
 
         return () => clearTimeout(timeoutId);
-    }, [searchQuery, browseProvider, showBrowseModal]);
+    }, [searchQuery, browseProvider, showBrowseModal, contentType]);
     useEffect(() => {
         let mounted = true;
         const timeouts = [];
+
+        if (prefetchAbortController.current) {
+            prefetchAbortController.current.abort();
+        }
+
         if (browseItems.length > 0 && showBrowseModal) {
+            prefetchAbortController.current = new AbortController();
+            const signal = prefetchAbortController.current.signal;
+
             // Check for items needing covers/details
             browseItems.forEach((item, index) => {
                 // If we don't have the cover/description loaded yet
                 if (!item.coverLoaded) {
                     // Stagger requests to avoid flooding the backend
                     const tid = setTimeout(async () => {
-                        if (!mounted) return;
+                        if (!mounted || signal.aborted) return;
                         try {
-                            const data = await fetchDetails(item.id, browseProvider);
-                            if (mounted && data) {
+                            const data = await fetchDetails(item.id, browseProvider, { signal });
+                            if (mounted && data && !signal.aborted) {
                                 setBrowseItems(prev => {
                                     const next = [...prev];
                                     const idx = next.findIndex(i => i.id === item.id);
@@ -295,6 +404,9 @@ export default function AdminPage() {
                 case 'tvshows':
                     data = await fetchTvshows();
                     break;
+                case 'audiobooks':
+                    data = await fetchAudiobooks();
+                    break;
                 default:
                     data = [];
             }
@@ -322,6 +434,24 @@ export default function AdminPage() {
         setIsUploading(true);
 
         try {
+            // Check for pending download first
+            if (contentType === 'audiobooks' && pendingDownload) {
+                const downloadPayload = {
+                    ...pendingDownload,
+                    title: formData.title,
+                    author: formData.author,
+                    description: formData.description,
+                    genre: formData.genre,
+                    year: formData.year ? String(formData.year) : null,
+                    narrator: formData.narrator
+                };
+
+                await downloadFromAudioboo(downloadPayload);
+                alert(`Загрузка аудиокниги "${formData.title}" началась!\nОна появится в библиотеке после скачивания.`);
+                resetForm();
+                loadContent();
+                return;
+            }
             const data = {
                 title: formData.title,
                 year: formData.year ? parseInt(formData.year) : null,
@@ -331,6 +461,11 @@ export default function AdminPage() {
                 description: formData.description,
                 genre: formData.genre
             };
+
+            // Add narrator for audiobooks
+            if (contentType === 'audiobooks') {
+                data.narrator = formData.narrator;
+            }
 
             let itemId;
 
@@ -346,6 +481,9 @@ export default function AdminPage() {
                     case 'tvshows':
                         await updateTvshow(editingId, data);
                         break;
+                    case 'audiobooks':
+                        await updateAudiobook(editingId, data);
+                        break;
                 }
                 itemId = editingId;
             } else {
@@ -359,6 +497,9 @@ export default function AdminPage() {
                         break;
                     case 'tvshows':
                         created = await createTvshow(data);
+                        break;
+                    case 'audiobooks':
+                        created = await createAudiobook(data);
                         break;
                 }
                 itemId = created.id;
@@ -386,6 +527,8 @@ export default function AdminPage() {
                     await uploadTvshowFile(itemId, mainFile, (pct) => setUploadProgress(pct));
                 } else if (contentType === 'books') {
                     await uploadBookFile(itemId, mainFile, (pct) => setUploadProgress(pct));
+                } else if (contentType === 'audiobooks') {
+                    await uploadAudiobookFile(itemId, mainFile, (pct) => setUploadProgress(pct));
                 }
             }
 
@@ -394,16 +537,26 @@ export default function AdminPage() {
                 const formData = new FormData();
                 formData.append('file', thumbnail);
 
-                const endpoint = contentType === 'movies' ? 'movies' :
-                    contentType === 'books' ? 'books' : 'tvshows';
+                let endpoint;
+                if (contentType === 'movies') {
+                    endpoint = 'movies';
+                } else if (contentType === 'books') {
+                    endpoint = 'books';
+                } else if (contentType === 'tvshows') {
+                    endpoint = 'tvshows';
+                } else if (contentType === 'audiobooks') {
+                    endpoint = 'audiobooks';
+                }
 
-                const response = await fetch(`/api/${endpoint}/${itemId}/upload_thumbnail`, {
-                    method: 'POST',
-                    body: formData
-                });
+                if (endpoint) {
+                    const response = await fetch(`/api/${endpoint}/${itemId}/upload_thumbnail`, {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (!response.ok) {
-                    console.error('Thumbnail upload failed');
+                    if (!response.ok) {
+                        console.error('Thumbnail upload failed');
+                    }
                 }
             }
 
@@ -413,7 +566,7 @@ export default function AdminPage() {
             loadStats();
         } catch (e) {
             console.error('Submit error:', e);
-            alert('Ошибка: ' + e.message);
+            alert('Ошибка при сохранении: ' + e.message);
         } finally {
             setIsUploading(false);
             setUploadProgress(0);
@@ -426,6 +579,7 @@ export default function AdminPage() {
             year: item.year || '',
             director: item.director || '',
             author: item.author || '',
+            narrator: item.narrator || '',
             rating: item.rating || '',
             description: item.description || '',
             genre: item.genre || 'Общее'
@@ -448,6 +602,9 @@ export default function AdminPage() {
                 case 'tvshows':
                     await deleteTvshow(id);
                     break;
+                case 'audiobooks':
+                    await deleteAudiobook(id);
+                    break;
             }
             loadContent();
             loadStats();
@@ -462,6 +619,7 @@ export default function AdminPage() {
             year: '',
             director: '',
             author: '',
+            narrator: '',
             rating: '',
             description: '',
             genre: 'Общее'
@@ -471,74 +629,10 @@ export default function AdminPage() {
         setEpisodeFiles([]);
         setEditingId(null);
         setShowForm(false);
+        setPendingDownload(null);
     };
 
-    const handleBrowse = async (isRefresh = false) => {
-        console.log("handleBrowse called", { isRefresh, genre: formData.genre, provider: browseProvider });
 
-        if (!formData.genre || formData.genre.toLowerCase() === 'общее') {
-            alert('Пожалуйста, выберите конкретный жанр');
-            return;
-        }
-
-        // Clean up previous request if any
-        if (browseAbortController.current) {
-            browseAbortController.current.abort();
-        }
-
-        // Create new AbortController
-        browseAbortController.current = new AbortController();
-        const signal = browseAbortController.current.signal;
-
-        if (!isRefresh) {
-            setShowBrowseModal(true);
-        }
-
-        setIsLoadingBrowse(true);
-        // Only clear items if we are switching genres or providers, or explicit refresh
-        // But for simplicity, we clear to show loading state clearly
-        setBrowseItems([]);
-
-        try {
-            const activeGenreName = Object.keys(GENRE_OPTIONS).find(cat =>
-                GENRE_OPTIONS[cat].includes(formData.genre)
-            ) ? formData.genre : 'Научная фантастика';
-
-            console.log("Fetching browse items...", { genre: activeGenreName, provider: browseProvider });
-
-            const targetType = contentType === 'books' ? 'books' : 'books';
-
-            const items = await fetchBrowse(targetType, activeGenreName, browseProvider, { signal });
-            console.log("Items fetched:", items);
-
-            // Double check: if modal closed, ignore
-            if (!modalOpenRef.current) {
-                console.log("Modal closed, ignoring results (ref check)");
-                return;
-            }
-
-            if (Array.isArray(items)) {
-                setBrowseItems(items.map(i => ({ ...i, coverLoaded: false })));
-            } else {
-                setBrowseItems([]);
-            }
-        } catch (e) {
-            if (e.name === 'AbortError') {
-                console.log("Browse request cancelled");
-                return; // Do nothing, request was cancelled
-            }
-            console.error("Browse failed:", e);
-            alert(`Не удалось загрузить список: ${e.message}`);
-            if (!isRefresh) setShowBrowseModal(false);
-        } finally {
-            // Only turn off loading if this request wasn't aborted (or if it was aborted but we want to clean up UI)
-            // If aborted, the new request will have set loading to true already.
-            // But if we close modal, we want loading to be false.
-            if (!signal.aborted) {
-                setIsLoadingBrowse(false);
-            }
-        }
-    };
 
     // Re-fetch when provider changes if modal is open
     // Removed showBrowseModal from dependency to avoid double-fetch on opening
@@ -556,6 +650,12 @@ export default function AdminPage() {
             if (browseAbortController.current) {
                 browseAbortController.current.abort();
             }
+            if (prefetchAbortController.current) {
+                prefetchAbortController.current.abort();
+            }
+            if (searchAbortController.current) {
+                searchAbortController.current.abort();
+            }
             // Only abort file fetches if modal was closed NOT due to book selection
             // If selecting a book, isSelectingBookRef will be true and we continue loading
             if (filesFetchAbortController.current && !isSelectingBookRef.current) {
@@ -568,34 +668,92 @@ export default function AdminPage() {
 
     const handleSelectSuggestion = async (item) => {
         // item has { id, title, author, source_url }
-        // Mark that we're selecting a book so cleanup effect doesn't abort
+        // Mark that we're selecting so cleanup effect doesn't abort
         isSelectingBookRef.current = true;
         setShowBrowseModal(false);
-        setIsSuggesting(true); // Reuse loading state on the button or global
+        setIsSuggesting(true);
 
         // Create new abort controller for file fetches
         filesFetchAbortController.current = new AbortController();
         const signal = filesFetchAbortController.current.signal;
 
         try {
-            // 2. Fetch full details for selected item - PASS THE PROVIDER!
-            const data = await fetchDetails(item.id, browseProvider);
+            let data;
+
+            // Handle different sources
+            if (contentType === 'audiobooks' && browseProvider === 'audioboo') {
+                // For audioboo, fetch details
+                data = await fetchAudiobooDetails(item.link);
+                console.log("Audioboo details:", data);
+
+                // Set pending download (DO NOT DOWNLOAD YET)
+                setPendingDownload({
+                    title: data.title || item.title,
+                    author: data.author || item.author,
+                    description: data.description,
+                    genre: data.genre || 'Общее',
+                    year: data.year ? String(data.year) : null,
+                    narrator: data.narrator,
+                    image_url: data.image || item.image,
+                    download_url: data.download_link,
+                    source_url: item.link
+                });
+
+                // Fill Form
+                setFormData({
+                    ...formData,
+                    title: data.title || item.title,
+                    author: data.author || item.author,
+                    description: data.description || '',
+                    year: data.year ? String(data.year) : '',
+                    genre: data.genre || 'Общее',
+                    narrator: data.narrator || '',
+                    rating: data.rating ? String(data.rating) : ''
+                });
+
+                // Fetch Thumbnail to show preview (Inline fetch)
+                if (data.image || item.image) {
+                    try {
+                        const imgUrl = (data.image || item.image);
+                        // Use proxy to avoid CORS
+                        const res = await fetch(`/api/discovery/proxy?url=${encodeURIComponent(imgUrl)}`, { signal });
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const file = new File([blob], `cover_${data.title || 'audiobook'}.jpg`, { type: blob.type });
+                            setThumbnail(file);
+                        }
+                    } catch (e) { console.warn("Failed to fetch thumbnail preview", e); }
+                }
+
+                // Set Dummy File to pass validation and show visual indicator
+                setMainFile({ name: "▶️ Загрузка с сервера Audioboo (будет выполнена при добавлении)", size: 0, type: "audio/server-download" });
+
+                setIsSuggesting(false);
+                setShowForm(true); // Ensure form is visible
+                return;
+            }
+
+            // ... (rest of the function for other types)
+            else {
+                // Original logic for books
+                data = await fetchDetails(item.id, browseProvider);
+
+                setFormData({
+                    ...formData,
+                    title: data.title,
+                    year: data.year || '',
+                    director: data.type === 'movie' ? (data.author_director || '') : '',
+                    author: data.type === 'book' ? (data.author_director || '') : '',
+                    description: data.description || '',
+                    rating: data.rating || '',
+                });
+            }
 
             // Check if modal was closed - if so, abort
             if (signal.aborted) {
                 console.log("Modal closed, aborting file fetch");
                 return;
             }
-
-            setFormData({
-                ...formData,
-                title: data.title,
-                year: data.year || '',
-                director: data.type === 'movie' ? (data.author_director || '') : '',
-                author: data.type === 'book' ? (data.author_director || '') : '',
-                description: data.description || '',
-                rating: data.rating || '',
-            });
 
             // Helper to fetch file via proxy and create File object
             const fetchFileViaProxy = async (url, defaultName) => {
@@ -608,7 +766,7 @@ export default function AdminPage() {
 
                     // Validate content type
                     if (blob.type.includes('text/html') || blob.type.includes('application/json')) {
-                        throw new Error('Ссылка ведет на веб-страницу или заблокирована (не файл книги)');
+                        throw new Error('Ссылка ведет на веб-страницу или заблокирована (не файл)');
                     }
 
                     // Try to get filename from content-disposition if possible, or use default
@@ -628,8 +786,9 @@ export default function AdminPage() {
                         }
                     }
                     if (!filename.includes('.')) {
-                        // guess extension
-                        if (blob.type.includes('epub')) filename += '.epub';
+                        // guess extension based on blob type
+                        if (blob.type.includes('audio')) filename += '.mp3';
+                        else if (blob.type.includes('epub')) filename += '.epub';
                         else if (blob.type.includes('fb2')) filename += '.fb2';
                         else if (blob.type.includes('image')) filename += '.jpg';
                     }
@@ -646,20 +805,29 @@ export default function AdminPage() {
 
             // 3. Fetch Thumbnail
             let thumbFile = null;
-            if (data.image) {
-                thumbFile = await fetchFileViaProxy(data.image, `cover_${data.title}.jpg`);
+            if (data.image || (contentType === 'audiobooks' && item.image)) {
+                const imageUrl = data.image || item.image;
+                thumbFile = await fetchFileViaProxy(imageUrl, `cover_${data.title}.jpg`);
             }
 
-            // 4. Fetch Book File
-            let bookFile = null;
-            if (data.type === 'book' && data.download_url) {
-                bookFile = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
+            // 4. Fetch Audio/Book File
+            let mainFileToSet = null;
+            if (contentType === 'audiobooks' && (data.download_link || item.link)) {
+                // For audiobook, try to get download link
+                mainFileToSet = await fetchFileViaProxy(data.download_link || item.link, `${data.title}.mp3`);
+            } else if (data.type === 'book' && data.download_url) {
+                mainFileToSet = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
             }
 
             // Check if files were successfully attached
-            if (contentType === 'books') {
+            if (contentType === 'audiobooks') {
+                if (!mainFileToSet && !thumbFile) {
+                    // For audiobooks, we might not have direct download link
+                    alert('⚠️ Не удалось загрузить аудиофайл и обложку автоматически.\n\nВы можете добавить их вручную позже.');
+                }
+            } else if (contentType === 'books') {
                 // For books, we need at least the book file
-                if (!bookFile && !thumbFile) {
+                if (!mainFileToSet && !thumbFile) {
                     // Show dialog to retry or continue
                     const retryChoice = confirm(
                         'Не удалось загрузить файлы книги или обложки.\n\n' +
@@ -672,30 +840,31 @@ export default function AdminPage() {
                         if (!thumbFile && data.image) {
                             thumbFile = await fetchFileViaProxy(data.image, `cover_${data.title}.jpg`);
                         }
-                        if (!bookFile && data.download_url) {
-                            bookFile = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
+                        if (!mainFileToSet && data.download_url) {
+                            mainFileToSet = await fetchFileViaProxy(data.download_url, `${data.title}.epub`);
                         }
                     }
                 }
 
                 // Check again after retry
-                if (!bookFile && !thumbFile) {
+                if (!mainFileToSet && !thumbFile) {
                     alert('⚠️ Предупреждение: Не удалось загрузить ни файл книги, ни обложку.\n\nВы можете добавить их вручную позже.');
                 }
             }
 
             // Set files even if one or both are null
             if (thumbFile) setThumbnail(thumbFile);
-            if (bookFile) setMainFile(bookFile);
+            if (mainFileToSet) setMainFile(mainFileToSet);
 
             // Show success message with info about attached files
             const filesInfo = [];
-            if (bookFile) filesInfo.push('📖 файл книги');
+            if (mainFileToSet) filesInfo.push(contentType === 'audiobooks' ? '🎧 аудиофайл' : '📖 файл книги');
             if (thumbFile) filesInfo.push('🖼️ обложка');
 
+            const itemType = contentType === 'audiobooks' ? 'Аудиокнига' : 'Книга';
             const message = filesInfo.length > 0
-                ? `Книга "${data.title}" загружена!\nПрикреплены: ${filesInfo.join(', ')}`
-                : `Книга "${data.title}" загружена!\n⚠️ Файлы прикреплены не были, добавьте их вручную.`;
+                ? `${itemType} "${data.title}" загружена!\nПрикреплены: ${filesInfo.join(', ')}`
+                : `${itemType} "${data.title}" загружена!\n⚠️ Файлы прикреплены не были, добавьте их вручную.`;
 
             alert(message);
 
@@ -705,7 +874,7 @@ export default function AdminPage() {
                 return;
             }
             console.error("Details fetch failed:", err);
-            alert("Не удалось загрузить детали книги.");
+            alert("Не удалось загрузить детали элемента: " + err.message);
         } finally {
             setIsSuggesting(false);
         }
@@ -858,23 +1027,12 @@ export default function AdminPage() {
 
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
-                <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <StatCard title="Фильмы" value={stats.movies} />
-                        <StatCard title="Книги" value={stats.books} />
-                        <StatCard title="Сериалы" value={stats.tvshows} />
-                        <StatCard title="Фото" value={stats.photos} />
-                    </div>
-
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => navigate('/server-status')}
-                            className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-bold"
-                        >
-                            <Activity size={20} /> Статус Сервера
-                        </button>
-                    </div>
-                </>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard title="Фильмы" value={stats.movies} />
+                    <StatCard title="Книги" value={stats.books} />
+                    <StatCard title="Сериалы" value={stats.tvshows} />
+                    <StatCard title="Фото" value={stats.photos} />
+                </div>
             )}
 
             {/* Content Tab */}
@@ -904,6 +1062,13 @@ export default function AdminPage() {
                                             }`}
                                     >
                                         Сериалы
+                                    </button>
+                                    <button
+                                        onClick={() => setContentType('audiobooks')}
+                                        className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded text-sm sm:text-base ${contentType === 'audiobooks' ? 'bg-primary' : 'bg-gray-700'
+                                            }`}
+                                    >
+                                        Аудиокниги
                                     </button>
                                 </div>
                                 <button
@@ -1020,10 +1185,10 @@ export default function AdminPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                     <div className="bg-gray-900 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-700 shadow-2xl">
                         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                            <h3 className="text-xl font-bold">Выберите книгу ({formData.genre})</h3>
+                            <h3 className="text-xl font-bold">Выберите {contentType === 'audiobooks' ? 'аудиокнигу' : 'книгу'} ({formData.genre})</h3>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={handleBrowse}
+                                    onClick={() => handleBrowse(true)}
                                     className="p-2 hover:bg-white/10 rounded-full text-primary"
                                     title="Обновить список"
                                     disabled={isLoadingBrowse}
@@ -1036,7 +1201,7 @@ export default function AdminPage() {
                                     onChange={(e) => setBrowseProvider(e.target.value)}
                                     className="bg-gray-800 text-white px-3 py-1.5 rounded border border-gray-600 focus:border-primary outline-none text-sm transition-colors"
                                 >
-                                    {PROVIDERS_LIST.map(p => (
+                                    {(contentType === 'audiobooks' ? AUDIOBOOK_PROVIDERS_LIST : PROVIDERS_LIST).map(p => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
@@ -1062,7 +1227,11 @@ export default function AdminPage() {
                             {isLoadingBrowse || isSearching ? (
                                 <div className="flex flex-col items-center justify-center py-20">
                                     <Loader2 className="animate-spin mb-4 text-primary" size={48} />
-                                    <p className="text-gray-400">{searchQuery ? 'Поиск книг...' : 'Ищем книги на Flibusta...'}</p>
+                                    <p className="text-gray-400">
+                                        {searchQuery ? `Поиск ${contentType === 'audiobooks' ? 'аудиокниг' : 'книг'}...` :
+                                            `Ищем ${contentType === 'audiobooks' ? 'аудиокниги' : 'книги'} на ${(contentType === 'audiobooks' ? AUDIOBOOK_PROVIDERS_LIST : PROVIDERS_LIST).find(p => p.id === browseProvider)?.name || 'источнике'
+                                            }...`}
+                                    </p>
                                 </div>
                             ) : searchQuery.trim() && browseItems.length === 0 ? (
                                 <div className="text-center py-20 text-gray-400">
@@ -1145,7 +1314,14 @@ function ContentForm({
 }) {
     return (
         <form onSubmit={onSubmit} className="p-4 sm:p-6 rounded-lg max-w-2xl" style={{ backgroundColor: 'var(--card-bg)' }}>
-            <h2 className="text-2xl mb-6">{editingId ? 'Редактирование' : 'Добавить новый элемент'}</h2>
+            <h2 className="text-2xl mb-6">
+                {editingId ? 'Редактирование' : 'Добавить: '}
+                <span className="text-primary font-bold ml-2">
+                    {contentType === 'audiobooks' ? 'Аудиокнига' :
+                        contentType === 'books' ? 'Книга' :
+                            contentType === 'movies' ? 'Фильм' : 'Сериал'}
+                </span>
+            </h2>
 
             <input
                 type="text"
@@ -1166,14 +1342,27 @@ function ContentForm({
 
             <input
                 type="text"
-                placeholder={contentType === 'books' ? 'Автор' : 'Режиссёр'}
-                value={contentType === 'books' ? formData.author : formData.director}
+                placeholder={contentType === 'books' || contentType === 'audiobooks' ? 'Автор' : 'Режиссёр'}
+                value={contentType === 'books' || contentType === 'audiobooks' ? formData.author : formData.director}
                 onChange={(e) => setFormData({
                     ...formData,
-                    [contentType === 'books' ? 'author' : 'director']: e.target.value
+                    [contentType === 'books' || contentType === 'audiobooks' ? 'author' : 'director']: e.target.value
                 })}
                 className="w-full p-3 mb-4 bg-gray-800 rounded"
             />
+
+            {contentType === 'audiobooks' && (
+                <input
+                    type="text"
+                    placeholder="Чтец (диктор)"
+                    value={formData.narrator || ''}
+                    onChange={(e) => setFormData({
+                        ...formData,
+                        narrator: e.target.value
+                    })}
+                    className="w-full p-3 mb-4 bg-gray-800 rounded"
+                />
+            )}
 
             <input
                 type="number"
@@ -1191,13 +1380,21 @@ function ContentForm({
                     className="flex-1 p-3 bg-gray-800 rounded"
                 >
                     <option value="">Выберите жанр</option>
-                    {Object.entries(GENRE_OPTIONS).map(([label, options]) => (
-                        <optgroup key={label} label={label}>
-                            {options.map(opt => (
+                    {contentType === 'audiobooks' ? (
+                        <optgroup label="Аудиокниги (Audioboo)">
+                            {AUDIOBOOK_GENRES.map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </optgroup>
-                    ))}
+                    ) : (
+                        Object.entries(GENRE_OPTIONS).map(([label, options]) => (
+                            <optgroup key={label} label={label}>
+                                {options.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </optgroup>
+                        ))
+                    )}
                 </select>
 
                 {contentType === 'books' && !editingId && (
@@ -1208,6 +1405,19 @@ function ContentForm({
                         title="Выберите источник для поиска"
                     >
                         {PROVIDERS_LIST.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                )}
+
+                {contentType === 'audiobooks' && !editingId && (
+                    <select
+                        value={browseProvider}
+                        onChange={(e) => setBrowseProvider(e.target.value)}
+                        className="p-3 bg-purple-900/30 border border-purple-500/30 rounded text-purple-100 outline-none focus:border-purple-500 transition-colors"
+                        title="Выберите источник для поиска аудиокниг"
+                    >
+                        {AUDIOBOOK_PROVIDERS_LIST.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                     </select>
@@ -1257,6 +1467,7 @@ function ContentForm({
                     <label className="block mb-2 text-sm">
                         {contentType === 'movies' && '🎬 Видео файл фильма'}
                         {contentType === 'books' && '📖 Файл книги (.epub, .pdf, .djvu, .fb2, .mobi)'}
+                        {contentType === 'audiobooks' && '🎧 Аудиофайл (.mp3, .m4b, .flac, .wav)'}
                     </label>
                     {mainFile && (
                         <div className="p-2 mb-2 bg-green-900/30 border border-green-500/50 rounded text-green-200 text-sm flex items-center gap-2">
@@ -1266,7 +1477,7 @@ function ContentForm({
                     )}
                     <input
                         type="file"
-                        accept={contentType === 'movies' ? 'video/*' : '.pdf,.epub,.djvu,.fb2,.mobi'}
+                        accept={contentType === 'movies' ? 'video/*' : contentType === 'audiobooks' ? 'audio/*' : '.pdf,.epub,.djvu,.fb2,.mobi'}
                         onChange={(e) => setMainFile(e.target.files[0])}
                         className="w-full p-3 mb-4 bg-gray-800 rounded"
                     />

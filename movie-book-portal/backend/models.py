@@ -54,6 +54,21 @@ class BookCreate(BaseModel):
         "populate_by_name": True,
     }
 
+class AudiobookCreate(BaseModel):
+    title: str
+    year: Optional[int] = None
+    author: Optional[str] = None
+    narrator: Optional[str] = None
+    genre: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+    duration: Optional[int] = 0
+
+    model_config = {
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
+
 
 class PhotoCreate(BaseModel):
     title: str

@@ -4,8 +4,9 @@ from database_progress import PlaybackProgress, get_db_progress
 from pydantic import BaseModel
 from database import Movie
 from database_books import Book
+from database_audiobooks import Audiobook
 from database_tvshows import Episode, Tvshow
-from dependencies import get_db as get_db_movies, get_db_books_simple, get_db_tvshows_simple
+from dependencies import get_db as get_db_movies, get_db_books_simple, get_db_tvshows_simple, get_db_audiobooks_simple
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -51,7 +52,8 @@ def get_latest_progress(
     db: Session = Depends(get_db_progress),
     db_movies: Session = Depends(get_db_movies),
     db_books: Session = Depends(get_db_books_simple),
-    db_tvshows: Session = Depends(get_db_tvshows_simple)
+    db_tvshows: Session = Depends(get_db_tvshows_simple),
+    db_audiobooks: Session = Depends(get_db_audiobooks_simple)
 ):
     # Map 'tvshow' to 'episode' if sent from frontend
     search_type = "episode" if item_type == "tvshow" else item_type
@@ -94,6 +96,14 @@ def get_latest_progress(
                     item_data["title"] = f"{tvshow.title} - С{episode.season_number:02d}Э{episode.episode_number:02d}"
                     item_data["tvshow_id"] = episode.tvshow_id
                     item_data["thumbnail"] = tvshow.thumbnail_path
+        
+        elif search_type == "audiobook":
+            item = db_audiobooks.query(Audiobook).filter(Audiobook.id == progress.item_id).first()
+            if item:
+                item_data["title"] = item.title
+                item_data["author"] = item.author
+                item_data["thumbnail"] = item.thumbnail_path
+
     except Exception as e:
         print(f"Error fetching details for {search_type} {progress.item_id}: {e}")
 
@@ -117,6 +127,7 @@ def get_progress(
     
     return {
         "progress_seconds": progress.progress_seconds,
+        "progress": progress.progress_seconds,
         "scroll_ratio": getattr(progress, "scroll_ratio", 0.0)
     }
 @router.delete("/clear")

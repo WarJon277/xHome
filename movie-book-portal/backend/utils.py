@@ -7,6 +7,74 @@ from pathlib import Path
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from PIL import Image
+from PIL import Image
+import shutil
+
+AUDIO_EXTENSIONS = {'.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg'}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+
+def unzip_file(zip_path, dest_dir):
+    """
+    Extracts a ZIP file to the destination directory.
+    Returns the destination directory path.
+    """
+    try:
+        if not zipfile.is_zipfile(zip_path):
+            return None
+            
+        os.makedirs(dest_dir, exist_ok=True)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(dest_dir)
+        return dest_dir
+    except Exception as e:
+        print(f"Error unzipping file {zip_path}: {e}")
+        return None
+
+def find_audio_files(directory):
+    """
+    Recursively finds all audio files in a directory.
+    Returns a list of full paths.
+    """
+    audio_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if os.path.splitext(file.lower())[1] in AUDIO_EXTENSIONS:
+                audio_files.append(os.path.join(root, file))
+    
+    # Sort files to ensure correct order (e.g. 01.mp3, 02.mp3)
+    audio_files.sort()
+    return audio_files
+
+def find_thumbnail_in_dir(directory):
+    """
+    Looks for a common cover image file in the directory.
+    """
+    common_names = ['cover', 'folder', 'album', 'front', 'art']
+    
+    # First search for exact matches of common names
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            name, ext = os.path.splitext(file.lower())
+            if ext in IMAGE_EXTENSIONS:
+                if name in common_names:
+                    return os.path.join(root, file)
+                
+    # If not found, look for any image that might be a cover (e.g. contains 'cover')
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            name, ext = os.path.splitext(file.lower())
+            if ext in IMAGE_EXTENSIONS:
+                if 'cover' in name or 'folder' in name:
+                    return os.path.join(root, file)
+
+    # Finally, just return the first image found (if any)
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            ext = os.path.splitext(file.lower())[1]
+            if ext in IMAGE_EXTENSIONS:
+                return os.path.join(root, file)
+                
+    return None
 
 def apply_image_filter(img, filter_type):
     """Apply a filter to the image based on the filter type"""

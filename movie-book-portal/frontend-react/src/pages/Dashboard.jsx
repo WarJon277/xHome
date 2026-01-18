@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode } from '../api';
-import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2 } from 'lucide-react';
+import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music } from 'lucide-react';
 import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
@@ -67,6 +67,8 @@ export default function Dashboard() {
                 navigate(`/tvshows/${item.id}`);
             } else if (item.type === 'book') {
                 navigate(`/books/${item.id}`);
+            } else if (item.type === 'audiobook') {
+                navigate('/audiobooks', { state: { openBookId: item.id } });
             }
         } catch (err) {
             console.error("Error handling media click:", err);
@@ -158,13 +160,13 @@ export default function Dashboard() {
                                     </div>
                                     <div className="absolute bottom-3 left-4 right-4 text-white">
                                         <p className="text-[10px] font-bold text-red-500 uppercase tracking-tighter mb-0.5 opacity-90">
-                                            {item.type === 'movie' ? 'Фильм' : item.type === 'book' ? 'Книга' : 'Сериал'}
+                                            {item.type === 'movie' ? 'Фильм' : item.type === 'book' ? 'Книга' : item.type === 'audiobook' ? 'Аудио' : 'Сериал'}
                                         </p>
                                         <h3 className="font-bold text-sm truncate">{item.title}</h3>
                                     </div>
                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                                            {item.type === 'book' ? <Book /> : <Play fill="white" />}
+                                            {item.type === 'book' ? <Book /> : item.type === 'audiobook' ? <Music fill="white" /> : <Play fill="white" />}
                                         </div>
                                     </div>
                                 </div>
@@ -192,6 +194,11 @@ export default function Dashboard() {
                             <Book className="text-green-500 mb-2" size={20} />
                             <span className="text-2xl font-bold">{data.stats.books_count}</span>
                             <span className="text-xs text-gray-400 capitalize">Книг</span>
+                        </div>
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col items-center">
+                            <Music className="text-blue-400 mb-2" size={20} />
+                            <span className="text-2xl font-bold">{data.stats.audiobooks_count || 0}</span>
+                            <span className="text-xs text-gray-400 capitalize">Аудиокниг</span>
                         </div>
                         <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col items-center">
                             <Tv className="text-blue-500 mb-2" size={20} />
@@ -227,7 +234,7 @@ export default function Dashboard() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
                                 <div className="absolute bottom-4 left-4 right-4 text-white">
                                     <h3 className="text-lg font-bold leading-tight">{data.recommendation.title}</h3>
-                                    <p className="text-xs text-gray-300 mt-1">{data.recommendation.type === 'movie' ? 'Фильм' : 'Книга'}</p>
+                                    <p className="text-xs text-gray-300 mt-1">{data.recommendation.type === 'movie' ? 'Фильм' : data.recommendation.type === 'book' ? 'Книга' : data.recommendation.type === 'audiobook' ? 'Аудиокнига' : 'Сериал'}</p>
                                 </div>
                             </div>
                         </div>
@@ -257,7 +264,7 @@ export default function Dashboard() {
                                         onError={(e) => e.target.src = '/placeholder.jpg'}
                                     />
                                     <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md p-1.5 rounded-lg text-white">
-                                        {item.type === 'movie' ? <Film size={14} /> : item.type === 'book' ? <Book size={14} /> : <Tv size={14} />}
+                                        {item.type === 'movie' ? <Film size={14} /> : item.type === 'book' ? <Book size={14} /> : item.type === 'audiobook' ? <Music size={14} /> : <Tv size={14} />}
                                     </div>
                                 </div>
                                 <h3 className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.title}</h3>

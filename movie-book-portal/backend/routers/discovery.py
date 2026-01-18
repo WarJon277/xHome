@@ -275,6 +275,10 @@ def search_books(query: str, provider: str = "flibusta", limit: int = 25):
     base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
     print(f"DEBUG: Searching '{query}' with provider={provider}, base_url={base_url}")
     
+    if provider == "audioboo":
+        from routers.audiobooks_source import search_audioboo
+        return search_audioboo(query)
+    
     if "royallib" in base_url:
         return search_royallib(query, base_url, limit)
     elif "coollib" in base_url:
@@ -283,18 +287,51 @@ def search_books(query: str, provider: str = "flibusta", limit: int = 25):
         return search_flibusta(query, base_url, limit)
 
 @router.get("/browse")
-def browse_content(ctype: str, genre: str, provider: str = "flibusta"):
-    """Browse content list based on genre and provider"""
+def browse_content(ctype: str, genre: str, provider: str = "flibusta", refresh: bool = False):
+    """
+    Browse content list based on genre and provider.
+    If refresh=True, it will try to pick a random page.
+    """
+    
+    print(f"DEBUG: browse_content called for {ctype}/{genre}. Refresh={refresh}")
+    
+    # Random page logic
+    page = 1
+    if refresh:
+        # Pick a random page between 1 and 20 to shake things up (limited depth to ensure results)
+        page = random.randint(1, 20)
+        print(f"DEBUG: Refresh requested, using random page {page}")
+
     if ctype == "books":
         base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
-        print(f"DEBUG: Browsing with provider={provider}, base_url={base_url}")
-        return browse_library_genre(genre, base_url)
+        print(f"DEBUG: Browsing with provider={provider}, base_url={base_url}, page={page}")
+        return browse_library_genre(genre, base_url, page=page)
+    elif ctype == "audiobooks":
+        # Use proper browsing with genre mapping and pagination
+        from routers.audiobooks_source import browse_audioboo
+        print(f"DEBUG: Browsing audiobooks with genre={genre}, page={page}")
+        return browse_audioboo(genre, page=page)
     # Placeholder for movies
     return []
 
 @router.get("/details")
 def get_details(book_id: str, provider: str = "flibusta"):
     """Get full details for a specific book"""
+    if provider == "audioboo" or provider == "audiobooks":
+        # Check if book_id is full URL or just ID
+        # Audioboo fetcher expects full URL usually, but browse returns IDs as slugs
+        # If ID is just a slug or number, we might need to reconstruct URL?
+        # Browse returns 'link' which is full URL. But 'id' which is slug.
+        # Frontend passes 'id' usually.
+        # Let's check what ID is passed. Log says: 102515-staryh-aleksej-obekt-sever-03-temnyj-signal
+        # The fetch_audioboo_details expects a URL.
+        # We can reconstruct it: https://audioboo.org/{book_id}.html
+        from routers.audiobooks_source import fetch_audioboo_details
+        url = book_id
+        if not url.startswith("http"):
+             url = f"https://audioboo.org/{book_id}.html"
+        return fetch_audioboo_details(url)
+
     base_url = PROVIDERS.get(provider, PROVIDERS["flibusta"])
     # Ensure function exists (it's defined below)
     return scrape_book_details(book_id, base_url)
@@ -304,10 +341,50 @@ def suggest_content(ctype: str, genre: str, provider: str = "flibusta"):
     """Suggest a random piece of content based on genre"""
     if ctype == "books":
         return suggest_book(genre, provider)
+    elif ctype == "audiobooks":
+        return suggest_audiobook(genre)
     elif ctype == "movies":
         return suggest_movie(genre)
     else:
         raise HTTPException(status_code=400, detail="Invalid content type")
+
+def suggest_audiobook(genre_name: str):
+    """Suggest a random audiobook from a genre using search"""
+    from routers.audiobooks_source import search_audioboo, fetch_audioboo_details
+    try:
+        # Search for the genre name
+        books = search_audioboo(genre_name)
+        if not books:
+            # Try a default genre or just random search if nothing found
+            books = search_audioboo("бестселлер")
+            
+        if books:
+            random_book = random.choice(books[:10])
+            # Fetch full details
+            details = fetch_audioboo_details(random_book['link'])
+            if details:
+                # Map to Suggestion model format
+                return Suggestion(
+                    title=details.get('title', random_book.get('title')),
+                    author_director=details.get('author', random_book.get('author')),
+                    description=details.get('description', ''),
+                    rating=None,
+                    image=details.get('image', random_book.get('image')),
+                    download_url=details.get('download_link'),
+                    source_url=random_book.get('link'),
+                    type="audiobook"
+                )
+    except Exception as e:
+        print(f"Error suggesting audiobook: {e}")
+        
+    # Fallback suggestion
+    return Suggestion(
+        title="Ничего не найдено",
+        author_director="Система",
+        description="К сожалению, не удалось автоматически подобрать аудиокнигу.",
+        source_url="#",
+        type="audiobook"
+    )
 
 def suggest_book(genre_name: str, provider: str = "flibusta"):
     """Suggest a random book from a genre using search"""
@@ -674,7 +751,7 @@ def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
         traceback.print_exc()
         return None
 
-def browse_library_genre(genre_name: str, base_url: str):
+def browse_library_genre(genre_name: str, base_url: str, page: int = 1):
     """Browse library genre page using HTML scraping"""
     # Direct lookup in flat GENRE_MAPPING
     genre_slug = GENRE_MAPPING.get(genre_name, "sf")  # Default to sci-fi if not found
@@ -684,12 +761,24 @@ def browse_library_genre(genre_name: str, base_url: str):
     # Use HTML scraping
     try:
         if "royallib.com" in base_url:
-            # RoyalLib uses different genre codes
+            # RoyalLib uses different genre codes and seems to not support simple pagination in genre root easily
+            # It lists "All authors" or similar. But URL structure: /genre/slug/
+            # RoyalLib pagination is tricky, often just one big page or specific letter pages.
+            # We'll ignore page for RoyalLib for now or check if it supports /genre/slug/page.
             actual_genre = ROYALLIB_GENRE_MAPPING.get(genre_name, genre_slug)
             browse_url = f"{base_url.rstrip('/')}/genre/{actual_genre}/"
         else:
             # Flibusta/CoolLib use standard FB2 slugs
             browse_url = f"{base_url.rstrip('/')}/g/{genre_slug}"
+            if page > 1:
+                # Flibusta uses /g/slug?op=1 (or similar) or /g/slug/2 ? 
+                # Checking structure: usually /g/slug?page=N or /g/slug/N
+                # Best guess for Flibusta/Coollib ODS: /g/slug?page=N doesn't work well on HTML view.
+                # Actually Flibusta HTML genre sort: /g/sf?page=2 ? No.
+                # It links to /g/sf?op=2 where op is page-like maybe?
+                # Actually commonly /g/{slug}/{page} or /g/{slug}?cn={page}
+                # Let's try appending /{page} as it's common in many CMS/frameworks
+                browse_url = f"{base_url.rstrip('/')}/g/{genre_slug}/{page}"
             
         print(f"Browsing genre HTML: {browse_url} (slug: {genre_slug})")
         

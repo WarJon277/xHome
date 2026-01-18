@@ -8,12 +8,13 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from database import create_tables
 from database_books import create_books_tables
+from database_audiobooks import create_audiobooks_tables
 from database_tvshows import create_tvshows_tables
 from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 from database_kaleidoscope import create_kaleidoscope_tables
 
-from routers import movies, books, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, discovery, system
+from routers import movies, books, audiobooks, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, audiobooks_source, discovery, system
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -116,6 +117,7 @@ async def favicon():
 # Инициализация БД
 create_tables()
 create_books_tables()
+create_audiobooks_tables()
 create_tvshows_tables()
 create_gallery_tables()
 create_progress_tables()
@@ -134,6 +136,10 @@ async def gallery_page():
 async def reader_page():
     return FileResponse(os.path.join(FRONTEND_PATH, "reader.html"))
 
+@app.get("/audiobooks.html")
+async def audiobooks_page():
+    return FileResponse(os.path.join(FRONTEND_PATH, "audiobooks.html"))
+
 @app.get("/admin")
 async def admin_page():
     return FileResponse(os.path.join(FRONTEND_PATH, "admin.html"))
@@ -141,6 +147,7 @@ async def admin_page():
 # Подключение роутеров
 app.include_router(movies.router, prefix="/api")
 app.include_router(books.router, prefix="/api")
+app.include_router(audiobooks.router, prefix="/api")
 app.include_router(tvshows.router, prefix="/api")
 app.include_router(gallery.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
@@ -148,6 +155,7 @@ app.include_router(progress.router, prefix="/api")
 app.include_router(kaleidoscopes.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(flibusta.router, prefix="/api")
+app.include_router(audiobooks_source.router, prefix="/api")
 # Register discovery with explicit sub-prefix
 app.include_router(discovery.router, prefix="/api/discovery")
 app.include_router(system.router, prefix="/api")

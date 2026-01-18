@@ -32,7 +32,11 @@ async function request(endpoint, options = {}) {
     const response = await fetch(url, fetchOptions);
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
+        let detail = errorBody.detail || `HTTP Error ${response.status}`;
+        if (typeof detail === 'object') {
+            detail = JSON.stringify(detail);
+        }
+        throw new Error(detail);
     }
     return response.json();
 }
@@ -103,6 +107,41 @@ export const updateBook = (id, data) => request(`/books/${id}`, {
 });
 export const deleteBook = (id) => fetch(`${API_BASE}/books/${id}`, { method: 'DELETE' });
 export const searchBooks = (query) => request(`/books/search?query=${encodeURIComponent(query)}`);
+
+// --- AUDIOBOOKS ---
+export const fetchAudiobooks = () => request('/audiobooks');
+export const fetchAudiobook = (id) => request(`/audiobooks/${id}`);
+export const createAudiobook = (data) => request('/audiobooks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+export const updateAudiobook = (id, data) => request(`/audiobooks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+export const deleteAudiobook = (id) => request(`/audiobooks/${id}`, { method: 'DELETE' });
+export const uploadAudiobookFile = (audiobookId, file, onProgress) =>
+    uploadFile(`/audiobooks/${audiobookId}/upload`, file, 'file', {}, onProgress);
+export const uploadAudiobookThumbnail = (audiobookId, file, onProgress) =>
+    uploadFile(`/audiobooks/${audiobookId}/thumbnail`, file, 'file', {}, onProgress);
+
+// --- AUDIOBOOKS SOURCES ---
+export const searchAudioboo = (q, options = {}) => request(`/audiobooks-source/audioboo-search?q=${encodeURIComponent(q)}`, options);
+export const fetchAudiobooDetails = (url, options = {}) => request(`/audiobooks-source/audioboo-fetch?url=${encodeURIComponent(url)}`, options);
+export const downloadFromAudioboo = (data) => request('/audiobooks-source/download-audioboo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+export const searchFlibustaaudiobooks = (q) => request(`/audiobooks-source/flibusta-search?q=${encodeURIComponent(q)}`);
+export const downloadFromFlibusta = (data) => request('/audiobooks-source/download-flibusta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+
 export const fetchBookPage = async (bookId, page) => {
     const url = `${API_BASE}/books/${bookId}/page/${page}`;
     const headers = { 'X-User-Id': getDeviceId() };
@@ -275,7 +314,11 @@ export const fetchSuggestion = (type, genre) => request(`/discovery/suggest?ctyp
 // DISCOVERY
 export async function fetchBrowse(ctype, genre, provider = 'flibusta', options = {}) {
     try {
-        return await request(`/discovery/browse?ctype=${ctype}&genre=${encodeURIComponent(genre)}&provider=${provider}`, options);
+        let url = `/discovery/browse?ctype=${ctype}&genre=${encodeURIComponent(genre)}&provider=${provider}`;
+        if (options.refresh) {
+            url += '&refresh=true';
+        }
+        return await request(url, options);
     } catch (e) {
         console.error("Browse error", e);
         throw e;
@@ -295,18 +338,20 @@ export async function fetchSearch(query, provider = 'flibusta', options = {}) {
     }
 }
 
-export async function fetchDetails(bookId, provider = 'flibusta') {
+export async function fetchDetails(bookId, provider = 'flibusta', options = {}) {
     try {
-        return await request(`/discovery/details?book_id=${bookId}&provider=${provider}`);
+        return await request(`/discovery/details?book_id=${bookId}&provider=${provider}`, options);
     } catch (e) {
-        console.error("Details error", e);
+        if (e.name !== 'AbortError') {
+            console.error("Details error", e);
+        }
         return null;
     }
 }
 
-export async function fetchCover(bookId) {
+export async function fetchCover(bookId, options = {}) {
     try {
-        return await request(`/discovery/cover?book_id=${bookId}`);
+        return await request(`/discovery/cover?book_id=${bookId}`, options);
     } catch (e) {
         return null;
     }

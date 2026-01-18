@@ -188,7 +188,7 @@ async def upload_audiobook_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла: {str(e)}")
 
-@router.post("/{audiobook_id}/thumbnail")
+@router.post("/{audiobook_id}/upload_thumbnail")
 async def upload_audiobook_thumbnail(
     audiobook_id: int,
     file: UploadFile = File(...),

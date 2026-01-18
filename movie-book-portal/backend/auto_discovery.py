@@ -48,40 +48,65 @@ def get_weighted_genre(genre_priorities):
     return random.choices(genres, weights=weights, k=1)[0]
 
 import urllib3
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def download_file(url, target_path):
-    try:
-        log(f"Downloading from {url} to {target_path}")
-        
-        # Determine referer
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        referer = f"{parsed.scheme}://{parsed.netloc}/"
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer': referer,
-            'Connection': 'keep-alive',
-        }
-        
-        # Use session for better handling of redirects and persistent state
-        session = requests.Session()
-        session.trust_env = False # Ignore system proxies
-        
-        response = session.get(url, stream=True, timeout=60, headers=headers, verify=False, allow_redirects=True)
-        response.raise_for_status()
-        
-        with open(target_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk: # filter out keep-alive new chunks
-                    f.write(chunk)
-        return True
-    except Exception as e:
-        log(f"Failed to download {url}: {e}")
-        return False
+def download_file(url, target_path, referer=None, retries=3):
+    """Download a file with retries and robustness"""
+    for attempt in range(retries):
+        try:
+            if attempt > 0:
+                time.sleep(random.uniform(2, 5))
+            
+            log(f"Downloading (Attempt {attempt+1}/{retries}) from {url}")
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Connection': 'keep-alive',
+            }
+            if referer:
+                headers['Referer'] = referer
+            else:
+                from urllib.parse import urlparse
+                parsed = urlparse(url)
+                headers['Referer'] = f"{parsed.scheme}://{parsed.netloc}/"
+            
+            session = requests.Session()
+            session.trust_env = False
+            
+            # Use False for first attempt, maybe True for others if SSL fails?
+            verify_ssl = False
+            
+            response = session.get(url, stream=True, timeout=30, headers=headers, verify=verify_ssl, allow_redirects=True)
+            
+            if response.status_code == 403:
+                log(f"403 Forbidden on {url}. Site might be blocking automated downloads.")
+                # Try without referer if it failed
+                if referer and attempt == 0:
+                    log("Retrying without referer...")
+                    continue
+                if attempt == retries - 1: return False
+                continue
+
+            response.raise_for_status()
+            
+            with open(target_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=16384):
+                    if chunk:
+                        f.write(chunk)
+            log(f"Successfully downloaded to {target_path}")
+            return True
+        except Exception as e:
+            log(f"Attempt {attempt+1} failed for {url}: {e}")
+            if "SSL" in str(e) or "EOF" in str(e):
+                 log("SSL error detected, will retry with different settings.")
+            if attempt == retries - 1:
+                return False
+    return False
 
 def process_auto_book(genre_name):
     db: Session = SessionLocalBooks()
@@ -121,7 +146,7 @@ def process_auto_book(genre_name):
             thumb_name = f"{book_id}_thumb{ext}"
             thumb_path = os.path.join(BASE_DIR, "uploads", "books", thumb_name)
             os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-            if download_file(suggestion.image, thumb_path):
+            if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
                 new_book.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
         
         # Download book file
@@ -136,10 +161,12 @@ def process_auto_book(genre_name):
             
             file_name = f"{book_id}_auto_added{ext}"
             file_path = os.path.join(BASE_DIR, "uploads", "books", file_name)
-            if download_file(suggestion.download_url, file_path):
+            if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
                 new_book.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
                 log(f"Successfully added book: {suggestion.title} (ext: {ext})")
             else:
+                # If thumbnail was downloaded but file failed, we still have a record.
+                # Should we delete it? For now keep it, user can delete manually or we can try to fix.
                 log(f"Failed to download book file for: {suggestion.title}")
         
         db.commit()
@@ -186,7 +213,7 @@ def process_auto_audiobook(genre_name):
             ext = os.path.splitext(suggestion.image.split('?')[0])[1] or ".jpg"
             thumb_path = os.path.join(AUDIO_UPLOADS, "thumbnails", f"thumb_{audio_id}{ext}")
             os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-            if download_file(suggestion.image, thumb_path):
+            if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
                 new_audio.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
 
         # Download file (usually ZIP or MP3)
@@ -196,7 +223,7 @@ def process_auto_audiobook(genre_name):
             
             if is_zip:
                 temp_zip_path = os.path.join(AUDIO_UPLOADS, f"temp_{uuid.uuid4()}.zip")
-                if download_file(suggestion.download_url, temp_zip_path):
+                if download_file(suggestion.download_url, temp_zip_path, referer=suggestion.source_url):
                     book_dir_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}"
                     book_dir_path = os.path.join(AUDIO_UPLOADS, book_dir_name)
                     
@@ -216,7 +243,7 @@ def process_auto_audiobook(genre_name):
             else:
                 safe_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}{ext}"
                 file_path = os.path.join(AUDIO_UPLOADS, safe_name)
-                if download_file(suggestion.download_url, file_path):
+                if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
                     new_audio.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
                     log(f"Successfully added single-file audiobook: {new_audio.title}")
 

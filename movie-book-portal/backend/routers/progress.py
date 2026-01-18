@@ -15,6 +15,7 @@ class ProgressUpdate(BaseModel):
     item_id: int
     progress_seconds: float
     scroll_ratio: float = 0.0
+    track_index: int = 0
 
 @router.post("")
 def save_progress(
@@ -31,19 +32,26 @@ def save_progress(
     if progress:
         progress.progress_seconds = data.progress_seconds
         progress.scroll_ratio = data.scroll_ratio
+        progress.track_index = data.track_index
     else:
         progress = PlaybackProgress(
             item_type=data.item_type,
             item_id=data.item_id,
             progress_seconds=data.progress_seconds,
             scroll_ratio=data.scroll_ratio,
+            track_index=data.track_index,
             user_id=x_user_id
         )
         db.add(progress)
     
     db.commit()
     db.refresh(progress)
-    return {"status": "success", "progress": progress.progress_seconds, "scroll_ratio": progress.scroll_ratio}
+    return {
+        "status": "success", 
+        "progress": progress.progress_seconds, 
+        "scroll_ratio": progress.scroll_ratio,
+        "track_index": progress.track_index
+    }
 
 @router.get("/latest/{item_type}")
 def get_latest_progress(
@@ -71,6 +79,7 @@ def get_latest_progress(
         "item_type": item_type,
         "progress": progress.progress_seconds, 
         "scroll_ratio": progress.scroll_ratio,
+        "track_index": progress.track_index,
         "last_updated": progress.last_updated
     }
 
@@ -128,7 +137,8 @@ def get_progress(
     return {
         "progress_seconds": progress.progress_seconds,
         "progress": progress.progress_seconds,
-        "scroll_ratio": getattr(progress, "scroll_ratio", 0.0)
+        "scroll_ratio": getattr(progress, "scroll_ratio", 0.0),
+        "track_index": progress.track_index
     }
 @router.delete("/clear")
 def clear_all_progress(

@@ -18,6 +18,7 @@ class PlaybackProgress(Base):
     item_id = Column(Integer, index=True)
     progress_seconds = Column(Float, default=0.0) # For books, this is the page number
     scroll_ratio = Column(Float, default=0.0) # Scroll position on page (0.0 to 1.0)
+    track_index = Column(Integer, default=0) # For audiobooks (multi-file)
     user_id = Column(String, index=True, default="global") # Unique Device ID
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -42,6 +43,12 @@ def create_progress_tables():
         try:
             conn.execute(text("ALTER TABLE playback_progress ADD COLUMN user_id VARCHAR DEFAULT 'global'"))
             conn.execute(text("CREATE INDEX ix_playback_progress_user_id ON playback_progress (user_id)"))
+            conn.commit()
+        except Exception:
+            pass
+
+        try:
+            conn.execute(text("ALTER TABLE playback_progress ADD COLUMN track_index INTEGER DEFAULT 0"))
             conn.commit()
         except Exception:
             pass

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Play, Pause, Volume2, Download, Music, RotateCcw } from 'lucide-react';
-import { fetchProgress, saveProgress } from '../api';
+import { X, Play, Pause, Volume2, Download, Music, RotateCcw, ListMusic } from 'lucide-react';
+import { fetchProgress, saveProgress, fetchAudiobookTracks } from '../api';
 import './AudiobookPlayer.css';
 
 export default function AudiobookPlayer({ audiobook, onClose }) {
@@ -10,18 +10,32 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
     const [savedProgress, setSavedProgress] = useState(0);
+    const [savedTrackIndex, setSavedTrackIndex] = useState(0);
     const [showResumePrompt, setShowResumePrompt] = useState(false);
+    const [tracks, setTracks] = useState([]);
+    const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+    const [showPlaylist, setShowPlaylist] = useState(false);
     const lastSavedTimeRef = useRef(0);
+    const isResumingRef = useRef(false);
 
+    // Fetch tracks and progress on mount
     useEffect(() => {
-        // Fetch progress on mount
         if (audiobook?.id) {
+            // Fetch tracks
+            fetchAudiobookTracks(audiobook.id)
+                .then(data => {
+                    setTracks(data || []);
+                })
+                .catch(console.error);
+
+            // Fetch progress
             fetchProgress('audiobook', audiobook.id)
                 .then(data => {
-                    // Backend might return progress_seconds (get_progress) or progress (get_latest_progress)
                     const progress = data?.progress_seconds || data?.progress || 0;
-                    if (progress > 0) {
+                    const trackIdx = data?.track_index || 0;
+                    if (progress > 5 || trackIdx > 0) {
                         setSavedProgress(progress);
+                        setSavedTrackIndex(trackIdx);
                         setShowResumePrompt(true);
                     }
                 })
@@ -29,6 +43,7 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
         }
     }, [audiobook]);
 
+    // Handle track changes and playback events
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
@@ -38,12 +53,26 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
 
             // Save progress every 5 seconds
             if (Math.abs(audio.currentTime - lastSavedTimeRef.current) > 5) {
-                saveProgress('audiobook', audiobook.id, audio.currentTime);
+                saveProgress('audiobook', audiobook.id, audio.currentTime, 0, currentTrackIndex);
                 lastSavedTimeRef.current = audio.currentTime;
             }
         };
-        const handleLoadedMetadata = () => setDuration(audio.duration);
-        const handleEnded = () => setIsPlaying(false);
+
+        const handleLoadedMetadata = () => {
+            setDuration(audio.duration);
+            // If we are resuming, this is where we'd ideally apply the time
+            // but handleResume handles it by waiting for this event once.
+        };
+
+        const handleEnded = () => {
+            if (currentTrackIndex < tracks.length - 1) {
+                // Play next track
+                setCurrentTrackIndex(prev => prev + 1);
+                setIsPlaying(true);
+            } else {
+                setIsPlaying(false);
+            }
+        };
 
         audio.addEventListener('timeupdate', handleTimeUpdate);
         audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -52,38 +81,53 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
         return () => {
             // Save on unmount
             if (audioRef.current) {
-                saveProgress('audiobook', audiobook.id, audioRef.current.currentTime);
+                saveProgress('audiobook', audiobook.id, audioRef.current.currentTime, 0, currentTrackIndex);
             }
             audio.removeEventListener('timeupdate', handleTimeUpdate);
             audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
             audio.removeEventListener('ended', handleEnded);
         };
-    }, [audiobook]);
+    }, [audiobook, currentTrackIndex, tracks.length]);
+
+    // Auto-play on track change if it was already playing
+    useEffect(() => {
+        if (isPlaying && audioRef.current) {
+            audioRef.current.play().catch(e => console.warn("Auto-play blocked:", e));
+        }
+    }, [currentTrackIndex]);
 
     const handleResume = () => {
-        if (audioRef.current) {
-            const audio = audioRef.current;
-            const applyProgress = () => {
-                audio.currentTime = savedProgress;
-                setCurrentTime(savedProgress);
-                audio.play();
-                setIsPlaying(true);
-                setShowResumePrompt(false);
-            };
+        isResumingRef.current = true;
+        setCurrentTrackIndex(savedTrackIndex);
+        setShowResumePrompt(false);
 
-            if (audio.readyState >= 1) { // HAVE_METADATA or higher
-                applyProgress();
-            } else {
-                const onMetadata = () => {
-                    applyProgress();
-                    audio.removeEventListener('loadedmetadata', onMetadata);
+        // Wait for next tick to ensure src is updated if track index changed
+        setTimeout(() => {
+            if (audioRef.current) {
+                const audio = audioRef.current;
+                const applyProgress = () => {
+                    audio.currentTime = savedProgress;
+                    setCurrentTime(savedProgress);
+                    audio.play();
+                    setIsPlaying(true);
+                    isResumingRef.current = false;
                 };
-                audio.addEventListener('loadedmetadata', onMetadata);
+
+                if (audio.readyState >= 1) {
+                    applyProgress();
+                } else {
+                    const onMetadata = () => {
+                        applyProgress();
+                        audio.removeEventListener('loadedmetadata', onMetadata);
+                    };
+                    audio.addEventListener('loadedmetadata', onMetadata);
+                }
             }
-        }
+        }, 50);
     };
 
     const handleStartOver = () => {
+        setCurrentTrackIndex(0);
         if (audioRef.current) {
             audioRef.current.currentTime = 0;
             setCurrentTime(0);
@@ -106,8 +150,9 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
 
     const handleProgressChange = (e) => {
         if (audioRef.current) {
-            audioRef.current.currentTime = parseFloat(e.target.value);
-            setCurrentTime(parseFloat(e.target.value));
+            const val = parseFloat(e.target.value);
+            audioRef.current.currentTime = val;
+            setCurrentTime(val);
         }
     };
 
@@ -119,12 +164,25 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
         }
     };
 
+    const selectTrack = (index) => {
+        setCurrentTrackIndex(index);
+        setIsPlaying(true);
+        setShowPlaylist(false);
+        // Progress will be reset by src change automatically unless we are resuming
+    };
+
     const formatTime = (time) => {
         if (!time || isNaN(time)) return '0:00';
-        const minutes = Math.floor(time / 60);
+        const hours = Math.floor(time / 3600);
+        const minutes = Math.floor((time % 3600) / 60);
         const seconds = Math.floor(time % 60);
+        if (hours > 0) {
+            return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
+
+    const currentTrack = tracks[currentTrackIndex] || { url: audiobook.file_path, title: audiobook.title };
 
     return (
         <div className="audiobook-player-container">
@@ -132,9 +190,8 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
 
             <div className="player-modal">
                 <button className="close-btn" onClick={() => {
-                    // Force save on close
                     if (audioRef.current && audiobook?.id) {
-                        saveProgress('audiobook', audiobook.id, audioRef.current.currentTime);
+                        saveProgress('audiobook', audiobook.id, audioRef.current.currentTime, 0, currentTrackIndex);
                     }
                     onClose();
                 }}>
@@ -145,7 +202,10 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
                     <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center rounded-2xl p-6 text-center">
                         <RotateCcw size={48} className="text-blue-500 mb-4" />
                         <h3 className="text-xl font-bold text-white mb-2">Продолжить прослушивание?</h3>
-                        <p className="text-gray-400 mb-6">Вы остановились на {formatTime(savedProgress)}</p>
+                        <p className="text-gray-400 mb-6">
+                            {tracks.length > 1 ? `Глава ${savedTrackIndex + 1}, ` : ''}
+                            время {formatTime(savedProgress)}
+                        </p>
                         <div className="flex gap-4 w-full">
                             <button
                                 onClick={handleResume}
@@ -181,16 +241,48 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
                     </div>
 
                     <div className="info-section">
-                        <h2>{audiobook.title}</h2>
-                        <p className="author">{audiobook.author}</p>
-                        {audiobook.narrator && (
-                            <p className="narrator">Диктор: {audiobook.narrator}</p>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <h2>{audiobook.title}</h2>
+                                <p className="author">{audiobook.author}</p>
+                            </div>
+                            {tracks.length > 1 && (
+                                <button
+                                    className={`playlist-toggle ${showPlaylist ? 'active' : ''}`}
+                                    onClick={() => setShowPlaylist(!showPlaylist)}
+                                    title="Список файлов"
+                                >
+                                    <ListMusic size={24} />
+                                </button>
+                            )}
+                        </div>
+
+                        {tracks.length > 1 && !showPlaylist && (
+                            <p className="current-track-name">
+                                {currentTrackIndex + 1}. {currentTrack.title}
+                            </p>
                         )}
-                        {audiobook.genre && (
-                            <p className="genre">{audiobook.genre}</p>
-                        )}
-                        {audiobook.description && (
-                            <p className="description">{audiobook.description}</p>
+
+                        {showPlaylist ? (
+                            <div className="playlist-container">
+                                {tracks.map((track, index) => (
+                                    <div
+                                        key={index}
+                                        className={`playlist-item ${index === currentTrackIndex ? 'active' : ''}`}
+                                        onClick={() => selectTrack(index)}
+                                    >
+                                        <span className="track-number">{index + 1}</span>
+                                        <span className="track-title">{track.title}</span>
+                                        {index === currentTrackIndex && isPlaying && <div className="playing-indicator" />}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                {audiobook.narrator && <p className="narrator">Диктор: {audiobook.narrator}</p>}
+                                {audiobook.genre && <p className="genre">{audiobook.genre}</p>}
+                                {audiobook.description && <p className="description">{audiobook.description}</p>}
+                            </>
                         )}
                     </div>
                 </div>
@@ -199,18 +291,16 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
                     <div className="player-controls">
                         <audio
                             ref={audioRef}
-                            src={audiobook.file_path.startsWith('uploads') || audiobook.file_path.startsWith('/uploads')
-                                ? (audiobook.file_path.startsWith('/') ? audiobook.file_path : `/${audiobook.file_path}`)
-                                : `/uploads/${audiobook.file_path}`}
+                            src={currentTrack.url.startsWith('uploads') || currentTrack.url.startsWith('/uploads')
+                                ? (currentTrack.url.startsWith('/') ? currentTrack.url : `/${currentTrack.url}`)
+                                : `/uploads/${currentTrack.url}`}
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
+                            volume={volume}
                         />
 
                         <div className="play-button-wrapper">
-                            <button
-                                className="play-btn"
-                                onClick={togglePlay}
-                            >
+                            <button className="play-btn" onClick={togglePlay}>
                                 {isPlaying ? <Pause size={32} /> : <Play size={32} />}
                             </button>
                         </div>
@@ -244,12 +334,12 @@ export default function AudiobookPlayer({ audiobook, onClose }) {
                         </div>
 
                         <a
-                            href={audiobook.file_path.startsWith('uploads') || audiobook.file_path.startsWith('/uploads')
-                                ? (audiobook.file_path.startsWith('/') ? audiobook.file_path : `/${audiobook.file_path}`)
-                                : `/uploads/${audiobook.file_path}`}
+                            href={currentTrack.url.startsWith('uploads') || currentTrack.url.startsWith('/uploads')
+                                ? (currentTrack.url.startsWith('/') ? currentTrack.url : `/${currentTrack.url}`)
+                                : `/uploads/${currentTrack.url}`}
                             download
                             className="download-btn"
-                            title="Скачать"
+                            title="Скачать текущий файл"
                             target="_blank"
                             rel="noopener noreferrer"
                         >

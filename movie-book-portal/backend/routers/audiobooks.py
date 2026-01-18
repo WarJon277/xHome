@@ -26,6 +26,45 @@ def create_audiobook(audiobook: AudiobookCreate, db: Session = Depends(get_db_au
     db.refresh(db_audiobook)
     return db_audiobook
 
+@router.get("/{audiobook_id}/tracks")
+def get_audiobook_tracks(audiobook_id: int, db: Session = Depends(get_db_audiobooks_simple)):
+    audiobook = db.query(Audiobook).filter(Audiobook.id == audiobook_id).first()
+    if not audiobook:
+        raise HTTPException(status_code=404, detail="Audiobook not found")
+    
+    if not audiobook.file_path:
+        return []
+    
+    # Path is relative to BASE_DIR in DB
+    full_path = os.path.join(BASE_DIR, audiobook.file_path)
+    if not os.path.exists(full_path):
+        return [{"title": audiobook.title, "url": audiobook.file_path}] # Fallback to DB entry
+        
+    parent_dir = os.path.dirname(full_path)
+    
+    # Check if this file is in a book-specific subdirectory
+    # We expect our unzipped books to be in .../uploads/audiobooks/audiobook_.../
+    # If the parent is just "uploads/audiobooks", it's likely a single file book.
+    parts = os.path.normpath(parent_dir).split(os.sep)
+    is_in_subdir = "audiobooks" in parts and parts.index("audiobooks") < len(parts) - 1
+    
+    if is_in_subdir:
+        from utils import find_audio_files
+        audio_files = find_audio_files(parent_dir)
+        if audio_files:
+            tracks = []
+            for f in audio_files:
+                rel = os.path.relpath(f, BASE_DIR)
+                # URL-friendly structure for frontend (prefix with / for static serving if needed, 
+                # but player usually handles /uploads/...)
+                tracks.append({
+                    "title": os.path.basename(f),
+                    "url": rel.replace('\\', '/')
+                })
+            return tracks
+
+    return [{"title": os.path.basename(full_path), "url": audiobook.file_path.replace('\\', '/')}]
+
 @router.get("/{audiobook_id}")
 def get_audiobook(audiobook_id: int, db: Session = Depends(get_db_audiobooks_simple)):
     audiobook = db.query(Audiobook).filter(Audiobook.id == audiobook_id).first()

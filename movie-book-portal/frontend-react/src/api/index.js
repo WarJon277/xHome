@@ -111,6 +111,7 @@ export const searchBooks = (query) => request(`/books/search?query=${encodeURICo
 // --- AUDIOBOOKS ---
 export const fetchAudiobooks = () => request('/audiobooks');
 export const fetchAudiobook = (id) => request(`/audiobooks/${id}`);
+export const fetchAudiobookTracks = (id) => request(`/audiobooks/${id}/tracks`);
 export const createAudiobook = (data) => request('/audiobooks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -287,14 +288,15 @@ export const fetchStats = () => request('/admin/stats');
 // --- PROGRESS ---
 export const fetchProgress = (itemType, itemId) => request(`/progress/${itemType}/${itemId}`);
 export const fetchLatestProgress = (itemType) => request(`/progress/latest/${itemType}`);
-export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0) => request('/progress', {
+export const saveProgress = (itemType, itemId, seconds, scrollRatio = 0, trackIndex = 0) => request('/progress', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
         item_type: itemType,
         item_id: itemId,
         progress_seconds: seconds,
-        scroll_ratio: scrollRatio
+        scroll_ratio: scrollRatio,
+        track_index: trackIndex
     })
 });
 export const clearProgress = () => request('/progress/clear', { method: 'DELETE' });

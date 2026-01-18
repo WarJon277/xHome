@@ -357,16 +357,34 @@ def browse_audioboo(genre: str, page: int = 1):
             
         if not results and page > 1:
             print(f"DEBUG: No results on page {page}, falling back to page 1")
-            # Recursive call with page 1? Or just logic here?
-            # Let's just do a new request to avoid recursion depth issues or complexity
             url = f"https://audioboo.org/{slug}/"
-            print(f"DEBUG: Browsing Audioboo (Fallback): {url}")
             response = session.get(url, timeout=15, headers={'Referer': 'https://audioboo.org/'})
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
-            # ... Parsing logic repetition is bad.
-            # Let's assume recursion is fine for one level
-            return browse_audioboo(genre, page=1)
+            items = soup.select('.card, article, .short-item, .item')
+            for item in items:
+                try:
+                    link_elem = item.select_one('a[href*=".html"]:not(.card__img)')
+                    if not link_elem:
+                        link_elem = item.find('a', href=lambda x: x and '/audioboo.org/' not in x and ('.html' in x or '/index.php?' in x))
+                    if not link_elem: continue
+                    title = link_elem.get_text(strip=True)
+                    link = link_elem.get('href')
+                    if not link.startswith('http'): link = f"https://audioboo.org{link}"
+                    img_elem = item.select_one('.card__img img, img')
+                    image = img_elem.get('src') if img_elem else None
+                    if image and not image.startswith('http'): image = f"https://audioboo.org{image}"
+                    author_elem = item.select_one('a[href*="/xfsearch/avtora/"], .author-link')
+                    author = author_elem.get_text(strip=True) if author_elem else "Неизвестен"
+                    results.append({
+                        "id": link.split('/')[-1].replace('.html', '') if '/' in link else str(uuid.uuid4()),
+                        "title": title,
+                        "author": author,
+                        "image": image,
+                        "link": link,
+                        "source": "audioboo"
+                    })
+                except: continue
 
         return results
     except Exception as e:

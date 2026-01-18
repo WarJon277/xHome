@@ -222,12 +222,15 @@ export default function AdminPage() {
                 setBrowseItems([]);
             }
         } catch (e) {
-            if (e.name === 'AbortError') return;
+            if (e.name === 'AbortError') {
+                console.log("Browse request aborted");
+                return;
+            }
             console.error("Browse failed:", e);
             alert(`Не удалось загрузить список: ${e.message}`);
             if (!isRefresh) setShowBrowseModal(false);
         } finally {
-            if (!signal.aborted) setIsLoadingBrowse(false);
+            setIsLoadingBrowse(false);
         }
     };
 

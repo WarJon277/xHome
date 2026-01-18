@@ -47,16 +47,37 @@ def get_weighted_genre(genre_priorities):
         return random.choice(list(GENRE_MAPPING.keys()))
     return random.choices(genres, weights=weights, k=1)[0]
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def download_file(url, target_path):
     try:
         log(f"Downloading from {url} to {target_path}")
-        response = requests.get(url, stream=True, timeout=60, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
+        
+        # Determine referer
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        referer = f"{parsed.scheme}://{parsed.netloc}/"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': referer,
+            'Connection': 'keep-alive',
+        }
+        
+        # Use session for better handling of redirects and persistent state
+        session = requests.Session()
+        session.trust_env = False # Ignore system proxies
+        
+        response = session.get(url, stream=True, timeout=60, headers=headers, verify=False, allow_redirects=True)
         response.raise_for_status()
+        
         with open(target_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+                if chunk: # filter out keep-alive new chunks
+                    f.write(chunk)
         return True
     except Exception as e:
         log(f"Failed to download {url}: {e}")

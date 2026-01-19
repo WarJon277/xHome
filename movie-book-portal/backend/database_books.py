@@ -25,6 +25,8 @@ class Book(BaseBooks):
     file_path = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
     total_pages = Column(Integer, default=1)
+    series = Column(String, nullable=True)
+    series_index = Column(Integer, nullable=True)
 
 def get_db_books():
     db = SessionLocalBooks()

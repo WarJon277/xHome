@@ -109,149 +109,201 @@ def download_file(url, target_path, referer=None, retries=3):
     return False
 
 def process_auto_book(genre_name):
-    db: Session = SessionLocalBooks()
-    try:
-        log(f"Suggesting book for genre: {genre_name}")
-        suggestion = suggest_book(genre_name)
-        if not suggestion or suggestion.title == "Ничего не найдено":
-            log("No book suggestion found.")
-            return
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        db: Session = SessionLocalBooks()
+        new_book = None
+        try:
+            log(f"Attempt {attempt+1}/{max_attempts}: Suggesting book for genre: {genre_name}")
+            suggestion = suggest_book(genre_name)
+            if not suggestion or suggestion.title == "Ничего не найдено":
+                log("No book suggestion found.")
+                break
 
-        # Check for duplicates
-        existing = db.query(Book).filter(Book.title == suggestion.title, Book.author == suggestion.author_director).first()
-        if existing:
-            log(f"Book '{suggestion.title}' by {suggestion.author_director} already exists.")
-            return
+            # Check for duplicates
+            existing = db.query(Book).filter(Book.title == suggestion.title, Book.author == suggestion.author_director).first()
+            if existing:
+                log(f"Book '{suggestion.title}' by {suggestion.author_director} already exists. Trying another...")
+                db.close()
+                continue
 
-        # Create record first to get ID
-        new_book = Book(
-            title=suggestion.title,
-            author=suggestion.author_director,
-            year=suggestion.year,
-            genre=genre_name,
-            description=suggestion.description,
-            rating=suggestion.rating or 0.0,
-            total_pages=1
-        )
-        db.add(new_book)
-        db.commit()
-        db.refresh(new_book)
-        
-        book_id = new_book.id
-        
-        # Download cover if exists
-        if suggestion.image:
-            ext = os.path.splitext(suggestion.image)[1] or ".jpg"
-            if "?" in ext: ext = ext.split("?")[0]
-            thumb_name = f"{book_id}_thumb{ext}"
-            thumb_path = os.path.join(BASE_DIR, "uploads", "books", thumb_name)
-            os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-            if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
-                new_book.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
-        
-        # Download book file
-        if suggestion.download_url:
-            # Determine extension from URL
-            ext = ".fb2" # Default
-            url_lower = suggestion.download_url.lower()
-            if ".epub" in url_lower or url_lower.endswith("/epub"): ext = ".epub"
-            elif ".mobi" in url_lower or url_lower.endswith("/mobi"): ext = ".mobi"
-            elif ".pdf" in url_lower or url_lower.endswith("/pdf"): ext = ".pdf"
-            elif ".fb2" in url_lower or url_lower.endswith("/fb2"): ext = ".fb2"
+            # Create record first to get ID
+            new_book = Book(
+                title=suggestion.title,
+                author=suggestion.author_director,
+                year=suggestion.year,
+                genre=genre_name,
+                description=suggestion.description,
+                rating=suggestion.rating or 0.0,
+                total_pages=1
+            )
+            db.add(new_book)
+            db.commit()
+            db.refresh(new_book)
             
-            file_name = f"{book_id}_auto_added{ext}"
-            file_path = os.path.join(BASE_DIR, "uploads", "books", file_name)
-            if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
-                new_book.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
-                log(f"Successfully added book: {suggestion.title} (ext: {ext})")
-            else:
-                # If thumbnail was downloaded but file failed, we still have a record.
-                # Should we delete it? For now keep it, user can delete manually or we can try to fix.
-                log(f"Failed to download book file for: {suggestion.title}")
-        
-        db.commit()
-    except Exception as e:
-        log(f"Error processing book: {e}")
-    finally:
-        db.close()
+            book_id = new_book.id
+            
+            # Download cover if exists
+            thumb_success = False
+            if suggestion.image:
+                ext = os.path.splitext(suggestion.image.split('?')[0])[1] or ".jpg"
+                thumb_name = f"{book_id}_thumb{ext}"
+                thumb_path = os.path.join(BASE_DIR, "uploads", "books", thumb_name)
+                os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+                if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
+                    new_book.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
+                    thumb_success = True
+            
+            # Download book file
+            file_success = False
+            if suggestion.download_url:
+                # Determine extension from URL
+                ext = ".fb2" # Default
+                url_lower = suggestion.download_url.lower()
+                if ".epub" in url_lower or url_lower.endswith("/epub"): ext = ".epub"
+                elif ".mobi" in url_lower or url_lower.endswith("/mobi"): ext = ".mobi"
+                elif ".pdf" in url_lower or url_lower.endswith("/pdf"): ext = ".pdf"
+                elif ".fb2" in url_lower or url_lower.endswith("/fb2"): ext = ".fb2"
+                
+                file_name = f"{book_id}_auto_added{ext}"
+                file_path = os.path.join(BASE_DIR, "uploads", "books", file_name)
+                if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
+                    new_book.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
+                    file_success = True
+                    log(f"Successfully added book: {suggestion.title} (ext: {ext})")
+
+            if not file_success:
+                log(f"Failed to download book file for: {suggestion.title}. Rolling back record.")
+                db.delete(new_book)
+                db.commit()
+                # Clean up thumbnail if it was downloaded
+                if thumb_success and new_book.thumbnail_path:
+                    try: os.remove(os.path.join(BASE_DIR, new_book.thumbnail_path))
+                    except: pass
+                db.close()
+                continue # Try next attempt
+
+            db.commit()
+            return # Success!
+        except Exception as e:
+            log(f"Error processing book (attempt {attempt+1}): {e}")
+            if new_book:
+                try:
+                    db.delete(new_book)
+                    db.commit()
+                except: pass
+        finally:
+            if db: db.close()
+    
+    log(f"Failed to add any book for genre {genre_name} after {max_attempts} attempts.")
+
 
 def process_auto_audiobook(genre_name):
-    db: Session = SessionLocalAudiobooks()
-    try:
-        log(f"Suggesting audiobook for genre: {genre_name}")
-        suggestion = suggest_audiobook(genre_name)
-        if not suggestion or suggestion.title == "Ничего не найдено":
-            log("No audiobook suggestion found.")
-            return
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        db: Session = SessionLocalAudiobooks()
+        new_audio = None
+        try:
+            log(f"Attempt {attempt+1}/{max_attempts}: Suggesting audiobook for genre: {genre_name}")
+            suggestion = suggest_audiobook(genre_name)
+            if not suggestion or suggestion.title == "Ничего не найдено":
+                log("No audiobook suggestion found.")
+                break
 
-        # Check for duplicates
-        existing = db.query(Audiobook).filter(Audiobook.title == suggestion.title, Audiobook.author == suggestion.author_director).first()
-        if existing:
-            log(f"Audiobook '{suggestion.title}' by {suggestion.author_director} already exists.")
-            return
+            # Check for duplicates
+            existing = db.query(Audiobook).filter(Audiobook.title == suggestion.title, Audiobook.author == suggestion.author_director).first()
+            if existing:
+                log(f"Audiobook '{suggestion.title}' by {suggestion.author_director} already exists. Trying another...")
+                db.close()
+                continue
 
-        # Create record
-        new_audio = Audiobook(
-            title=suggestion.title,
-            author=suggestion.author_director,
-            genre=genre_name,
-            description=suggestion.description,
-            year=suggestion.year or datetime.now().year,
-            rating=suggestion.rating or 0.0,
-            source="auto_discovery"
-        )
-        db.add(new_audio)
-        db.commit()
-        db.refresh(new_audio)
-        
-        audio_id = new_audio.id
-        AUDIO_UPLOADS = os.path.join(BASE_DIR, "uploads", "audiobooks")
-        os.makedirs(AUDIO_UPLOADS, exist_ok=True)
-
-        # Download thumbnail
-        if suggestion.image:
-            ext = os.path.splitext(suggestion.image.split('?')[0])[1] or ".jpg"
-            thumb_path = os.path.join(AUDIO_UPLOADS, "thumbnails", f"thumb_{audio_id}{ext}")
-            os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-            if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
-                new_audio.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
-
-        # Download file (usually ZIP or MP3)
-        if suggestion.download_url:
-            is_zip = ".zip" in suggestion.download_url.lower()
-            ext = ".zip" if is_zip else ".mp3"
+            # Create record
+            new_audio = Audiobook(
+                title=suggestion.title,
+                author=suggestion.author_director,
+                genre=genre_name,
+                description=suggestion.description,
+                year=suggestion.year or datetime.now().year,
+                rating=suggestion.rating or 0.0,
+                source="auto_discovery"
+            )
+            db.add(new_audio)
+            db.commit()
+            db.refresh(new_audio)
             
-            if is_zip:
-                temp_zip_path = os.path.join(AUDIO_UPLOADS, f"temp_{uuid.uuid4()}.zip")
-                if download_file(suggestion.download_url, temp_zip_path, referer=suggestion.source_url):
-                    book_dir_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}"
-                    book_dir_path = os.path.join(AUDIO_UPLOADS, book_dir_name)
-                    
-                    if unzip_file(temp_zip_path, book_dir_path):
-                        audio_files = find_audio_files(book_dir_path)
-                        if audio_files:
-                            new_audio.file_path = os.path.relpath(audio_files[0], BASE_DIR).replace(os.sep, '/')
-                            # Try to find thumbnail in zip if not downloaded yet
-                            if not new_audio.thumbnail_path:
-                                inner_thumb = find_thumbnail_in_dir(book_dir_path)
-                                if inner_thumb:
-                                    new_audio.thumbnail_path = os.path.relpath(inner_thumb, BASE_DIR).replace(os.sep, '/')
-                            log(f"Successfully added multi-track audiobook: {new_audio.title}")
-                        
-                    try: os.remove(temp_zip_path)
-                    except: pass
-            else:
-                safe_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}{ext}"
-                file_path = os.path.join(AUDIO_UPLOADS, safe_name)
-                if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
-                    new_audio.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
-                    log(f"Successfully added single-file audiobook: {new_audio.title}")
+            audio_id = new_audio.id
+            AUDIO_UPLOADS = os.path.join(BASE_DIR, "uploads", "audiobooks")
+            os.makedirs(AUDIO_UPLOADS, exist_ok=True)
 
-        db.commit()
-    except Exception as e:
-        log(f"Error processing audiobook: {e}")
-    finally:
-        db.close()
+            # Download thumbnail
+            thumb_success = False
+            if suggestion.image:
+                ext = os.path.splitext(suggestion.image.split('?')[0])[1] or ".jpg"
+                thumb_path = os.path.join(AUDIO_UPLOADS, "thumbnails", f"thumb_{audio_id}{ext}")
+                os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+                if download_file(suggestion.image, thumb_path, referer=suggestion.source_url):
+                    new_audio.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
+                    thumb_success = True
+
+            # Download file (usually ZIP or MP3)
+            file_success = False
+            if suggestion.download_url:
+                is_zip = ".zip" in suggestion.download_url.lower()
+                ext = ".zip" if is_zip else ".mp3"
+                
+                if is_zip:
+                    temp_zip_path = os.path.join(AUDIO_UPLOADS, f"temp_{uuid.uuid4()}.zip")
+                    if download_file(suggestion.download_url, temp_zip_path, referer=suggestion.source_url):
+                        book_dir_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}"
+                        book_dir_path = os.path.join(AUDIO_UPLOADS, book_dir_name)
+                        
+                        if unzip_file(temp_zip_path, book_dir_path):
+                            audio_files = find_audio_files(book_dir_path)
+                            if audio_files:
+                                new_audio.file_path = os.path.relpath(audio_files[0], BASE_DIR).replace(os.sep, '/')
+                                # Try to find thumbnail in zip if not downloaded yet
+                                if not new_audio.thumbnail_path:
+                                    inner_thumb = find_thumbnail_in_dir(book_dir_path)
+                                    if inner_thumb:
+                                        new_audio.thumbnail_path = os.path.relpath(inner_thumb, BASE_DIR).replace(os.sep, '/')
+                                file_success = True
+                                log(f"Successfully added multi-track audiobook: {new_audio.title}")
+                            
+                        try: os.remove(temp_zip_path)
+                        except: pass
+                else:
+                    safe_name = f"audiobook_{audio_id}_{new_audio.title[:30].replace(' ', '_')}{ext}"
+                    file_path = os.path.join(AUDIO_UPLOADS, safe_name)
+                    if download_file(suggestion.download_url, file_path, referer=suggestion.source_url):
+                        new_audio.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
+                        file_success = True
+                        log(f"Successfully added single-file audiobook: {new_audio.title}")
+
+            if not file_success:
+                log(f"Failed to download audiobook file for: {suggestion.title}. Rolling back record.")
+                db.delete(new_audio)
+                db.commit()
+                # Clean up thumbnail if it was downloaded
+                if thumb_success and new_audio.thumbnail_path:
+                    try: os.remove(os.path.join(BASE_DIR, new_audio.thumbnail_path))
+                    except: pass
+                db.close()
+                continue # Try next attempt
+
+            db.commit()
+            return # Success!
+        except Exception as e:
+            log(f"Error processing audiobook (attempt {attempt+1}): {e}")
+            if new_audio:
+                try:
+                    db.delete(new_audio)
+                    db.commit()
+                except: pass
+        finally:
+            if db: db.close()
+
+    log(f"Failed to add any audiobook for genre {genre_name} after {max_attempts} attempts.")
+
 
 def main_loop():
     log("Auto-discovery script started.")

@@ -48,6 +48,8 @@ class BookCreate(BaseModel):
     genre: Optional[str] = None
     rating: Optional[float] = None
     description: Optional[str] = None
+    series: Optional[str] = None
+    series_index: Optional[int] = None
 
     model_config = {
         "extra": "ignore",
@@ -63,6 +65,8 @@ class AudiobookCreate(BaseModel):
     rating: Optional[float] = None
     description: Optional[str] = None
     duration: Optional[int] = 0
+    series: Optional[str] = None
+    series_index: Optional[int] = None
 
     model_config = {
         "extra": "ignore",

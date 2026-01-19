@@ -122,7 +122,7 @@ const ServerStatus = () => {
                         <div className="progress-bar" style={{ width: `${stats.ram.percent}%`, backgroundColor: stats.ram.percent > 90 ? '#f44336' : '#2196f3' }}></div>
                     </div>
 
-                    <h3 style={{ marginTop: '20px', fontSize: '1rem' }}>Подкачка (Swap)</h3>
+                    <h3>Подкачка (Swap)</h3>
                     <div className="stat-item">
                         <span className="label">Использовано:</span>
                         <span className="value">{formatBytes(stats.swap.used)} ({stats.swap.percent}%)</span>

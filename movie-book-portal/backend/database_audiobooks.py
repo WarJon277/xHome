@@ -27,6 +27,8 @@ class Audiobook(BaseAudiobooks):
     thumbnail_path = Column(String, nullable=True)
     duration = Column(Integer, default=0)  # Duration in seconds
     source = Column(String, nullable=True)  # Source: flibusta, audioboo, manual, etc.
+    series = Column(String, nullable=True)
+    series_index = Column(Integer, nullable=True)
 
 def get_db_audiobooks():
     db = SessionLocalAudiobooks()

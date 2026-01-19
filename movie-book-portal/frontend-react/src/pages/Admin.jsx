@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Music } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Music, Activity } from 'lucide-react';
 import {
     fetchMovies, fetchBooks, fetchTvshows, fetchAudiobooks,
     createMovie, createBook, createTvshow, createAudiobook,
@@ -1035,6 +1035,19 @@ export default function AdminPage() {
                     <StatCard title="Книги" value={stats.books} />
                     <StatCard title="Сериалы" value={stats.tvshows} />
                     <StatCard title="Фото" value={stats.photos} />
+
+                    {/* Server Status Link Card */}
+                    <div
+                        onClick={() => navigate('/server-status')}
+                        className="p-6 rounded-lg text-center cursor-pointer hover:scale-105 transition-transform border border-primary/20 hover:border-primary/50 group flex flex-col items-center justify-center gap-3 shadow-lg"
+                        style={{ backgroundColor: 'var(--card-bg)' }}
+                    >
+                        <Activity size={32} className="text-primary group-hover:animate-pulse" />
+                        <div>
+                            <h3 className="text-gray-400 text-sm mb-1 uppercase tracking-wider">Система</h3>
+                            <div className="text-xl font-bold text-primary">Состояние сервера</div>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -12,6 +12,7 @@
     font-weight: 800;
     background: linear-gradient(to right, var(--accent-color, #e50914), #f44336);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -65,7 +66,13 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 12px;
     font-size: 1.4rem;
-    color: var(--accent-color, #e50914);
+    color: #ffffff;
+}
+
+.stat-card h3 {
+    color: #e0e0e0;
+    font-weight: 600;
+    margin-top: 20px;
 }
 
 .stat-item {

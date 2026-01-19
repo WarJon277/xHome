@@ -265,6 +265,8 @@ class Suggestion(BaseModel):
     download_url: Optional[str] = None
     source_url: str
     type: str # movie, book
+    series: Optional[str] = None
+    series_index: Optional[int] = None
 
 @router.get("/search")
 def search_books(query: str, provider: str = "flibusta", limit: int = 25):

@@ -113,10 +113,10 @@ export default function Dashboard() {
                 </button>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="flex flex-col lg:flex-row gap-8">
 
                 {/* 1. Continue Watching - Large Widget */}
-                <section className="lg:col-span-8 space-y-6">
+                <section className="flex-1 lg:w-2/3 min-w-0 space-y-6">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2">
                         <h2 className="flex items-center gap-3 text-2xl font-bold">
                             <Clock className="text-blue-500" size={24} /> Продолжить
@@ -182,7 +182,7 @@ export default function Dashboard() {
                 </section>
 
                 {/* 5. Daily Stats & Recommendation - Right Column */}
-                <section className="lg:col-span-4 space-y-8">
+                <section className="lg:w-1/3 min-w-0 space-y-8">
                     <div className="space-y-4">
                         <h2 className="flex items-center gap-3 text-2xl font-bold">
                             <BarChart2 className="text-purple-500" size={24} /> Статистика
@@ -228,88 +228,88 @@ export default function Dashboard() {
                                     <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest mb-1">
                                         Рекомендуем
                                     </p>
-                                    <h3 className="text-2xl font-black leading-tight group-hover:text-yellow-400 transition-colors">{data.recommendation.title}</h3>
+                                    <h3 className="text-xl font-black leading-tight group-hover:text-yellow-400 transition-colors">{data.recommendation.title}</h3>
                                     <p className="text-sm text-gray-300 mt-2 font-medium">{data.recommendation.type === 'movie' ? 'Фильм' : data.recommendation.type === 'book' ? 'Книга' : data.recommendation.type === 'audiobook' ? 'Аудиокнига' : 'Сериал'}</p>
                                 </div>
                             </div>
                         </div>
                     )}
                 </section>
+            </div>
 
-                {/* 2. New Arrivals - Full Width Horizontal Scroll */}
-                <section className="lg:col-span-12 space-y-6 pt-4">
-                    <div className="flex items-center gap-3 border-b border-white/10 pb-2">
-                        <h2 className="text-2xl font-bold">
-                            <Zap className="text-red-500 inline mr-2" size={24} /> Новинки портала
-                        </h2>
-                    </div>
-                    <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                        {data.new_arrivals.map((item) => (
-                            <div
-                                key={`new-${item.type}-${item.id}`}
-                                onClick={() => handleMediaClick(item)}
-                                tabIndex={0}
-                                data-tv-clickable="true"
-                                onKeyDown={(e) => e.key === 'Enter' && handleMediaClick(item)}
-                                className="flex-none w-40 sm:w-52 group tv-focusable cursor-pointer outline-none p-1 rounded-2xl transition-all"
-                            >
-                                <div className="aspect-[2/3] rounded-2xl overflow-hidden mb-3 relative shadow-lg">
-                                    <img
-                                        src={getImageUrl(item.thumbnail)}
-                                        alt={item.title}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                        onError={(e) => e.target.src = '/placeholder.jpg'}
-                                    />
-                                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-xl p-2 rounded-xl text-white shadow-lg border border-white/10">
-                                        {item.type === 'movie' ? <Film size={16} /> : item.type === 'book' ? <Book size={16} /> : item.type === 'audiobook' ? <Music size={16} /> : <Tv size={16} />}
-                                    </div>
-                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-                                </div>
-                                <h3 className="text-base font-bold truncate px-1" style={{ color: 'var(--text-primary)' }}>{item.title}</h3>
-                                <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter px-1 mt-0.5">
-                                    {item.type === 'movie' ? 'Фильм' : item.type === 'book' ? 'Книга' : item.type === 'audiobook' ? 'Аудиокнига' : 'Сериал'}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* 4. Quick Access to Latest Photos - Grid */}
-                <section className="lg:col-span-12 space-y-6 pt-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                        <h2 className="flex items-center gap-3 text-2xl font-bold">
-                            <Image className="text-yellow-500" size={24} /> Недавние фото
-                        </h2>
-                        <button
-                            onClick={() => navigate('/gallery')}
-                            className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors"
+            {/* 2. New Arrivals - Full Width Horizontal Scroll */}
+            <section className="space-y-6 pt-4">
+                <div className="flex items-center gap-3 border-b border-white/10 pb-2">
+                    <h2 className="text-2xl font-bold">
+                        <Zap className="text-red-500 inline mr-2" size={24} /> Новинки портала
+                    </h2>
+                </div>
+                <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+                    {data.new_arrivals.map((item) => (
+                        <div
+                            key={`new-${item.type}-${item.id}`}
+                            onClick={() => handleMediaClick(item)}
+                            tabIndex={0}
+                            data-tv-clickable="true"
+                            onKeyDown={(e) => e.key === 'Enter' && handleMediaClick(item)}
+                            className="flex-none w-40 sm:w-52 group tv-focusable cursor-pointer outline-none p-1 rounded-2xl transition-all"
                         >
-                            Смотреть все
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {data.latest_photos.slice(0, 5).map((photo) => (
-                            <div
-                                key={photo.id}
-                                onClick={() => navigate('/gallery')}
-                                tabIndex={0}
-                                data-tv-clickable="true"
-                                onKeyDown={(e) => e.key === 'Enter' && navigate('/gallery')}
-                                className="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-all tv-focusable focus:ring-2 ring-red-500 outline-none shadow-lg group relative"
-                            >
+                            <div className="aspect-[2/3] rounded-2xl overflow-hidden mb-3 relative shadow-lg">
                                 <img
-                                    src={getImageUrl(photo.thumbnail || photo.url)}
-                                    alt="Latest"
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                    src={getImageUrl(item.thumbnail)}
+                                    alt={item.title}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     onError={(e) => e.target.src = '/placeholder.jpg'}
                                 />
-                                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                                <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-xl p-2 rounded-xl text-white shadow-lg border border-white/10">
+                                    {item.type === 'movie' ? <Film size={16} /> : item.type === 'book' ? <Book size={16} /> : item.type === 'audiobook' ? <Music size={16} /> : <Tv size={16} />}
+                                </div>
+                                <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                             </div>
-                        ))}
-                    </div>
-                </section>
+                            <h3 className="text-base font-bold truncate px-1" style={{ color: 'var(--text-primary)' }}>{item.title}</h3>
+                            <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter px-1 mt-0.5">
+                                {item.type === 'movie' ? 'Фильм' : item.type === 'book' ? 'Книга' : item.type === 'audiobook' ? 'Аудиокнига' : 'Сериал'}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
-            </div>
+            {/* 4. Quick Access to Latest Photos - Grid */}
+            <section className="space-y-6 pt-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <h2 className="flex items-center gap-3 text-2xl font-bold">
+                        <Image className="text-yellow-500" size={24} /> Недавние фото
+                    </h2>
+                    <button
+                        onClick={() => navigate('/gallery')}
+                        className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors"
+                    >
+                        Смотреть все
+                    </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {data.latest_photos.slice(0, 5).map((photo) => (
+                        <div
+                            key={photo.id}
+                            onClick={() => navigate('/gallery')}
+                            tabIndex={0}
+                            data-tv-clickable="true"
+                            onKeyDown={(e) => e.key === 'Enter' && navigate('/gallery')}
+                            className="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90 transition-all tv-focusable focus:ring-2 ring-red-500 outline-none shadow-lg group relative"
+                        >
+                            <img
+                                src={getImageUrl(photo.thumbnail || photo.url)}
+                                alt="Latest"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                onError={(e) => e.target.src = '/placeholder.jpg'}
+                            />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                        </div>
+                    ))}
+                </div>
+            </section>
+
         </div>
     );
 }

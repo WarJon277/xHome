@@ -130,7 +130,7 @@ def get_dashboard_data(
         all_photos = []
         for root, dirs, files in os.walk(GALLERY_UPLOADS):
             for file in files:
-                if '_thumb.' in file:
+                if '_thumb' in file.lower():
                     continue
                 _, ext = os.path.splitext(file)
                 if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
@@ -161,7 +161,7 @@ def get_dashboard_data(
     if os.path.exists(GALLERY_UPLOADS):
         for root, dirs, files in os.walk(GALLERY_UPLOADS):
             for file in files:
-                if '_thumb.' in file: continue
+                if '_thumb' in file.lower(): continue
                 _, ext = os.path.splitext(file)
                 if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
                     photo_count += 1

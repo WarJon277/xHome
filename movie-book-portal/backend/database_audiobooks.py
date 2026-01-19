@@ -40,6 +40,23 @@ def get_db_audiobooks():
 
 def create_audiobooks_tables():
     BaseAudiobooks.metadata.create_all(bind=engine_audiobooks)
+    # Ensure columns exist (for existing databases)
+    with engine_audiobooks.connect() as conn:
+        from sqlalchemy import text
+        columns = [
+            ("duration", "INTEGER DEFAULT 0"),
+            ("source", "VARCHAR"),
+            ("series", "VARCHAR"),
+            ("series_index", "INTEGER")
+        ]
+        for col_name, col_type in columns:
+            try:
+                conn.execute(text(f"ALTER TABLE audiobooks ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+                print(f"Migration: Added column {col_name} to audiobooks table.")
+            except Exception as e:
+                # print(f"Migration: Column {col_name} already exists or error: {e}")
+                pass
 
 
 def add_sample_audiobooks_data():

@@ -38,6 +38,22 @@ def get_db_books():
 
 def create_books_tables():
     BaseBooks.metadata.create_all(bind=engine_books)
+    # Ensure columns exist (for existing databases)
+    with engine_books.connect() as conn:
+        from sqlalchemy import text
+        columns = [
+            ("series", "VARCHAR"),
+            ("series_index", "INTEGER"),
+            ("total_pages", "INTEGER DEFAULT 1")
+        ]
+        for col_name, col_type in columns:
+            try:
+                conn.execute(text(f"ALTER TABLE books ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+                print(f"Migration: Added column {col_name} to books table.")
+            except Exception as e:
+                # print(f"Migration: Column {col_name} already exists or error: {e}")
+                pass
 
 
 def add_sample_books_data():

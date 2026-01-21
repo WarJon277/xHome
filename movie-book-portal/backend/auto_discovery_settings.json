@@ -12,5 +12,11 @@
         "Юмор": 2,
         "Наука и Образование": 3,
         "Детская литература": 2
+    },
+    "movie_settings": {
+        "enabled": true,
+        "min_file_size_gb": 3.0,
+        "min_rating": 6.0,
+        "min_year": 2015
     }
 }

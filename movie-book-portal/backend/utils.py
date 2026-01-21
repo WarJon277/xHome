@@ -222,3 +222,79 @@ async def get_book_page_content(book, page_num, db):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ошибка обработки книги: {str(e)}")
+
+def is_video_file(filename: str) -> bool:
+    """
+    Check if a file is a video based on extension
+    
+    Args:
+        filename: Name or path of file
+        
+    Returns:
+        True if it's a video file, False otherwise
+    """
+    video_extensions = [
+        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', 
+        '.webm', '.m4v', '.3gp', '.3g2', '.ogv', '.qt', 
+        '.mpg', '.mpeg', '.m2v'
+    ]
+    
+    ext = os.path.splitext(filename)[1].lower()
+    return ext in video_extensions
+
+def extract_largest_video_file(directory: str):
+    """
+    Find the largest video file in a directory (recursive)
+    
+    Args:
+        directory: Directory to search
+        
+    Returns:
+        Path to largest video file or None
+    """
+    largest_file = None
+    largest_size = 0
+    
+    try:
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                if is_video_file(file):
+                    file_path = os.path.join(root, file)
+                    try:
+                        file_size = os.path.getsize(file_path)
+                        if file_size > largest_size:
+                            largest_size = file_size
+                            largest_file = file_path
+                    except Exception:
+                        continue
+        
+        return largest_file
+    except Exception:
+        return None
+
+def get_video_duration(file_path: str):
+    """
+    Get video duration in seconds using FFprobe if available
+    
+    Args:
+        file_path: Path to video file
+        
+    Returns:
+        Duration in seconds or None
+    """
+    try:
+        import subprocess
+        cmd = [
+            'ffprobe',
+            '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            file_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            return int(float(result.stdout.strip()))
+        return None
+    except Exception:
+        return None

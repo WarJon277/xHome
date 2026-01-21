@@ -559,7 +559,8 @@ def fetch_audioboo_details(url: str = Query(...)):
                 "image": image,
                 "genre": genre,
                 "download_link": download_link,
-                "source_url": url
+                "source_url": url,
+                "year": metadata.get('Год')
             }
         except Exception as e:
             print(f"Error fetching audioboo details: {e}")

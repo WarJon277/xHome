@@ -1,0 +1,11 @@
+{
+    "interval_minutes": 720,
+    "enabled": true,
+    "min_file_size_gb": 3.0,
+    "min_rating": 6.0,
+    "min_year": 2015,
+    "qbt_host": "localhost",
+    "qbt_port": 8080,
+    "qbt_username": "admin",
+    "qbt_password": "123e4r5"
+}

@@ -374,6 +374,7 @@ def suggest_audiobook(genre_name: str):
                     image=details.get('image', random_book.get('image')),
                     download_url=details.get('download_link'),
                     source_url=random_book.get('link'),
+                    year=int(details.get('year')) if details.get('year') and str(details.get('year')).isdigit() else None,
                     type="audiobook"
                 )
     except Exception as e:

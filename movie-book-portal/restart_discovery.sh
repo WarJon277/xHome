@@ -8,9 +8,41 @@ echo "=== Restarting Auto-Discovery Services ==="
 DIR="$(dirname "$(realpath "$0")")"
 BACKEND_DIR="$DIR/backend"
 LOG_DIR="$DIR/logs"
+VENV_DIR="$DIR/.venv"
 
 # Create logs directory if it doesn't exist
 mkdir -p "$LOG_DIR"
+
+# Activate virtual environment
+echo "→ Activating virtual environment..."
+if [ -f "$VENV_DIR/bin/activate" ]; then
+    source "$VENV_DIR/bin/activate"
+    echo "  ✓ Virtual environment activated"
+elif [ -f "$VENV_DIR/Scripts/activate" ]; then
+    # Windows Git Bash
+    source "$VENV_DIR/Scripts/activate"
+    echo "  ✓ Virtual environment activated (Windows)"
+else
+    echo "  ⚠ Warning: Virtual environment not found at $VENV_DIR"
+    echo "  Continuing without venv..."
+fi
+
+# Check and install dependencies if needed
+echo "→ Checking dependencies..."
+cd "$BACKEND_DIR" || { echo "❌ Cannot cd to backend directory"; exit 1; }
+
+if [ -f "requirements.txt" ]; then
+    # Quick check if main packages are installed
+    if ! python -c "import qbittorrentapi" 2>/dev/null; then
+        echo "  Installing missing dependencies..."
+        pip install -q -r requirements.txt
+        echo "  ✓ Dependencies installed"
+    else
+        echo "  ✓ Dependencies OK"
+    fi
+else
+    echo "  ℹ No requirements.txt found"
+fi
 
 # Function to restart a service
 restart_service() {

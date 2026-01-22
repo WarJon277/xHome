@@ -109,15 +109,8 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             const keyCode = e.keyCode;
 
             // If prompt is showing, only allow Back button; others let spatial navigation handle it
-            if (showResumePrompt) {
-                if (key === 'Escape' || key === 'Backspace' || key === 'GoBack' || keyCode === 461 || keyCode === 10009 || keyCode === 27) {
-                    handleSaveProgress(videoRef.current?.currentTime || 0);
-                    onClose();
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                return;
-            }
+            // If prompt is showing, only allow Back button; others let spatial navigation handle it
+            // (Prompt logic removed, handled by Start Screen overlay now)
 
             let handled = false;
 
@@ -207,7 +200,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 window.history.back();
             }
         };
-    }, [duration, isPlaying, showResumePrompt, savedProgress]);
+    }, [duration, isPlaying, savedProgress]);
 
     const togglePlay = () => {
         if (videoRef.current) {

@@ -134,10 +134,20 @@ async def get_discovery_status():
     auto_settings = read_settings('auto_discovery_settings.json')
     movie_settings = read_settings('movie_discovery_settings.json')
     
-    # Parse logs
-    # NEW: Read separate logs for books and audiobooks
+    # Parse logs with fallbacks
+    # We try specific logs first, then fallback to general auto_discovery.log if empty
     books_log = parse_log('books_discovery.log')
     audiobooks_log = parse_log('audiobooks_discovery.log')
+    
+    # Check fallback to legacy log if newer logs are empty or missing
+    legacy_log_data = parse_log('auto_discovery.log')
+    
+    if not books_log["last_run"] and legacy_log_data["last_run"]:
+        books_log = legacy_log_data
+        
+    if not audiobooks_log["last_run"] and legacy_log_data["last_run"]:
+        audiobooks_log = legacy_log_data
+        
     movie_log = parse_log('movie_discovery.log')
     
     # Build response

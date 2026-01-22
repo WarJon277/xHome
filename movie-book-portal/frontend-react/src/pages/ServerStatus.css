@@ -41,8 +41,9 @@
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
     gap: 20px;
+    width: 100%;
 }
 
 .stat-card {
@@ -53,6 +54,10 @@
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: transform 0.3s ease, border-color 0.3s ease;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .stat-card:hover {
@@ -407,6 +412,10 @@
     /* Discovery tab specific mobile fixes */
     .discovery-card {
         margin-bottom: 15px;
+        width: 100%;
+        max-width: calc(100vw - 40px);
+        /* Account for page padding */
+        box-sizing: border-box;
     }
 
     .discovery-header {
@@ -414,6 +423,7 @@
         align-items: flex-start;
         gap: 8px;
         padding-bottom: 10px;
+        width: 100%;
     }
 
     .discovery-header h2 {
@@ -421,11 +431,14 @@
         border-bottom: none;
         margin-bottom: 0;
         padding-bottom: 0;
+        width: 100%;
+        word-break: break-word;
     }
 
     .status-badge {
         font-size: 0.7rem;
         padding: 4px 8px;
+        max-width: 100%;
     }
 
     .activity-log h3 {
@@ -435,14 +448,26 @@
     .tab-navigation {
         flex-wrap: wrap;
         gap: 8px;
+        width: 100%;
     }
 
     .tab-button {
-        padding: 8px 16px;
-        font-size: 0.9rem;
+        padding: 8px 12px;
+        font-size: 0.85rem;
         flex: 1;
-        min-width: 140px;
+        min-width: 120px;
         text-align: center;
+    }
+
+    .log-entries {
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .log-entry {
+        word-break: break-all;
+        white-space: normal;
     }
 
     .stat-item {

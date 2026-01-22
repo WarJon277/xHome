@@ -45,7 +45,7 @@ async def get_discovery_status():
         return {}
     
     # Helper function to parse log file
-    def parse_log(filename, max_lines=10):
+    def parse_log(filename, max_lines=10, filter_category=None):
         try:
             log_path = os.path.join(backend_dir, filename)
             if not os.path.exists(log_path):
@@ -59,6 +59,14 @@ async def get_discovery_status():
             with open(log_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
+            # Filter lines by category if provided
+            if filter_category == "books":
+                lines = [line for line in lines if "book" in line.lower() or "книг" in line.lower()]
+            elif filter_category == "audiobooks":
+                lines = [line for line in lines if "audiobook" in line.lower() or "аудиокниг" in line.lower()]
+            elif filter_category == "movies":
+                lines = [line for line in lines if "movie" in line.lower() or "фильм" in line.lower()]
+                
             # Get last N lines
             recent_lines = lines[-max_lines:] if len(lines) > max_lines else lines
             recent_activity = [line.strip() for line in recent_lines if line.strip()]
@@ -79,27 +87,40 @@ async def get_discovery_status():
                         # Check for success indicators
                         if not last_success:
                             if 'Successfully added' in line or 'успешно добавлен' in line.lower():
-                                # Extract title
-                                if 'book:' in line.lower():
-                                    last_success = line.split('book:')[-1].strip()
-                                elif 'audiobook:' in line.lower():
-                                    last_success = line.split('audiobook:')[-1].strip()
-                                elif 'movie:' in line.lower() or 'фильм:' in line.lower():
-                                    last_success = line.split(':')[-1].strip()
-                                else:
-                                    last_success = "Item downloaded"
+                                is_success = False
+                                if filter_category == "books" and ("book" in line.lower() or "книг" in line.lower()): is_success = True
+                                elif filter_category == "audiobooks" and ("audiobook" in line.lower() or "аудиокниг" in line.lower()): is_success = True
+                                elif filter_category == "movies" and ("movie" in line.lower() or "фильм" in line.lower()): is_success = True
+                                elif not filter_category: is_success = True
+                                
+                                if is_success:
+                                    if 'book:' in line.lower():
+                                        last_success = line.split('book:')[-1].strip()
+                                    elif 'audiobook:' in line.lower():
+                                        last_success = line.split('audiobook:')[-1].strip()
+                                    elif 'movie:' in line.lower() or 'фильм:' in line.lower():
+                                        last_success = line.split(':')[-1].strip()
+                                    else:
+                                        last_success = "Item downloaded"
                         
                         # Check if currently running
                         if 'Starting' in line and 'cycle' in line:
-                            # Check if this was recent (within last 5 minutes)
-                            try:
-                                log_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-                                now = datetime.now()
-                                diff = (now - log_time).total_seconds()
-                                if diff < 300:  # 5 minutes
-                                    status = "running"
-                            except:
-                                pass
+                            # Re-verify if this cycle belongs to the category
+                            is_relevant_cycle = False
+                            if filter_category == "books" and "book" in line.lower(): is_relevant_cycle = True
+                            elif filter_category == "audiobooks" and "audiobook" in line.lower(): is_relevant_cycle = True
+                            elif filter_category == "movies" and "movie" in line.lower(): is_relevant_cycle = True
+                            elif not filter_category: is_relevant_cycle = True
+                            
+                            if is_relevant_cycle:
+                                try:
+                                    log_time = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                                    now = datetime.now()
+                                    diff = (now - log_time).total_seconds()
+                                    if diff < 300:  # 5 minutes
+                                        status = "running"
+                                except:
+                                    pass
                     except:
                         continue
             
@@ -136,19 +157,17 @@ async def get_discovery_status():
     
     # Parse logs with fallbacks
     # We try specific logs first, then fallback to general auto_discovery.log if empty
-    books_log = parse_log('books_discovery.log')
-    audiobooks_log = parse_log('audiobooks_discovery.log')
+    books_log = parse_log('books_discovery.log', filter_category="books")
+    audiobooks_log = parse_log('audiobooks_discovery.log', filter_category="audiobooks")
     
     # Check fallback to legacy log if newer logs are empty or missing
-    legacy_log_data = parse_log('auto_discovery.log')
-    
-    if not books_log["last_run"] and legacy_log_data["last_run"]:
-        books_log = legacy_log_data
+    if not books_log["last_run"]:
+        books_log = parse_log('auto_discovery.log', filter_category="books")
         
-    if not audiobooks_log["last_run"] and legacy_log_data["last_run"]:
-        audiobooks_log = legacy_log_data
+    if not audiobooks_log["last_run"]:
+        audiobooks_log = parse_log('auto_discovery.log', filter_category="audiobooks")
         
-    movie_log = parse_log('movie_discovery.log')
+    movie_log = parse_log('movie_discovery.log', filter_category="movies")
     
     # Build response
     return {

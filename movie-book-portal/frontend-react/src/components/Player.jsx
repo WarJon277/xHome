@@ -314,7 +314,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                         </div>
 
                         {item?.description && (
-                            <p className="text-gray-400 text-lg sm:text-xl max-w-2xl line-clamp-4 leading-relaxed mb-4">
+                            <p className="text-gray-400 text-lg sm:text-xl max-w-2xl leading-relaxed mb-4 overflow-y-auto max-h-[30vh] pr-2 custom-scrollbar">
                                 {item.description}
                             </p>
                         )}

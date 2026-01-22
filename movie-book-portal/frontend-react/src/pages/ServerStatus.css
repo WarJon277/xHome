@@ -403,4 +403,23 @@
         max-height: 120px;
         font-size: 0.75rem;
     }
+
+    /* Discovery tab specific mobile fixes */
+    .discovery-card {
+        margin-bottom: 20px;
+    }
+
+    .discovery-header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+
+    .activity-log h3 {
+        font-size: 0.9rem;
+    }
 }

@@ -7,5 +7,6 @@
     "qbt_host": "localhost",
     "qbt_port": 8080,
     "qbt_username": "admin",
-    "qbt_password": "123e4r5"
+    "qbt_password": "123e4r5",
+    "force_run": true
 }

@@ -1,5 +1,7 @@
 {
     "interval_minutes": 720,
+    "book_interval_minutes": 720,
+    "audiobook_interval_minutes": 720,
     "enabled": true,
     "genre_priorities": {
         "Фантастика": 10,

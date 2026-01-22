@@ -307,25 +307,74 @@ def process_auto_audiobook(genre_name):
 
 def main_loop():
     log("Auto-discovery script started.")
+    
+    # Track last run times
+    last_book_run = 0
+    last_audiobook_run = 0
+    
     while True:
         settings = load_settings()
         if not settings.get("enabled", True):
             log("Auto-discovery is disabled in settings. Sleeping for 10 minutes.")
             time.sleep(600)
             continue
-            
-        try:
-            genre = get_weighted_genre(settings.get("genre_priorities", {}))
-            log(f"--- Starting new discovery cycle for genre: {genre} ---")
-            
-            process_auto_book(genre)
-            process_auto_audiobook(genre)
-            
-            log(f"Cycle completed. Waiting for {settings.get('interval_minutes', 60)} minutes.")
-        except Exception as e:
-            log(f"Error in main loop: {e}")
-            
-        time.sleep(settings.get("interval_minutes", 60) * 60)
+        
+        current_time = time.time()
+        
+        # Get intervals (in seconds)
+        book_interval = settings.get("book_interval_minutes", settings.get("interval_minutes", 60)) * 60
+        audiobook_interval = settings.get("audiobook_interval_minutes", settings.get("interval_minutes", 60)) * 60
+        
+        # Check if it's time to process books
+        force_books = settings.get("force_run_books", False)
+        if force_books or (current_time - last_book_run >= book_interval):
+            if force_books:
+                log("⚠️ Force run triggered for Books!")
+                # Reset flag
+                try:
+                    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    data["force_run_books"] = False
+                    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                except Exception as e:
+                    log(f"Error resetting force_run_books flag: {e}")
+
+            try:
+                genre = get_weighted_genre(settings.get("genre_priorities", {}))
+                log(f"--- Starting book discovery cycle for genre: {genre} ---")
+                process_auto_book(genre)
+                last_book_run = time.time()
+                log(f"Book cycle completed. Next book in {settings.get('book_interval_minutes', settings.get('interval_minutes', 60))} minutes.")
+            except Exception as e:
+                log(f"Error in book processing: {e}")
+        
+        # Check if it's time to process audiobooks
+        force_audio = settings.get("force_run_audiobooks", False)
+        if force_audio or (current_time - last_audiobook_run >= audiobook_interval):
+            if force_audio:
+                log("⚠️ Force run triggered for Audiobooks!")
+                # Reset flag
+                try:
+                    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    data["force_run_audiobooks"] = False
+                    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                except Exception as e:
+                    log(f"Error resetting force_run_audiobooks flag: {e}")
+
+            try:
+                genre = get_weighted_genre(settings.get("genre_priorities", {}))
+                log(f"--- Starting audiobook discovery cycle for genre: {genre} ---")
+                process_auto_audiobook(genre)
+                last_audiobook_run = time.time()
+                log(f"Audiobook cycle completed. Next audiobook in {settings.get('audiobook_interval_minutes', settings.get('interval_minutes', 60))} minutes.")
+            except Exception as e:
+                log(f"Error in audiobook processing: {e}")
+        
+        # Sleep for a short time before checking again (1 minute)
+        time.sleep(60)
 
 if __name__ == "__main__":
     main_loop()

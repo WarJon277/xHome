@@ -316,38 +316,58 @@ def main_loop():
     log("Movie Auto-Discovery started")
     log("="*60)
     
-    # Initial checks
+    # Track last run times
+    last_run = 0
+    
+    # Load initial settings to log
     settings = load_settings()
     log(f"Settings loaded:")
     log(f"  Interval: {settings.get('interval_minutes', 720)} minutes")
-    log(f"  Min file size: {settings.get('min_file_size_gb', 3.0)} GB")
-    log(f"  Min rating: {settings.get('min_rating', 6.0)}")
-    log(f"  Min year: {settings.get('min_year', 2015)}")
-    log(f"  qBittorrent: {settings.get('qbt_host', 'localhost')}:{settings.get('qbt_port', 8080)}")
-    log("")
     
     while True:
-        settings = load_settings()
-        
-        if not settings.get("enabled", True):
-            log("Movie discovery is disabled. Sleeping for 10 minutes...")
-            time.sleep(600)
-            continue
-        
         try:
-            log("--- Starting new movie discovery cycle ---")
-            success = process_movie()
+            settings = load_settings()
             
-            if success:
-                log("✅ Movie added successfully!")
-            else:
-                log("❌ No movie added this cycle.")
+            if not settings.get("enabled", True):
+                log("Movie discovery is disabled. Sleeping for 10 minutes...")
+                time.sleep(600)
+                continue
             
-            interval = settings.get("interval_minutes", 720)
-            log(f"Waiting for {interval} minutes until next cycle...")
-            log("")
+            current_time = time.time()
+            interval_seconds = settings.get("interval_minutes", 720) * 60
             
-            time.sleep(interval * 60)
+            # Check for forced run
+            force_run = settings.get("force_run", False)
+            
+            if force_run or (current_time - last_run >= interval_seconds):
+                if force_run:
+                    log("⚠️ Force run triggered!")
+                    # Reset flag
+                    try:
+                        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        data["force_run"] = False
+                        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=4, ensure_ascii=False)
+                    except Exception as e:
+                        log(f"Error resetting force_run flag: {e}")
+                
+                log("--- Starting new movie discovery cycle ---")
+                success = process_movie()
+                
+                if success:
+                    log("✅ Movie added successfully!")
+                else:
+                    log("❌ No movie added this cycle.")
+                
+                last_run = time.time()
+                
+                next_run_min = settings.get("interval_minutes", 720)
+                log(f"Cycle completed. Next run in {next_run_min} minutes.")
+                log("")
+            
+            # Sleep for shorter interval to check for force_run
+            time.sleep(60)
             
         except KeyboardInterrupt:
             log("Stopping movie discovery (Ctrl+C pressed)")

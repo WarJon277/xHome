@@ -135,7 +135,9 @@ async def get_discovery_status():
     movie_settings = read_settings('movie_discovery_settings.json')
     
     # Parse logs
-    auto_log = parse_log('auto_discovery.log')
+    # NEW: Read separate logs for books and audiobooks
+    books_log = parse_log('books_discovery.log')
+    audiobooks_log = parse_log('audiobooks_discovery.log')
     movie_log = parse_log('movie_discovery.log')
     
     # Build response
@@ -143,20 +145,20 @@ async def get_discovery_status():
         "books": {
             "enabled": auto_settings.get("enabled", False),
             "interval_minutes": auto_settings.get("book_interval_minutes", auto_settings.get("interval_minutes", 60)),
-            "last_run": auto_log["last_run"],
-            "next_run": calculate_next_run(auto_log["last_run"], auto_settings.get("book_interval_minutes", auto_settings.get("interval_minutes", 60))),
-            "last_success": auto_log["last_success"],
-            "recent_activity": auto_log["recent_activity"],
-            "status": auto_log["status"]
+            "last_run": books_log["last_run"],
+            "next_run": calculate_next_run(books_log["last_run"], auto_settings.get("book_interval_minutes", auto_settings.get("interval_minutes", 60))),
+            "last_success": books_log["last_success"],
+            "recent_activity": books_log["recent_activity"],
+            "status": books_log["status"]
         },
         "audiobooks": {
             "enabled": auto_settings.get("enabled", False),
             "interval_minutes": auto_settings.get("audiobook_interval_minutes", auto_settings.get("interval_minutes", 60)),
-            "last_run": auto_log["last_run"],
-            "next_run": calculate_next_run(auto_log["last_run"], auto_settings.get("audiobook_interval_minutes", auto_settings.get("interval_minutes", 60))),
-            "last_success": auto_log["last_success"],
-            "recent_activity": auto_log["recent_activity"],
-            "status": auto_log["status"]
+            "last_run": audiobooks_log["last_run"],
+            "next_run": calculate_next_run(audiobooks_log["last_run"], auto_settings.get("audiobook_interval_minutes", auto_settings.get("interval_minutes", 60))),
+            "last_success": audiobooks_log["last_success"],
+            "recent_activity": audiobooks_log["recent_activity"],
+            "status": audiobooks_log["status"]
         },
         "movies": {
             "enabled": movie_settings.get("enabled", False),

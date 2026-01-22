@@ -4,13 +4,14 @@ import { fetchProgress, saveProgress } from '../api';
 
 export default function Player({ item, src, onClose, onNext, onPrev }) {
     const videoRef = useRef(null);
-    const [isPlaying, setIsPlaying] = useState(true);
-    const [showControls, setShowControls] = useState(true);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
+    const [showControls, setShowControls] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [savedProgress, setSavedProgress] = useState(0);
-    const [showResumePrompt, setShowResumePrompt] = useState(false);
+    // showResumePrompt is replaced by the Start Screen UI logic
     const controlsTimeoutRef = useRef(null);
     const progressRef = useRef(null);
     const lastSavedTimeRef = useRef(0);
@@ -48,13 +49,6 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 .then(data => {
                     if (data && data.progress_seconds > 10) {
                         setSavedProgress(data.progress_seconds);
-                        setShowResumePrompt(true);
-                        if (videoRef.current) {
-                            videoRef.current.pause();
-                            setIsPlaying(false);
-                        }
-                        // Hide prompt after 10s
-                        setTimeout(() => setShowResumePrompt(false), 10000);
                     }
                 })
                 .catch(console.error);
@@ -66,16 +60,24 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
             videoRef.current.currentTime = savedProgress;
             videoRef.current.play();
             setIsPlaying(true);
+            setHasStarted(true);
         }
-        setShowResumePrompt(false);
     };
 
     const handleStartOver = () => {
-        setShowResumePrompt(false);
         if (videoRef.current) {
             videoRef.current.currentTime = 0;
             videoRef.current.play();
             setIsPlaying(true);
+            setHasStarted(true);
+        }
+    };
+
+    const handlePlayStart = () => {
+        if (videoRef.current) {
+            videoRef.current.play();
+            setIsPlaying(true);
+            setHasStarted(true);
         }
     };
 
@@ -93,12 +95,12 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     };
 
     useEffect(() => {
-        // Auto-play on mount and focus video for TV remotes
-        if (videoRef.current && !showResumePrompt) {
+        // Auto-play only when hasStarted is true
+        if (videoRef.current && hasStarted) {
             videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
             videoRef.current.focus();
         }
-    }, [showResumePrompt]);
+    }, [hasStarted]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -296,30 +298,71 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 }}
             />
 
-            {/* Resume Prompt Overlay */}
-            {showResumePrompt && (
-                <div className="absolute inset-0 z-[10001] bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-gray-900 p-6 sm:p-10 rounded-2xl border border-white/10 shadow-2xl max-w-lg w-full text-center">
-                        <RotateCcw size={64} className="mx-auto text-red-500 mb-6" />
-                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">Продолжить просмотр?</h2>
-                        <p className="text-gray-400 mb-8 sm:text-xl">Вы остановились на {formatTime(savedProgress)}</p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <button
-                                onClick={handleResume}
-                                className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold text-lg sm:text-xl hover:bg-red-700 transition-all tv-focusable active:scale-95 border-2 border-transparent focus:border-white outline-none"
-                                data-tv-clickable="true"
-                                autoFocus
-                            >
-                                Продолжить
-                            </button>
-                            <button
-                                onClick={handleStartOver}
-                                className="flex-1 py-4 bg-white/10 text-white rounded-xl font-bold text-lg sm:text-xml hover:bg-white/20 transition-all tv-focusable active:scale-95 border-2 border-transparent focus:border-white outline-none"
-                                data-tv-clickable="true"
-                            >
-                                С начала
-                            </button>
+            {/* Start Screen Overlay */}
+            {!hasStarted && (
+                <div className="absolute inset-0 z-[10002] bg-black/90 flex flex-col items-center justify-center p-6 text-white text-center">
+                    {/* Background Image (Blurred if available) */}
+                    <div
+                        className="absolute inset-0 bg-cover bg-center opacity-30 blur-xl"
+                        style={{ backgroundImage: item?.image ? `url(${item.image})` : 'none' }}
+                    />
+
+                    <div className="relative z-10 max-w-4xl w-full flex flex-col items-center gap-6">
+                        <h1 className="text-4xl sm:text-6xl font-extrabold mb-2 drop-shadow-2xl">{title}</h1>
+
+                        <div className="flex gap-6 text-lg sm:text-xl text-gray-300 font-medium">
+                            {item?.year && <span>{item.year}</span>}
+                            {item?.rating && (
+                                <span className="flex items-center gap-1 text-yellow-400">
+                                    ★ {item.rating}
+                                </span>
+                            )}
+                            {item?.duration && <span>{item.duration}</span>}
                         </div>
+
+                        {item?.description && (
+                            <p className="text-gray-400 text-lg sm:text-xl max-w-2xl line-clamp-4 leading-relaxed mb-4">
+                                {item.description}
+                            </p>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row gap-6 mt-8 w-full justify-center">
+                            {savedProgress > 10 ? (
+                                <>
+                                    <button
+                                        onClick={handleResume}
+                                        className="py-4 px-10 bg-red-600 rounded-xl font-bold text-xl hover:bg-red-700 hover:scale-105 transition-all outline-none focus:ring-4 ring-white/50 flex items-center justify-center gap-3 tv-focusable"
+                                        autoFocus
+                                    >
+                                        <Play fill="currentColor" size={24} />
+                                        Продолжить с {formatTime(savedProgress)}
+                                    </button>
+                                    <button
+                                        onClick={handleStartOver}
+                                        className="py-4 px-10 bg-white/10 rounded-xl font-bold text-xl hover:bg-white/20 hover:scale-105 transition-all outline-none focus:ring-4 ring-white/50 flex items-center justify-center gap-3 tv-focusable"
+                                    >
+                                        <RotateCcw size={24} />
+                                        С начала
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={handlePlayStart}
+                                    className="py-5 px-16 bg-white text-black rounded-full font-bold text-2xl hover:bg-gray-200 hover:scale-110 transition-all outline-none focus:ring-4 ring-red-600 flex items-center justify-center gap-3 tv-focusable"
+                                    autoFocus
+                                >
+                                    <Play fill="currentColor" size={32} />
+                                    Смотреть
+                                </button>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={onClose}
+                            className="absolute top-0 right-0 p-4 text-white/50 hover:text-white transition-colors"
+                        >
+                            <X size={32} />
+                        </button>
                     </div>
                 </div>
             )}
@@ -346,7 +389,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 </div>
 
                 {/* Center Play Button - ALWAYS focusable even when controls hidden */}
-                {!isPlaying && (
+                {!isPlaying && hasStarted && (
                     <div className="self-center pointer-events-auto">
                         <button
                             onClick={togglePlay}

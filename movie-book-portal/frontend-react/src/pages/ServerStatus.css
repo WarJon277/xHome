@@ -338,19 +338,69 @@
 
     .page-title {
         font-size: 1.8rem;
+        margin-bottom: 15px;
     }
 
     .system-info-header {
-        gap: 15px;
+        gap: 10px;
         flex-direction: column;
         align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .info-item {
+        font-size: 0.9rem;
+        width: 100%;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
     }
 
     .stats-grid {
         grid-template-columns: 1fr;
+        /* Single column on mobile */
+        gap: 15px;
     }
 
     .stat-card {
-        padding: 20px;
+        padding: 15px;
+    }
+
+    .stat-card h2 {
+        font-size: 1.25rem;
+    }
+
+    .stat-item {
+        font-size: 0.95rem;
+    }
+
+    /* Improve touch targets for buttons */
+    .restart-button,
+    .icon-btn {
+        padding: 8px;
+        min-width: 32px;
+        min-height: 32px;
+    }
+
+    .interval-edit-controls {
+        flex-wrap: wrap;
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .interval-input {
+        width: 60px;
+        font-size: 16px;
+        /* Prevent IOS zoom */
+    }
+
+    .log-entries {
+        max-height: 120px;
+        font-size: 0.75rem;
     }
 }

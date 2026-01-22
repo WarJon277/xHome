@@ -154,8 +154,8 @@ const ServerStatus = () => {
         }
 
         try {
-            const apiType = title === 'Книги' ? 'books' :
-                title === 'Аудиокниги' ? 'audiobooks' :
+            const apiType = title.includes('Аудиокниги') ? 'audiobooks' :
+                title.includes('Книги') ? 'books' :
                     'movies';
 
             const response = await fetch('/api/system/discovery-settings', {
@@ -181,8 +181,8 @@ const ServerStatus = () => {
         if (!confirm(`Вы уверены, что хотите запустить поиск для: ${type}?`)) return;
 
         try {
-            const apiType = type === 'Книги' ? 'books' :
-                type === 'Аудиокниги' ? 'audiobooks' :
+            const apiType = type.includes('Аудиокниги') ? 'audiobooks' :
+                type.includes('Книги') ? 'books' :
                     'movies';
 
             const response = await fetch(`/api/system/discovery-restart/${apiType}`, {

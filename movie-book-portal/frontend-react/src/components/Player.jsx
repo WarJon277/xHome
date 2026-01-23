@@ -526,7 +526,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             <span className="order-5 sm:order-4 text-white text-sm sm:text-base font-medium min-w-[45px] sm:min-w-[50px] text-right">{formatTime(duration)}</span>
 
                             {/* VOLUME: Order 5 on Desktop, Hidden on Mobile */}
-                            <div className="order-5 sm:order-5 hidden sm:flex items-center gap-2 ml-2">
+                            <div className="order-5 sm:order-5 flex max-sm:hidden items-center gap-2 ml-2">
                                 <button
                                     onClick={toggleMute}
                                     className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"

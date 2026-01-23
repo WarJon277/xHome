@@ -28,6 +28,26 @@ def process_auto_audiobook(genre_name):
                 log_audio("No audiobook suggestion found.")
                 break
 
+            # Validate download URL is for audio file
+            if suggestion.download_url:
+                audio_extensions = ['.mp3', '.m4b', '.m4a', '.ogg', '.flac', '.zip']
+                is_audio = any(ext in suggestion.download_url.lower() for ext in audio_extensions)
+                
+                if not is_audio:
+                    log_audio(f"Skipping '{suggestion.title}': download URL is not an audio file: {suggestion.download_url}")
+                    db.close()
+                    continue
+            else:
+                log_audio(f"Skipping '{suggestion.title}': no download URL provided")
+                db.close()
+                continue
+
+            # MANDATORY: Check for thumbnail availability
+            if not suggestion.image:
+                log_audio(f"Skipping '{suggestion.title}': no thumbnail image available.")
+                db.close()
+                continue
+
             # Check for duplicates
             existing = db.query(Audiobook).filter(Audiobook.title == suggestion.title, Audiobook.author == suggestion.author_director).first()
             if existing:
@@ -63,6 +83,14 @@ def process_auto_audiobook(genre_name):
                     new_audio.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
                     thumb_success = True
 
+            # MANDATORY: Verify thumbnail download succeeded
+            if not thumb_success:
+                log_audio(f"Skipping '{suggestion.title}': failed to download thumbnail image.")
+                db.delete(new_audio)
+                db.commit()
+                db.close()
+                continue
+
             # Download file (usually ZIP or MP3)
             file_success = False
             if suggestion.download_url:
@@ -84,8 +112,15 @@ def process_auto_audiobook(genre_name):
                                     inner_thumb = find_thumbnail_in_dir(book_dir_path)
                                     if inner_thumb:
                                         new_audio.thumbnail_path = os.path.relpath(inner_thumb, BASE_DIR).replace(os.sep, '/')
-                                file_success = True
-                                log_audio(f"Successfully added multi-track audiobook: {new_audio.title}")
+                                        thumb_success = True
+                                
+                                # MANDATORY: Must have thumbnail to proceed
+                                if not new_audio.thumbnail_path:
+                                    log_audio(f"Skipping '{new_audio.title}': no thumbnail found in ZIP or from URL.")
+                                    file_success = False
+                                else:
+                                    file_success = True
+                                    log_audio(f"Successfully added multi-track audiobook: {new_audio.title}")
                             
                         try: os.remove(temp_zip_path)
                         except: pass

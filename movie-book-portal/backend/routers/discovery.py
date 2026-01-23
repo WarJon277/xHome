@@ -366,6 +366,18 @@ def suggest_audiobook(genre_name: str):
             # Fetch full details
             details = fetch_audioboo_details(random_book['link'])
             if details:
+                download_url = details.get('download_link')
+                
+                # Validate that this is actually an audio file
+                if download_url:
+                    audio_extensions = ['.mp3', '.m4b', '.m4a', '.ogg', '.flac', '.zip']
+                    is_audio = any(ext in download_url.lower() for ext in audio_extensions)
+                    
+                    if not is_audio:
+                        print(f"WARNING: audioboo returned non-audio file: {download_url}")
+                        print(f"Skipping '{details.get('title')}' - not an audiobook")
+                        raise ValueError("Not an audiobook")
+                
                 # Map to Suggestion model format
                 return Suggestion(
                     title=details.get('title', random_book.get('title')),
@@ -373,7 +385,7 @@ def suggest_audiobook(genre_name: str):
                     description=details.get('description', ''),
                     rating=None,
                     image=details.get('image', random_book.get('image')),
-                    download_url=details.get('download_link'),
+                    download_url=download_url,
                     source_url=random_book.get('link'),
                     year=int(details.get('year')) if details.get('year') and str(details.get('year')).isdigit() else None,
                     type="audiobook"
@@ -382,10 +394,11 @@ def suggest_audiobook(genre_name: str):
         print(f"Error suggesting audiobook: {e}")
         
     # Fallback suggestion
+    print("WARNING: No valid audiobook source available")
     return Suggestion(
         title="Ничего не найдено",
         author_director="Система",
-        description="К сожалению, не удалось автоматически подобрать аудиокнигу.",
+        description="К сожалению, не удалось автоматически подобрать аудиокнигу. Источник audioboo.org возвращает книги, а не аудиокниги.",
         source_url="#",
         type="audiobook"
     )

@@ -486,37 +486,47 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 <div className="w-full pointer-events-auto mt-auto">
                     {/* Gradient background for better visibility */}
                     <div className="bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-4 px-4 sm:px-6">
-                        <div className="flex items-center gap-2 sm:gap-4">
-                            {/* Play/Pause Button */}
+
+                        {/* Container: Flex wrap to handle mobile (2 rows) vs desktop (1 row) */}
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-y-2 gap-x-3 sm:gap-x-4">
+
+                            {/* PROGRESS BAR: Order 1 on Mobile (Top), Order 3 on Desktop (Middle) */}
+                            <div className="order-1 sm:order-3 w-full sm:flex-1 flex items-center">
+                                <div
+                                    ref={progressRef}
+                                    onClick={handleProgressClick}
+                                    className="flex-1 h-3 sm:h-1.5 bg-white/40 rounded-full overflow-visible cursor-pointer relative group"
+                                >
+                                    <div
+                                        className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
+                                        style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                                    >
+                                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg group-hover:scale-125 transition-transform border border-black/10" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PLAY BUTTON: Order 2 on Mobile, Order 1 on Desktop */}
                             <button
                                 onClick={togglePlay}
-                                className="p-2 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                className="order-2 sm:order-1 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
                                 data-tv-clickable="true"
                                 tabIndex={0}
                             >
                                 {isPlaying ? <Pause size={28} /> : <Play fill="currentColor" size={28} />}
                             </button>
 
-                            <span className="text-white text-sm sm:text-base font-medium min-w-[50px]">{formatTime(currentTime)}</span>
+                            {/* CURRENT TIME: Order 3 on Mobile, Order 2 on Desktop */}
+                            <span className="order-3 sm:order-2 text-white text-sm sm:text-base font-medium min-w-[45px] sm:min-w-[50px]">{formatTime(currentTime)}</span>
 
-                            {/* Progress bar */}
-                            <div
-                                ref={progressRef}
-                                onClick={handleProgressClick}
-                                className="flex-1 h-2 sm:h-1.5 bg-white/40 rounded-full overflow-visible cursor-pointer relative group"
-                            >
-                                <div
-                                    className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
-                                    style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-                                >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg group-hover:scale-125 transition-transform" />
-                                </div>
-                            </div>
+                            {/* SPACER for Mobile to push right controls */}
+                            <div className="order-4 sm:hidden flex-1"></div>
 
-                            <span className="text-white text-sm sm:text-base font-medium min-w-[50px] text-right">{formatTime(duration)}</span>
+                            {/* DURATION: Order 5 on Mobile (right side), Order 4 on Desktop */}
+                            <span className="order-5 sm:order-4 text-white text-sm sm:text-base font-medium min-w-[45px] sm:min-w-[50px] text-right">{formatTime(duration)}</span>
 
-                            {/* Volume Control - Hidden on mobile */}
-                            <div className="flex max-sm:hidden items-center gap-2 ml-2">
+                            {/* VOLUME: Order 5 on Desktop, Hidden on Mobile */}
+                            <div className="order-5 sm:order-5 hidden sm:flex items-center gap-2 ml-2">
                                 <button
                                     onClick={toggleMute}
                                     className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
@@ -539,9 +549,10 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                                 />
                             </div>
 
+                            {/* FULLSCREEN: Order 6 */}
                             <button
                                 onClick={toggleFullscreen}
-                                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                className="order-6 sm:order-6 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
                                 data-tv-clickable="true"
                                 tabIndex={0}
                             >

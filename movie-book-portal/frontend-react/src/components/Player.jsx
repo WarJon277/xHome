@@ -440,40 +440,18 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                         <div
                             ref={progressRef}
                             onClick={handleProgressClick}
-                            className="flex-1 h-2 sm:h-3 bg-white/20 rounded-full overflow-hidden cursor-pointer relative group"
+                            className="flex-1 h-3 sm:h-4 bg-white/30 rounded-full overflow-hidden cursor-pointer relative group"
                         >
                             <div
                                 className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
                                 style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                             >
-                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full scale-0 group-hover:scale-100 transition-transform shadow-md" />
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg" />
                             </div>
                         </div>
                         <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>
 
-                        {/* Volume Control */}
-                        <div className="flex items-center gap-2 ml-4">
-                            <button
-                                onClick={toggleMute}
-                                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
-                                data-tv-clickable="true"
-                                tabIndex={0}
-                            >
-                                {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
-                            </button>
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={volume}
-                                onChange={handleVolumeChange}
-                                className="w-20 sm:w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
-                                style={{
-                                    background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
-                                }}
-                            />
-                        </div>
+
 
                         <button
                             onClick={toggleFullscreen}

@@ -498,13 +498,13 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                         <div
                             ref={progressRef}
                             onClick={handleProgressClick}
-                            className="flex-1 h-3 sm:h-4 bg-white/30 rounded-full overflow-hidden cursor-pointer relative group"
+                            className="flex-1 h-6 sm:h-5 bg-white/50 rounded-full overflow-hidden cursor-pointer relative group"
                         >
                             <div
                                 className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
                                 style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                             >
-                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg" />
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full shadow-2xl border-2 border-red-600" />
                             </div>
                         </div>
                         <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>

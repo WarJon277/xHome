@@ -57,6 +57,8 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         }
     }, [itemId, itemType]);
 
+
+
     const handleResume = () => {
         // Check for Android native player
         if (window.AndroidApp && typeof window.AndroidApp.playVideo === 'function') {

@@ -1,15 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Custom player controls layout without volume controls -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Custom player controls - simple layout like web version -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-    
-    <!-- Use default ExoPlayer controls but hide volume button -->
-    <androidx.media3.ui.PlayerControlView
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:background="@android:color/transparent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Bottom controls row -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:show_volume_button="false" />
-    
-</FrameLayout>
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Play/Pause button -->
+        <ImageButton
+            android:id="@id/exo_play_pause"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Play/Pause"
+            android:scaleType="fitCenter"
+            android:tint="#FFFFFF" />
+
+        <!-- Current time -->
+        <TextView
+            android:id="@id/exo_position"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:includeFontPadding="false"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Progress bar -->
+        <androidx.media3.ui.DefaultTimeBar
+            android:id="@id/exo_progress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            app:played_color="#EF4444"
+            app:scrubber_color="#FFFFFF"
+            app:unplayed_color="#4DFFFFFF"
+            app:bar_height="4dp"
+            app:scrubber_enabled_size="14dp"
+            app:scrubber_disabled_size="0dp" />
+
+        <!-- Total duration -->
+        <TextView
+            android:id="@id/exo_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:includeFontPadding="false"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Fullscreen button -->
+        <ImageButton
+            android:id="@id/exo_fullscreen"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Fullscreen"
+            android:scaleType="fitCenter"
+            android:src="@drawable/exo_icon_fullscreen_enter"
+            android:tint="#FFFFFF" />
+
+    </LinearLayout>
+
+</LinearLayout>
 

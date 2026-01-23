@@ -39,15 +39,6 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
-        
-        <!-- Video Player Activity with Picture-in-Picture support -->
-        <activity
-            android:name=".VideoPlayerActivity"
-            android:exported="false"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
-            android:supportsPictureInPicture="true"
-            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
-        
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.example.xwv.fileprovider"

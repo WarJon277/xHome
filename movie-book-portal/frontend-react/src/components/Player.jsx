@@ -58,6 +58,33 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     }, [itemId, itemType]);
 
     const handleResume = () => {
+        // Check for Android native player
+        if (window.AndroidApp && typeof window.AndroidApp.playVideo === 'function') {
+            console.log('Resuming with Android native player');
+            try {
+                const fullVideoUrl = videoUrl.startsWith('http')
+                    ? videoUrl
+                    : `${window.location.origin}${videoUrl}`;
+
+                window.AndroidApp.playVideo(
+                    fullVideoUrl,
+                    title,
+                    itemId || 0,
+                    itemType,
+                    savedProgress || 0
+                );
+
+                setTimeout(() => {
+                    onClose();
+                }, 500);
+
+                return;
+            } catch (error) {
+                console.error('Failed to launch native player:', error);
+            }
+        }
+
+        // Fallback to HTML5
         if (videoRef.current) {
             videoRef.current.currentTime = savedProgress;
             videoRef.current.play();
@@ -76,6 +103,35 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     };
 
     const handlePlayStart = () => {
+        // Check if running in Android app with native player support
+        if (window.AndroidApp && typeof window.AndroidApp.playVideo === 'function') {
+            console.log('Using Android native player');
+            try {
+                const fullVideoUrl = videoUrl.startsWith('http')
+                    ? videoUrl
+                    : `${window.location.origin}${videoUrl}`;
+
+                window.AndroidApp.playVideo(
+                    fullVideoUrl,
+                    title,
+                    itemId || 0,
+                    itemType,
+                    savedProgress || 0
+                );
+
+                // Close the web player since native player will take over
+                setTimeout(() => {
+                    onClose();
+                }, 500);
+
+                return;
+            } catch (error) {
+                console.error('Failed to launch native player:', error);
+                // Fall through to HTML5 player
+            }
+        }
+
+        // Fallback to HTML5 video player
         if (videoRef.current) {
             videoRef.current.play();
             setIsPlaying(true);

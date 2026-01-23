@@ -117,14 +117,13 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(false)
 
         val primaryUrl = "http://192.168.0.239:5050/"
-        val cloudUrl = "https://lightly-shipshape-stonefish.cloudpub.ru/"
         val fallbackUrl = "https://dev.tpw-xxar.ru"
 
         if (isNetworkAvailable()) {
-            loadUrlWithFallback(primaryUrl, cloudUrl, fallbackUrl)
+            loadUrlWithFallback(primaryUrl, fallbackUrl)
         } else {
-            webView.loadUrl(cloudUrl)
-            Toast.makeText(this, "Нет подключения к интернету. Загружено облачное приложение.", Toast.LENGTH_LONG).show()
+            webView.loadUrl(fallbackUrl)
+            Toast.makeText(this, "Нет подключения к интернету. Загружено резервное приложение.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -135,15 +134,9 @@ class MainActivity : AppCompatActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun loadUrlWithFallback(primaryUrl: String, cloudUrl: String, fallbackUrl: String) {
+    private fun loadUrlWithFallback(primaryUrl: String, fallbackUrl: String) {
         isPrimaryUrlLoaded = false
         webView.loadUrl(primaryUrl)
-        
-        // Store fallback URLs for use in error handler
-        webView.tag = mapOf(
-            "cloudUrl" to cloudUrl,
-            "fallbackUrl" to fallbackUrl
-        )
     }
 
     private fun startLoadingAnimation() {
@@ -256,22 +249,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            
-            // НОВЫЙ МЕТОД ДЛЯ НАТИВНОГО ВИДЕОПЛЕЕРА:
-            @JavascriptInterface
-            fun playVideo(url: String, title: String, itemId: Int, itemType: String, savedPosition: Long) {
-                Log.d("MainActivity", "playVideo called: $title (ID: $itemId, Type: $itemType)")
-                runOnUiThread {
-                    val intent = Intent(this@MainActivity, VideoPlayerActivity::class.java).apply {
-                        putExtra("VIDEO_URL", url)
-                        putExtra("VIDEO_TITLE", title)
-                        putExtra("ITEM_ID", itemId)
-                        putExtra("ITEM_TYPE", itemType)
-                        putExtra("SAVED_POSITION", savedPosition) // Already in seconds
-                    }
-                    startActivity(intent)
-                }
-            }
         }, "AndroidApp")
 
         // === ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
@@ -310,15 +287,10 @@ class MainActivity : AppCompatActivity() {
                         if (!isPrimaryUrlLoaded) {
                             Log.w("WebView", "Timeout reaching local server")
                             stopLoadingAnimation()
-                            // Cancel loading and switch to cloud fallback
+                            // Cancel loading and switch to fallback
                             webView.stopLoading()
-                            
-                            @Suppress("UNCHECKED_CAST")
-                            val fallbackUrls = webView.tag as? Map<String, String>
-                            val cloudUrl = fallbackUrls?.get("cloudUrl") ?: "https://lightly-shipshape-stonefish.cloudpub.ru/"
-                            
-                            Toast.makeText(this@MainActivity, "Локальный сервер не отвечает. Переход на облачный сервер...", Toast.LENGTH_SHORT).show()
-                            webView.loadUrl(cloudUrl)
+                            Toast.makeText(this@MainActivity, "Локальный сервер не отвечает. Переход на резерв...", Toast.LENGTH_SHORT).show()
+                            webView.loadUrl("https://dev.tpw-xxar.ru")
                         }
                     }
                     // 2.5 seconds timeout
@@ -348,12 +320,8 @@ class MainActivity : AppCompatActivity() {
                          timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                          stopLoadingAnimation()
                          runOnUiThread {
-                            @Suppress("UNCHECKED_CAST")
-                            val fallbackUrls = webView.tag as? Map<String, String>
-                            val cloudUrl = fallbackUrls?.get("cloudUrl") ?: "https://lightly-shipshape-stonefish.cloudpub.ru/"
-                            
-                            Toast.makeText(this@MainActivity, "Ошибка локального сервера. Переход на облачный сервер...", Toast.LENGTH_LONG).show()
-                            webView.loadUrl(cloudUrl)
+                            Toast.makeText(this@MainActivity, "Ошибка сервера. Переход на резерв...", Toast.LENGTH_LONG).show()
+                            webView.loadUrl("https://dev.tpw-xxar.ru")
                         }
                     }
                 }

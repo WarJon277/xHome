@@ -483,42 +483,71 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 )}
 
                 {/* Footer Controls */}
-                <div className="w-full pointer-events-auto mt-auto flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                        {/* Play/Pause Button */}
-                        <button
-                            onClick={togglePlay}
-                            className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
-                            data-tv-clickable="true"
-                            tabIndex={0}
-                        >
-                            {isPlaying ? <Pause size={28} /> : <Play fill="currentColor" size={28} />}
-                        </button>
-                        <span className="text-white text-sm sm:text-lg font-medium min-w-[60px]">{formatTime(currentTime)}</span>
-                        <div
-                            ref={progressRef}
-                            onClick={handleProgressClick}
-                            className="flex-1 h-6 sm:h-5 bg-white/50 rounded-full overflow-hidden cursor-pointer relative group"
-                        >
-                            <div
-                                className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
-                                style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                <div className="w-full pointer-events-auto mt-auto">
+                    {/* Gradient background for better visibility */}
+                    <div className="bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-4 px-4 sm:px-6">
+                        <div className="flex items-center gap-2 sm:gap-4">
+                            {/* Play/Pause Button */}
+                            <button
+                                onClick={togglePlay}
+                                className="p-2 sm:p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                data-tv-clickable="true"
+                                tabIndex={0}
                             >
-                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full shadow-2xl border-2 border-red-600" />
+                                {isPlaying ? <Pause size={28} /> : <Play fill="currentColor" size={28} />}
+                            </button>
+
+                            <span className="text-white text-sm sm:text-base font-medium min-w-[50px]">{formatTime(currentTime)}</span>
+
+                            {/* Progress bar */}
+                            <div
+                                ref={progressRef}
+                                onClick={handleProgressClick}
+                                className="flex-1 h-2 sm:h-1.5 bg-white/40 rounded-full overflow-visible cursor-pointer relative group"
+                            >
+                                <div
+                                    className="bg-red-600 h-full rounded-full transition-all duration-150 relative"
+                                    style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                                >
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg group-hover:scale-125 transition-transform" />
+                                </div>
                             </div>
+
+                            <span className="text-white text-sm sm:text-base font-medium min-w-[50px] text-right">{formatTime(duration)}</span>
+
+                            {/* Volume Control - Hidden on mobile */}
+                            <div className="hidden sm:flex items-center gap-2 ml-2">
+                                <button
+                                    onClick={toggleMute}
+                                    className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                    data-tv-clickable="true"
+                                    tabIndex={0}
+                                >
+                                    {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                                </button>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    value={volume}
+                                    onChange={handleVolumeChange}
+                                    className="w-20 sm:w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                onClick={toggleFullscreen}
+                                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                data-tv-clickable="true"
+                                tabIndex={0}
+                            >
+                                {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                            </button>
                         </div>
-                        <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>
-
-
-
-                        <button
-                            onClick={toggleFullscreen}
-                            className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors ml-2 tv-focusable"
-                            data-tv-clickable="true"
-                            tabIndex={0}
-                        >
-                            {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
-                        </button>
                     </div>
                 </div>
             </div>

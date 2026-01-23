@@ -43,16 +43,12 @@ def search_flibusta(q: str = Query(..., min_length=2)):
                 if 'image' in type_ or 'thumbnail' in rel:
                     links['image'] = href if href.startswith('http') else f"{FLIBUSTA_BASE_URL}{href}"
                 
-                # Download links (priority EPUB, then FB2)
+                # Download link (EPUB Only)
                 if 'epub' in type_:
                     links['epub'] = href if href.startswith('http') else f"{FLIBUSTA_BASE_URL}{href}"
-                elif 'fb2' in type_ or 'application/fb2+zip' in type_:
-                    links['fb2'] = href if href.startswith('http') else f"{FLIBUSTA_BASE_URL}{href}"
-                elif 'mobi' in type_:
-                    links['mobi'] = href if href.startswith('http') else f"{FLIBUSTA_BASE_URL}{href}"
 
-            # Only add if we have some download link
-            if any(k in links for k in ['epub', 'fb2', 'mobi']):
+            # Only add if we have BOTH EPUB download link AND image
+            if 'epub' in links and 'image' in links:
                 results.append({
                     "id": entry.id.split('/')[-1] if 'id' in entry else str(uuid.uuid4()),
                     "title": entry.title,
@@ -82,9 +78,7 @@ async def download_from_flibusta(
         response.raise_for_status()
         
         # Determine filename and extension
-        ext = ".epub" # Default
-        if "fb2" in download_url: ext = ".fb2"
-        elif "mobi" in download_url: ext = ".mobi"
+        ext = ".epub" 
         
         # Get filename from headers if possible
         cd = response.headers.get('content-disposition')
@@ -101,7 +95,7 @@ async def download_from_flibusta(
         with open(file_save_path, 'wb') as f:
             shutil.copyfileobj(response.raw, f)
             
-        # 2. Download thumbnail if exists
+        # 2. Download thumbnail
         thumb_rel_path = None
         if image_url:
             try:
@@ -120,6 +114,13 @@ async def download_from_flibusta(
             except Exception as ei:
                 print(f"Thumbnail download failed: {ei}")
 
+        # NEW: Mandatory cover check
+        if not thumb_rel_path:
+            # Clean up book file if cover failed
+            if os.path.exists(file_save_path):
+                os.remove(file_save_path)
+            raise HTTPException(status_code=400, detail="Не удалось загрузить обложку. Загрузка отменена.")
+
         # 3. Add to Database
         db_book = Book(
             title=title,
@@ -129,6 +130,7 @@ async def download_from_flibusta(
             thumbnail_path=thumb_rel_path,
             year=0, 
             genre="Загруженное",
+            total_pages=0, # Default for manual add if unknown
             rating=0.0
         )
         
@@ -138,6 +140,8 @@ async def download_from_flibusta(
         
         return {"status": "success", "book_id": db_book.id, "title": db_book.title}
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Flibusta download error: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке: {str(e)}")

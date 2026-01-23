@@ -267,6 +267,7 @@ class Suggestion(BaseModel):
     type: str # movie, book
     series: Optional[str] = None
     series_index: Optional[int] = None
+    pages: Optional[int] = None
 
 @router.get("/search")
 def search_books(query: str, provider: str = "flibusta", limit: int = 25):
@@ -425,14 +426,15 @@ def suggest_book(genre_name: str, provider: str = "flibusta"):
                 books = search_flibusta(keyword, base_url, limit=30)
             
             if books and len(books) > 0:
-                # Pick a random book
-                random_book = random.choice(books)
-                print(f"DEBUG: Selected random book: {random_book['title']}")
-                
-                # Get full details
-                details = scrape_book_details(random_book['id'], base_url)
-                if details:
-                    return details
+                # Try up to 5 random books from results to find one that meets our new criteria
+                candidates = random.sample(books, min(len(books), 5))
+                for random_book in candidates:
+                    print(f"DEBUG: Checking candidate: {random_book['title']}")
+                    # Get full details
+                    details = scrape_book_details(random_book['id'], base_url)
+                    if details and details.download_url and details.image and (details.pages or 0) >= 10:
+                        return details
+                    print(f"DEBUG: Candidate {random_book['title']} didn't meet criteria (EPUB/Cover/Pages), trying another...")
             
         except Exception as e:
             print(f"DEBUG: Error suggesting book with keyword '{keyword}': {e}")
@@ -615,134 +617,62 @@ def scrape_book_details(book_id: str, base_url: str = PROVIDERS["flibusta"]):
         
         author = ", ".join(authors[:2]) if authors else "Неизвестен"
 
-        # Year
+        # Year & Pages
         year = None
-        # ... (Year logic usually fine) ...
-        # (omitted for brevity, assume existing year logic works or requires less change)
+        pages = None
         
-        if not year:
-            text_content = soup.get_text()
-            year_match = re.search(r'(?:издание|год|выпуск)[\s:]+(\d{4})', text_content, re.I)
-            if not year_match:
-                year_match = re.search(r'(\d{4})\s*г\.', text_content)
-            if year_match:
-                year = int(year_match.group(1))
+        text_content = soup.get_text()
+        
+        # Try to find pages
+        pages_match = re.search(r'(?:страниц|pages)[\s:]+(\d+)', text_content, re.I)
+        if pages_match:
+            try:
+                pages = int(pages_match.group(1))
+                print(f"DEBUG: Found page count: {pages}")
+            except: pass
+
+        # Get year
+        year_match = re.search(r'(?:издание|год|выпуск)[\s:]+(\d{4})', text_content, re.I)
+        if not year_match:
+            year_match = re.search(r'(\d{4})\s*г\.', text_content)
+        if year_match:
+            year = int(year_match.group(1))
 
         if not description:
              description = "Описание отсутствует"
 
-        # Download/Read URL
+        # Download/Read URL - EPUB ONLY
         download_url = None
         if "royallib.com" in base_url:
-            # ... (RoyalLib logic) ...
-            pass # Skipping RoyalLib edits here as they are fine
-            # RoyalLib provides ZIPs for formats. We prefer FB2 or EPUB.
-            # Buttons look like: "Скачать в формате FB2"
-            for fmt in ['fb2', 'epub', 'txt']:
-                download_link = soup.find('a', string=re.compile(rf'Скачать в формате {fmt.upper()}', re.I))
-                if download_link:
-                    download_url = urljoin("https://royallib.com", download_link['href'])
-                    break
+            # RoyalLib provides ZIPs for formats. We prefer EPUB.
+            epub_link = soup.find('a', string=re.compile(r'Скачать в формате EPUB', re.I))
+            if epub_link:
+                download_url = urljoin("https://royallib.com", epub_link['href'])
+            else:
+                # Check for general download links matching epub
+                epub_link = soup.find('a', href=re.compile(r'/get/epub/'))
+                if epub_link:
+                    download_url = urljoin("https://royallib.com", epub_link['href'])
+        elif "coollib" in base_url or "flibusta" in base_url:
+            # Prioritize and EXCLUSIVELY pick EPUB
+            # Look for links with text containing (epub) or path ending in /epub
+            epub_pattern = re.compile(rf'/b/{book_id}/epub$|/b/.+/epub$')
+            epub_link = soup.find('a', href=epub_pattern) or soup.find('a', string=re.compile(r'\(epub\)', re.I))
+            
+            if epub_link:
+                href = epub_link.get('href')
+                if href and 'litres' not in href:
+                    download_url = f"{base_url.rstrip('/')}{href}" if not href.startswith('http') else href
             
             if not download_url:
-                 # Check for general download links
-                 download_link = soup.find('a', href=re.compile(r'/get/(fb2|epub|txt)/'))
-                 if download_link:
-                     download_url = urljoin("https://royallib.com", download_link['href'])
-        elif "coollib" in base_url:
-            # Coollib uses /b/[id]-[slug]/download or /b/[id]-[slug]/download_new
-            # Prioritize explicit formats that user requested (fb2, epub)
-            # Look for links with text containing (fb2), (epub)
-            found_url = None
-            potential_links = []
-            
-            # 1. Gather potential links
-            # Explicit text links
-            for fmt in ['fb2', 'epub']:
-                link = soup.find('a', string=re.compile(rf'\({fmt}\)', re.I))
-                if link: potential_links.append((fmt, link))
-            
-            # Path based links
-            for fmt in ['fb2', 'epub']:
-                link = soup.find('a', href=re.compile(rf'/b/.+/{fmt}$'))
-                if link: potential_links.append((fmt, link))
-                
-            # Generic download
-            link = soup.find('a', href=re.compile(r'/b/.+/download'))
-            if link: potential_links.append(('generic', link))
-
-            # 2. Select best valid link
-            for fmt, link in potential_links:
-                href = link.get('href')
-                if not href: continue
-                
-                # Check for external/store links (Litres, etc)
-                if 'litres.ru' in href or 'my-shop.ru' in href:
-                    print(f"DEBUG: Ignoring external store link: {href}")
-                    continue
-                
-                full_url = f"{base_url.rstrip('/')}{href}" if not href.startswith('http') else href
-                
-                # If we found a preferred format (fb2/epub) that is internal, take it
-                if fmt in ['fb2', 'epub']:
-                    found_url = full_url
-                    break
-                
-                # If generic, keep it as fallback (unless we already have a better one)
-                if fmt == 'generic' and not found_url:
-                    found_url = full_url
-
-            download_url = found_url
-        else: # Flibusta
-            # Flibusta - check formats or download links
-            # PDA version uses download_fbd or download paths
-            # Prioritize explicit formats (epub, fb2) over 'read' links
-            found_url = None
-            potential_links = []
-            
-            # 1. Gather potential links
-            # User prefers EPUB simple download
-            for fmt in ['epub', 'fb2', 'mobi']:
-                link = soup.find('a', href=re.compile(rf'/b/{book_id}/{fmt}$'))
-                if link: potential_links.append((fmt, link))
-                
-            # If no specific format found, try generic download
-            if not potential_links:
-                link = soup.find('a', href=re.compile(r'/b/.+/download'))
-                if link: potential_links.append(('generic', link))
-            
-            # If still nothing, fallback to read link (but this might be HTML)
-            # Only use read link if we absolutely have to, and warn user
-            if not potential_links:
-                 read_btn = soup.find('a', href=re.compile(r'/read/|/view/'))
-                 if read_btn: potential_links.append(('read', read_btn))
-
-            # 2. Select best valid link
-            for fmt, link in potential_links:
-                href = link.get('href')
-                if not href: continue
-                
-                # Check for known restricted/external patterns if any appear in hrefs
-                if 'litres' in href: continue
-
-                full_url = f"{base_url.rstrip('/')}{href}" if not href.startswith('http') else href
-                
-                # Prefer EPUB/FB2
-                if fmt in ['epub', 'fb2']:
-                    found_url = full_url
-                    break
-                
-                # Fallbacks
-                if not found_url:
-                    found_url = full_url
-            
-            download_url = found_url
+                print(f"DEBUG: No EPUB found for {title}, ignoring other formats.")
 
         return Suggestion(
             title=title,
             author_director=author,
             description=description.strip(),
             year=year,
+            pages=pages,
             image=image,
             download_url=download_url,
             source_url=url,

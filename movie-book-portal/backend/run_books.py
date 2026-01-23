@@ -32,6 +32,25 @@ def process_auto_book(genre_name):
                 db.close()
                 continue
 
+            # NEW: Validate page count (min 10)
+            pages = suggestion.pages if suggestion.pages is not None else 0
+            if pages < 10:
+                log_book(f"Skipping '{suggestion.title}': too short ({pages} pages). Min: 10.")
+                db.close()
+                continue
+            
+            # NEW: Validate EPUB availability
+            if not suggestion.download_url:
+                log_book(f"Skipping '{suggestion.title}': no EPUB download link available.")
+                db.close()
+                continue
+
+            # NEW: Mandatory cover image check
+            if not suggestion.image:
+                log_book(f"Skipping '{suggestion.title}': no cover image available.")
+                db.close()
+                continue
+
             # Create record first to get ID
             new_book = Book(
                 title=suggestion.title,
@@ -40,7 +59,7 @@ def process_auto_book(genre_name):
                 genre=genre_name,
                 description=suggestion.description,
                 rating=suggestion.rating or 0.0,
-                total_pages=1
+                total_pages=pages
             )
             db.add(new_book)
             db.commit()
@@ -59,11 +78,19 @@ def process_auto_book(genre_name):
                     new_book.thumbnail_path = os.path.relpath(thumb_path, BASE_DIR).replace(os.sep, '/')
                     thumb_success = True
             
+            # NEW: Second check for mandatory cover success
+            if not thumb_success:
+                log_book(f"Skipping '{suggestion.title}': failed to download cover image.")
+                db.delete(new_book)
+                db.commit()
+                db.close()
+                continue
+
             # Download book file
             file_success = False
             if suggestion.download_url:
-                # Determine extension from URL
-                ext = ".fb2" # Default
+                # Determine extension from URL (EPUB preferred)
+                ext = ".epub" 
                 url_lower = suggestion.download_url.lower()
                 if ".epub" in url_lower or url_lower.endswith("/epub"): ext = ".epub"
                 elif ".mobi" in url_lower or url_lower.endswith("/mobi"): ext = ".mobi"
@@ -85,6 +112,7 @@ def process_auto_book(genre_name):
                 if thumb_success and new_book.thumbnail_path:
                     try: os.remove(os.path.join(BASE_DIR, new_book.thumbnail_path))
                     except: pass
+
                 db.close()
                 continue # Try next attempt
 

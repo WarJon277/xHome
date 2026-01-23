@@ -76,10 +76,10 @@ async def upload_book_file(book_id: int, file: UploadFile = File(...), db: Sessi
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    allowed_ext = {".pdf", ".djvu", ".djv", ".cbz", ".zip", ".epub", ".fb2", ".mobi"}
+    allowed_ext = {".epub"}
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in allowed_ext:
-        raise HTTPException(status_code=400, detail=f"Неподдерживаемый формат книги. Разрешены: {', '.join(allowed_ext)}")
+        raise HTTPException(status_code=400, detail="Разрешены только файлы формата EPUB")
 
     file_path = os.path.abspath(os.path.join(BASE_DIR, f"uploads/books/{book_id}_{file.filename}"))
     os.makedirs(os.path.dirname(file_path), exist_ok=True)

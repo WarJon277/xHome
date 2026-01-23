@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Play, Pause, ChevronLeft, Maximize, Minimize, RotateCcw } from 'lucide-react';
+import { X, Play, Pause, ChevronLeft, Maximize, Minimize, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { fetchProgress, saveProgress } from '../api';
 
 export default function Player({ item, src, onClose, onNext, onPrev }) {
@@ -11,6 +11,8 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const [duration, setDuration] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [savedProgress, setSavedProgress] = useState(0);
+    const [volume, setVolume] = useState(() => Number(localStorage.getItem('player-volume')) || 1);
+    const [isMuted, setIsMuted] = useState(false);
     // showResumePrompt is replaced by the Start Screen UI logic
     const controlsTimeoutRef = useRef(null);
     const progressRef = useRef(null);
@@ -264,6 +266,32 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         showControlsTemporarily();
     };
 
+    const handleVolumeChange = (e) => {
+        const newVolume = parseFloat(e.target.value);
+        setVolume(newVolume);
+        setIsMuted(newVolume === 0);
+        if (videoRef.current) {
+            videoRef.current.volume = newVolume;
+        }
+        localStorage.setItem('player-volume', newVolume);
+    };
+
+    const toggleMute = () => {
+        if (videoRef.current) {
+            const newMuted = !isMuted;
+            setIsMuted(newMuted);
+            videoRef.current.muted = newMuted;
+        }
+    };
+
+    // Apply volume on video load
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.volume = volume;
+            videoRef.current.muted = isMuted;
+        }
+    }, [volume, isMuted]);
+
     const title = item ? (item.title || item.name) : "Video";
 
     return (
@@ -399,6 +427,15 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 {/* Footer Controls */}
                 <div className="w-full pointer-events-auto mt-auto flex flex-col gap-4">
                     <div className="flex items-center gap-4">
+                        {/* Play/Pause Button */}
+                        <button
+                            onClick={togglePlay}
+                            className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                            data-tv-clickable="true"
+                            tabIndex={0}
+                        >
+                            {isPlaying ? <Pause size={28} /> : <Play fill="currentColor" size={28} />}
+                        </button>
                         <span className="text-white text-sm sm:text-lg font-medium min-w-[60px]">{formatTime(currentTime)}</span>
                         <div
                             ref={progressRef}
@@ -413,6 +450,30 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             </div>
                         </div>
                         <span className="text-white text-sm sm:text-lg font-medium min-w-[60px] text-right">{formatTime(duration)}</span>
+
+                        {/* Volume Control */}
+                        <div className="flex items-center gap-2 ml-4">
+                            <button
+                                onClick={toggleMute}
+                                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                data-tv-clickable="true"
+                                tabIndex={0}
+                            >
+                                {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                            </button>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={volume}
+                                onChange={handleVolumeChange}
+                                className="w-20 sm:w-24 h-1 bg-white/20 rounded-full appearance-none cursor-pointer"
+                                style={{
+                                    background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+                                }}
+                            />
+                        </div>
 
                         <button
                             onClick={toggleFullscreen}

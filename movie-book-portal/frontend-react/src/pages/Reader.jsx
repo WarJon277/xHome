@@ -9,7 +9,7 @@ export default function Reader() {
 
     const [book, setBook] = useState(null);
     const [pageContent, setPageContent] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
+    const [currentPage, setCurrentPage] = useState(0); // Start at 0 for description page
     const [totalPages, setTotalPages] = useState(1);
     const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('reader-font-size')) || 20);
     const [theme, setTheme] = useState(() => localStorage.getItem('reader-theme') || 'sepia');
@@ -100,6 +100,38 @@ export default function Reader() {
     useEffect(() => {
         if (!book) {
             console.log('Skipping page load - book not loaded yet');
+            return;
+        }
+
+        // Page 0: Show description page
+        if (currentPage === 0) {
+            const descriptionHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; padding: 20px; text-align: center; min-height: 60vh; justify-content: center;">
+                    ${book.thumbnail_path ? `
+                        <img 
+                            src="${book.thumbnail_path.startsWith('/') ? book.thumbnail_path : '/' + book.thumbnail_path}" 
+                            alt="${book.title}"
+                            style="max-width: 300px; max-height: 400px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 30px;"
+                        />
+                    ` : ''}
+                    <h1 style="font-size: 2em; margin-bottom: 10px; font-weight: bold;">${book.title}</h1>
+                    <p style="font-size: 1.2em; opacity: 0.7; margin-bottom: 20px;">${book.author || 'Автор неизвестен'}</p>
+                    ${book.year ? `<p style="opacity: 0.6; margin-bottom: 10px;">Год: ${book.year}</p>` : ''}
+                    ${book.genre ? `<p style="opacity: 0.6; margin-bottom: 20px;">Жанр: ${book.genre}</p>` : ''}
+                    ${book.description ? `
+                        <div style="max-width: 600px; margin-top: 20px; text-align: justify; line-height: 1.8; padding: 20px; background: rgba(0,0,0,0.03); border-radius: 8px;">
+                            <p style="font-size: 1.1em;">${book.description}</p>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 40px; padding: 15px 30px; background: rgba(0,0,0,0.05); border-radius: 8px; font-weight: bold;">
+                        Нажмите "Вперед" чтобы начать чтение →
+                    </div>
+                </div>
+            `;
+            setPageContent(descriptionHTML);
+            if (contentRef.current) {
+                contentRef.current.scrollTop = 0;
+            }
             return;
         }
 
@@ -260,7 +292,7 @@ export default function Reader() {
     };
 
     const handlePrev = () => {
-        if (currentPage > 1) {
+        if (currentPage > 0) {
             console.log(`Previous page: ${currentPage} -> ${currentPage - 1}`);
             setCurrentPage(p => p - 1);
         }
@@ -411,26 +443,26 @@ export default function Reader() {
                 >
                     <button
                         onClick={handlePrev}
-                        disabled={currentPage <= 1}
+                        disabled={currentPage <= 0}
                         className="flex items-center justify-center gap-1 px-3 py-2 sm:px-6 sm:py-3 rounded-lg font-bold transition-all active:scale-95 flex-1 sm:flex-none"
                         style={{
-                            backgroundColor: currentPage <= 1 ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
-                            opacity: currentPage <= 1 ? 0.3 : 1,
-                            cursor: currentPage <= 1 ? 'not-allowed' : 'pointer'
+                            backgroundColor: currentPage <= 0 ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
+                            opacity: currentPage <= 0 ? 0.3 : 1,
+                            cursor: currentPage <= 0 ? 'not-allowed' : 'pointer'
                         }}
                     >
                         <ChevronLeft size={18} className="sm:w-6 sm:h-6" />
-                        <span className="text-[11px] sm:text-base">{currentPage > 1 ? 'Назад' : ''}</span>
+                        <span className="text-[11px] sm:text-base">{currentPage > 0 ? 'Назад' : ''}</span>
                     </button>
 
                     <div className="flex flex-col items-center justify-center px-2">
                         <div className="text-[10px] sm:text-sm font-bold whitespace-nowrap">
-                            {currentPage} / {totalPages}
+                            {currentPage === 0 ? 'Описание' : `${currentPage} / ${totalPages}`}
                         </div>
                         <div className="hidden sm:block w-48 h-1.5 bg-black/10 rounded-full overflow-hidden mt-1">
                             <div
                                 className="h-full bg-blue-500 transition-all duration-300"
-                                style={{ width: `${(currentPage / totalPages) * 100}%` }}
+                                style={{ width: `${(currentPage / (totalPages + 1)) * 100}%` }}
                             ></div>
                         </div>
                     </div>

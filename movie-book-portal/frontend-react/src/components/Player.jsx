@@ -516,7 +516,7 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                             <span className="text-white text-sm sm:text-base font-medium min-w-[50px] text-right">{formatTime(duration)}</span>
 
                             {/* Volume Control - Hidden on mobile */}
-                            <div className="hidden sm:flex items-center gap-2 ml-2">
+                            <div className="flex max-sm:hidden items-center gap-2 ml-2">
                                 <button
                                     onClick={toggleMute}
                                     className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"

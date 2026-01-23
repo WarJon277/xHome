@@ -51,15 +51,4 @@ dependencies {
 
     // GeckoView dependency removed - using WebView instead
 
-    // ExoPlayer for native video playback
-    implementation("androidx.media3:media3-exoplayer:1.2.1")
-    implementation("androidx.media3:media3-ui:1.2.1")
-    implementation("androidx.media3:media3-session:1.2.1")
-    
-    // For HLS/DASH streaming support
-    implementation("androidx.media3:media3-exoplayer-hls:1.2.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.2.1")
-    
-    // Gson for JSON parsing
-    implementation("com.google.code.gson:gson:2.10.1")
 }

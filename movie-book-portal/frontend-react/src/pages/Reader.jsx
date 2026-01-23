@@ -17,6 +17,7 @@ export default function Reader() {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [savedProgress, setSavedProgress] = useState(null);
     const [initialProgressApplied, setInitialProgressApplied] = useState(false);
+    const [scrollRatio, setScrollRatio] = useState(0); // Track scroll position on current page
 
     const contentRef = useRef(null);
 
@@ -86,6 +87,13 @@ export default function Reader() {
     // Debounced scroll listener
     const scrollTimeoutRef = useRef(null);
     const handleScroll = () => {
+        // Update scroll ratio for progress bar
+        if (contentRef.current) {
+            const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
+            const ratio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
+            setScrollRatio(ratio);
+        }
+
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = setTimeout(() => {
             handleSaveProgress();
@@ -331,6 +339,17 @@ export default function Reader() {
 
     const colors = getThemeColors();
 
+    // Calculate total progress: (current page - 1 + scroll ratio) / total pages
+    // Page 0 is description, so actual content starts at page 1
+    const calculateTotalProgress = () => {
+        if (currentPage === 0) return 0; // Description page
+        if (totalPages === 0) return 0;
+        // Progress = (pages completed + current page scroll) / total pages
+        const pagesCompleted = currentPage - 1; // Pages before current
+        const currentPageProgress = scrollRatio; // Progress on current page (0-1)
+        return ((pagesCompleted + currentPageProgress) / totalPages) * 100;
+    };
+
     if (error && !book) {
         return (
             <div className="h-screen bg-black flex items-center justify-center text-white">
@@ -433,7 +452,7 @@ export default function Reader() {
                 <div className="w-full h-1 bg-black/5 flex-shrink-0">
                     <div
                         className="h-full bg-blue-500/60 transition-all duration-300"
-                        style={{ width: `${(currentPage / totalPages) * 100}%` }}
+                        style={{ width: `${calculateTotalProgress()}%` }}
                     ></div>
                 </div>
 
@@ -462,7 +481,7 @@ export default function Reader() {
                         <div className="hidden sm:block w-48 h-1.5 bg-black/10 rounded-full overflow-hidden mt-1">
                             <div
                                 className="h-full bg-blue-500 transition-all duration-300"
-                                style={{ width: `${(currentPage / (totalPages + 1)) * 100}%` }}
+                                style={{ width: `${calculateTotalProgress()}%` }}
                             ></div>
                         </div>
                     </div>

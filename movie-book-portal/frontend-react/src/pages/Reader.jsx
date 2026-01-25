@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
-import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings } from 'lucide-react';
 
 export default function Reader() {
     const { id } = useParams();
@@ -419,10 +419,6 @@ export default function Reader() {
             <main
                 ref={contentRef}
                 onScroll={handleScroll}
-                onTouchStart={handleLongPressStart}
-                onTouchEnd={handleLongPressEnd}
-                onMouseDown={handleLongPressStart}
-                onMouseUp={handleLongPressEnd}
                 className="flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-8 select-none"
                 style={{
                     fontSize: `${fontSize}px`,
@@ -485,6 +481,16 @@ export default function Reader() {
                             ></div>
                         </div>
                     </div>
+
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="flex items-center justify-center gap-1 px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-bold transition-all active:scale-95 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                        style={{
+                            backgroundColor: 'rgba(0,0,0,0.06)'
+                        }}
+                    >
+                        <Settings size={18} className="sm:w-6 sm:h-6" />
+                    </button>
 
                     <button
                         onClick={handleNext}

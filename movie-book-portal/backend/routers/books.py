@@ -174,6 +174,4 @@ def get_book_file_resource(book_id: int, file_path: str, db: Session = Depends(g
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error accessing resource: {str(e)}")
 
-@router.get("/search")
-def search_books(query: str, db: Session = Depends(get_db_books_simple)):
-    return db.query(Book).filter(Book.title.ilike(f"%{query}%")).all()
+

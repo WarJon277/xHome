@@ -28,7 +28,14 @@ def create_book(book: BookCreate, db: Session = Depends(get_db_books_simple)):
 
 @router.get("/search")
 def search_books(query: str, db: Session = Depends(get_db_books_simple)):
-    return db.query(Book).filter(Book.title.ilike(f"%{query}%")).all()
+    # SQLite LIKE/ILIKE usually only validates ASCII case-insensitivity.
+    # For robust Cyrillic support without extensions, we filter in Python.
+    all_books = db.query(Book).all()
+    if not query:
+        return all_books
+    
+    query = query.lower()
+    return [book for book in all_books if book.title and query in book.title.lower()]
 
 @router.get("/{book_id}")
 def get_book(book_id: int, db: Session = Depends(get_db_books_simple)):

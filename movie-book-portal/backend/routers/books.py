@@ -26,6 +26,10 @@ def create_book(book: BookCreate, db: Session = Depends(get_db_books_simple)):
     db.refresh(db_book)
     return db_book
 
+@router.get("/search")
+def search_books(query: str, db: Session = Depends(get_db_books_simple)):
+    return db.query(Book).filter(Book.title.ilike(f"%{query}%")).all()
+
 @router.get("/{book_id}")
 def get_book(book_id: int, db: Session = Depends(get_db_books_simple)):
     book = db.query(Book).filter(Book.id == book_id).first()

@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBooks, fetchLatestProgress } from '../api';
+import { fetchBooks, fetchLatestProgress, searchBooks } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import ResumeBanner from '../components/ResumeBanner';
 import '../custom-grid.css';
-import { Book } from 'lucide-react';
+import { Book, Search } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
 
 export default function BooksPage() {
@@ -12,6 +12,7 @@ export default function BooksPage() {
     const [loading, setLoading] = useState(true);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestBook, setLatestBook] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -30,6 +31,7 @@ export default function BooksPage() {
 
     const loadBooks = async () => {
         try {
+            setLoading(true);
             const data = await fetchBooks();
             console.log("Books data fetched:", data);
             setBooks(data);
@@ -39,6 +41,28 @@ export default function BooksPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (searchQuery.trim()) {
+                try {
+                    setLoading(true);
+                    const results = await searchBooks(searchQuery);
+                    setBooks(results);
+                } catch (err) {
+                    console.error("Search failed:", err);
+                } finally {
+                    setLoading(false);
+                }
+            } else if (!loading && books.length === 0) {
+                // Only reload if we have no books and query is empty (initial load is handled by mount effect, but this handles clear)
+                // Actually, better to just call loadBooks if query clears and we want to reset
+                loadBooks();
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
 
     const genres = useMemo(() => {
         const allGenres = new Set();
@@ -66,11 +90,25 @@ export default function BooksPage() {
 
     return (
         <div className="p-4 sm:p-6 pb-24">
-            <header className="mb-6 flex justify-between items-center">
+            <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Book className="text-green-500" /> Книги
                 </h1>
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-64">
+                    <input
+                        type="text"
+                        placeholder="Поиск книг..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-green-500 transition-colors"
+                        style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                    />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
+                </div>
+
+                <div className="text-sm hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
                     {filteredBooks.length} books
                 </div>
             </header>

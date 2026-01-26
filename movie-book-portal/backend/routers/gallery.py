@@ -238,10 +238,12 @@ def delete_photo(photo_id: int):
 @router.post("/upload_to_folder")
 async def upload_photo_to_folder(folder: str = Form(""), file: UploadFile = File(...)):
     try:
+        print(f"DEBUG: Starting upload for file: {file.filename}, folder: '{folder}'")
         base_path = os.path.abspath(GALLERY_UPLOADS)
         requested_path = os.path.abspath(os.path.join(base_path, folder))
         
         if not requested_path.startswith(base_path):
+            print(f"DEBUG: Invalid path rejected: {requested_path}")
             raise HTTPException(status_code=400, detail="Недопустимый путь")
         
         os.makedirs(requested_path, exist_ok=True)
@@ -249,9 +251,11 @@ async def upload_photo_to_folder(folder: str = Form(""), file: UploadFile = File
         allowed_ext = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in allowed_ext:
+            print(f"DEBUG: Invalid extension rejected: {ext}")
             raise HTTPException(status_code=400, detail="Неподдерживаемый формат изображения")
         
         file_path = os.path.join(requested_path, file.filename)
+        print(f"DEBUG: Saving file to: {file_path}")
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
@@ -260,11 +264,14 @@ async def upload_photo_to_folder(folder: str = Form(""), file: UploadFile = File
                 img.thumbnail((300, 300), Image.Resampling.LANCZOS)
                 thumb_path = os.path.join(requested_path, f"{os.path.splitext(file.filename)[0]}_thumb.webp")
                 img.save(thumb_path, "WEBP", quality=85)
+                print(f"DEBUG: Thumbnail generated: {thumb_path}")
         except Exception as e:
             print(f"Ошибка при создании миниатюры: {e}")
         
+        print(f"DEBUG: Upload successful: {file.filename}")
         return {"message": "Файл загружен успешно", "file_path": file_path}
     except Exception as e:
+        print(f"ERROR during upload: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка при загрузке файла: {str(e)}")
 
 @router.post("/move_photo")

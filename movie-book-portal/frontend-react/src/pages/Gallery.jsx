@@ -32,6 +32,9 @@ export default function GalleryPage() {
     // Move State
     const [moveItem, setMoveItem] = useState(null);
 
+    // Upload State
+    const [uploadStatus, setUploadStatus] = useState(null); // { active, total, current, progress, failures: [], currentFile }
+
     // Upload Refs
     const fileInputRef = useRef(null);
     const longPressTimer = useRef(null);
@@ -260,26 +263,58 @@ export default function GalleryPage() {
     };
 
     const handleFileChange = async (e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
-        try {
-            for (let i = 0; i < files.length; i++) {
-                await uploadPhotoToFolder(currentPath, files[i], (progress) => {
-                    console.log(`Upload ${files[i].name}: ${progress}%`);
+        setUploadStatus({
+            active: true,
+            total: files.length,
+            current: 0,
+            progress: 0,
+            failures: [],
+            currentFile: ''
+        });
+
+        // Use a loop to process files one by one (or in parallel batches if needed, but sequential is safer for now)
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            setUploadStatus(prev => ({
+                ...prev,
+                current: i + 1,
+                currentFile: file.name,
+                progress: 0
+            }));
+
+            try {
+                await uploadPhotoToFolder(currentPath, file, (percent) => {
+                    setUploadStatus(prev => ({
+                        ...prev,
+                        progress: percent
+                    }));
                 });
+            } catch (err) {
+                console.error(`Failed to upload ${file.name}:`, err);
+                setUploadStatus(prev => ({
+                    ...prev,
+                    failures: [...prev.failures, { name: file.name, error: err.message }]
+                }));
             }
-            setRefreshTrigger(prev => prev + 1); // Trigger refresh
-        } catch (err) {
-            setConfirmModal({
-                title: "Ошибка",
-                message: "Ошибка загрузки файла",
-                confirmLabel: "OK",
-                onConfirm: () => setConfirmModal(null)
-            });
-        } finally {
-            e.target.value = null;
         }
+
+        // Post-upload cleanup
+        setRefreshTrigger(prev => prev + 1);
+
+        // Wait a moment before clearing status if successful, or leave open if errors
+        setUploadStatus(prev => {
+            if (prev.failures.length === 0) {
+                setTimeout(() => setUploadStatus(null), 2000); // Auto-hide after 2s if all success
+                return { ...prev, active: false, currentFile: 'Done!', progress: 100 };
+            } else {
+                return { ...prev, active: false, currentFile: 'Finished with errors', progress: 100 };
+            }
+        });
+
+        e.target.value = null; // Reset input
     };
 
     const handleShare = async (item) => {
@@ -575,6 +610,52 @@ export default function GalleryPage() {
 
                 {/* Floating Action Buttons (FABs) */}
                 <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-3 sm:gap-4">
+                    {/* UPLOAD STATUS OVERLAY */}
+                    {uploadStatus && (
+                        <div className="fixed bottom-24 right-6 sm:right-8 bg-gray-900 border border-gray-700 p-4 rounded-lg shadow-xl z-50 w-80 max-w-[calc(100vw-3rem)]">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-white text-sm">
+                                    {uploadStatus.active ? 'Загрузка...' : 'Загрузка завершена'}
+                                </h3>
+                                {!uploadStatus.active && (
+                                    <button
+                                        onClick={() => setUploadStatus(null)}
+                                        className="text-gray-400 hover:text-white"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="text-xs text-gray-300 mb-2 truncate">
+                                {uploadStatus.active
+                                    ? `Uploading ${uploadStatus.current}/${uploadStatus.total}: ${uploadStatus.currentFile}`
+                                    : `Uploaded ${uploadStatus.total - uploadStatus.failures.length} of ${uploadStatus.total} files`
+                                }
+                            </div>
+
+                            {uploadStatus.active && (
+                                <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+                                    <div
+                                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${uploadStatus.progress}%` }}
+                                    ></div>
+                                </div>
+                            )}
+
+                            {uploadStatus.failures.length > 0 && (
+                                <div className="mt-2 max-h-32 overflow-y-auto">
+                                    <p className="text-red-400 text-xs font-bold mb-1">Errors:</p>
+                                    {uploadStatus.failures.map((fail, idx) => (
+                                        <div key={idx} className="text-red-400 text-xs truncate">
+                                            • {fail.name}: {fail.error}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <button
                         onClick={handleCreateFolder}
                         className="p-3 sm:p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"

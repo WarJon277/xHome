@@ -290,7 +290,13 @@ class MainActivity : AppCompatActivity() {
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 }
 
-                fileChooserLauncher.launch(Intent.createChooser(intent, "Выберите фото"))
+                try {
+                    fileChooserLauncher.launch(Intent.createChooser(intent, "Выберите фото"))
+                } catch (e: Exception) {
+                    fileChooserCallback?.onReceiveValue(null)
+                    fileChooserCallback = null
+                    Toast.makeText(this@MainActivity, "Ошибка запуска выбора файла: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
 
                 return true
             }

@@ -265,6 +265,13 @@ export default function GalleryPage() {
     const handleFileChange = async (e) => {
         try {
             const files = Array.from(e.target.files || []);
+            // DEBUG: Temporary alert to diagnose mobile issue
+            if (files.length > 0) {
+                alert(`Selected ${files.length} files. First file: ${files[0].name} (${files[0].size} bytes)`);
+            } else {
+                alert("File listing empty (files.length === 0)");
+            }
+
             if (files.length === 0) return;
 
             setUploadStatus({

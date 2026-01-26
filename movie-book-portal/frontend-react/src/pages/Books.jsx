@@ -54,9 +54,8 @@ export default function BooksPage() {
                 } finally {
                     setLoading(false);
                 }
-            } else if (!loading && books.length === 0) {
-                // Only reload if we have no books and query is empty (initial load is handled by mount effect, but this handles clear)
-                // Actually, better to just call loadBooks if query clears and we want to reset
+            } else {
+                // Query is empty, reload full list
                 loadBooks();
             }
         }, 500);

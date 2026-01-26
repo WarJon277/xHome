@@ -263,58 +263,78 @@ export default function GalleryPage() {
     };
 
     const handleFileChange = async (e) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
+        try {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
 
-        setUploadStatus({
-            active: true,
-            total: files.length,
-            current: 0,
-            progress: 0,
-            failures: [],
-            currentFile: ''
-        });
+            setUploadStatus({
+                active: true,
+                total: files.length,
+                current: 0,
+                progress: 0,
+                failures: [],
+                currentFile: 'Starting...'
+            });
 
-        // Use a loop to process files one by one (or in parallel batches if needed, but sequential is safer for now)
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            setUploadStatus(prev => ({
-                ...prev,
-                current: i + 1,
-                currentFile: file.name,
-                progress: 0
-            }));
+            // Use a loop to process files one by one
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
 
-            try {
-                await uploadPhotoToFolder(currentPath, file, (percent) => {
-                    setUploadStatus(prev => ({
-                        ...prev,
-                        progress: percent
-                    }));
+                // Update status for current file
+                setUploadStatus(prev => {
+                    // Safety check if prev is somehow null (shouldn't be, but good practice)
+                    const safePrev = prev || { active: true, total: files.length, failures: [] };
+                    return {
+                        ...safePrev,
+                        current: i + 1,
+                        currentFile: file.name,
+                        progress: 0
+                    };
                 });
-            } catch (err) {
-                console.error(`Failed to upload ${file.name}:`, err);
-                setUploadStatus(prev => ({
-                    ...prev,
-                    failures: [...prev.failures, { name: file.name, error: err.message }]
-                }));
+
+                try {
+                    await uploadPhotoToFolder(currentPath, file, (percent) => {
+                        setUploadStatus(prev => {
+                            if (!prev) return prev; // Component unmounted or state lost
+                            return {
+                                ...prev,
+                                progress: percent
+                            };
+                        });
+                    });
+                } catch (err) {
+                    console.error(`Failed to upload ${file.name}:`, err);
+                    setUploadStatus(prev => {
+                        const safePrev = prev || { active: true, total: files.length, failures: [] };
+                        return {
+                            ...safePrev,
+                            failures: [...safePrev.failures, { name: file.name, error: err.message }]
+                        };
+                    });
+                }
             }
+
+            // Post-upload cleanup
+            setRefreshTrigger(prev => prev + 1);
+
+            // Wait a moment before clearing status if successful, or leave open if errors
+            setUploadStatus(prev => {
+                const safePrev = prev || { failures: [] };
+                if (safePrev.failures.length === 0) {
+                    setTimeout(() => setUploadStatus(null), 2000); // Auto-hide after 2s if all success
+                    return { ...safePrev, active: false, currentFile: 'Done!', progress: 100 };
+                } else {
+                    return { ...safePrev, active: false, currentFile: 'Finished with errors', progress: 100 };
+                }
+            });
+
+        } catch (err) {
+            console.error("Critical upload error:", err);
+            alert("Ошибка при запуске загрузки: " + err.message);
+        } finally {
+            // Always reset the input so changing to the same file works again
+            if (e.target) e.target.value = null;
         }
-
-        // Post-upload cleanup
-        setRefreshTrigger(prev => prev + 1);
-
-        // Wait a moment before clearing status if successful, or leave open if errors
-        setUploadStatus(prev => {
-            if (prev.failures.length === 0) {
-                setTimeout(() => setUploadStatus(null), 2000); // Auto-hide after 2s if all success
-                return { ...prev, active: false, currentFile: 'Done!', progress: 100 };
-            } else {
-                return { ...prev, active: false, currentFile: 'Finished with errors', progress: 100 };
-            }
-        });
-
-        e.target.value = null; // Reset input
     };
 
     const handleShare = async (item) => {

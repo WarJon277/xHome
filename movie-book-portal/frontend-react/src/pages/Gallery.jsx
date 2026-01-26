@@ -11,6 +11,7 @@ import ContextMenu from '../components/ContextMenu';
 import MoveModal from '../components/MoveModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
+import { isNativeAppAvailable, pickPhotosNative } from '../utils/nativePhotoPicker';
 
 export default function GalleryPage() {
     // State
@@ -258,8 +259,23 @@ export default function GalleryPage() {
     };
 
 
-    const handleUploadClick = () => {
-        fileInputRef.current.click();
+    const handleUploadClick = async () => {
+        // Use native picker if in Android app
+        if (isNativeAppAvailable()) {
+            try {
+                const files = await pickPhotosNative();
+                if (files && files.length > 0) {
+                    // Process files the same way as handleFileChange
+                    await processFiles(files);
+                }
+            } catch (error) {
+                console.error('Native picker error:', error);
+                alert('Ошибка при выборе фото: ' + error.message);
+            }
+        } else {
+            // Fallback to file input
+            fileInputRef.current.click();
+        }
     };
 
     const handleFileChange = async (e) => {

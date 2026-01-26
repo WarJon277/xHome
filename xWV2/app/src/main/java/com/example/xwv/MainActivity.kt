@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     // removed FILE_CHOOSER_REQUEST_CODE
 
     private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
+    private lateinit var photoPickerLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +69,41 @@ class MainActivity : AppCompatActivity() {
                 val results = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
                 fileChooserCallback?.onReceiveValue(results)
                 fileChooserCallback = null
+            }
+        }
+
+        // Photo picker launcher for native gallery access
+        photoPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                val photosList = mutableListOf<String>()
+                
+                try {
+                    // Handle multiple photos
+                    data?.clipData?.let { clipData ->
+                        for (i in 0 until clipData.itemCount) {
+                            val uri = clipData.getItemAt(i).uri
+                            val base64 = uriToBase64(uri)
+                            if (base64 != null) photosList.add(base64)
+                        }
+                    } ?: run {
+                        // Single photo
+                        data?.data?.let { uri ->
+                            val base64 = uriToBase64(uri)
+                            if (base64 != null) photosList.add(base64)
+                        }
+                    }
+                    
+                    if (photosList.isNotEmpty()) {
+                        val jsonArray = photosList.joinToString("\",\"", "[\"", "\"]")
+                        webView.evaluateJavascript("window.onPhotosSelected($jsonArray)", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PhotoPicker", "Error processing photos", e)
+                    webView.evaluateJavascript("window.onPhotosSelected([])", null)
+                }
+            } else {
+                webView.evaluateJavascript("window.onPhotosSelected([])", null)
             }
         }
 
@@ -272,6 +308,19 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             }
+            
+            // НОВЫЙ МЕТОД ДЛЯ ВЫБОРА ФОТО:
+            @JavascriptInterface
+            fun pickPhotos() {
+                runOnUiThread {
+                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "image/*"
+                        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                    }
+                    photoPickerLauncher.launch(Intent.createChooser(intent, "Выберите фото"))
+                }
+            }
         }, "AndroidApp")
 
         // === ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
@@ -385,8 +434,37 @@ class MainActivity : AppCompatActivity() {
 
     // removed onActivityResult
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView.saveState(outState)
+    }
 
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        webView.restoreState(savedInstanceState)
+    }
 
+    override fun onPause() {
+        super.onPause()
+        webView.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        webView.onResume()
+    }
+
+    private fun uriToBase64(uri: Uri): String? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                val bytes = inputStream.readBytes()
+                android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            }
+        } catch (e: Exception) {
+            Log.e("uriToBase64", "Error converting URI to Base64", e)
+            null
+        }
+    }
 
     private fun showExitDialog() {
         AlertDialog.Builder(this)

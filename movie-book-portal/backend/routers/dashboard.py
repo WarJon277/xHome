@@ -60,6 +60,7 @@ def get_dashboard_data(
                 if item:
                     item_data["title"] = item.title
                     item_data["thumbnail"] = item.thumbnail_path
+                    item_data["total_pages"] = item.total_pages
                     continue_watching.append(item_data)
                     
             elif p.item_type == "episode":

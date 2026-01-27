@@ -424,7 +424,7 @@ export default function Reader() {
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                             onClick={toggleFullscreen}
-                            className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable hidden sm:block"
+                            className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable"
                             title={isFullscreen ? "Выйти из полноэкранного" : "На весь экран"}
                         >
                             {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}

@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingLayout: RelativeLayout
     private lateinit var loadingImage: ImageView
     private lateinit var loadingText: TextView
+    private var currentServerUrl: String = "" // Track currently attempted server
     
     private var doubleBackToExitPressedOnce = false
     private val handler = Handler(Looper.getMainLooper())
@@ -152,15 +153,22 @@ class MainActivity : AppCompatActivity() {
         // Clear cache on start to avoid white screen issues after portal updates
         webView.clearCache(false)
 
-        val primaryUrl = "http://192.168.0.239:5050/"
+
+        // Load saved server URL
+        val savedUrl = getLastServerUrl()
+        val primaryUrl = if (savedUrl.isNotEmpty()) savedUrl else "http://192.168.0.239:5050/"
+        
         val cloudUrl = "https://lightly-shipshape-stonefish.cloudpub.ru/"
         val fallbackUrl = "https://dev.tpw-xxar.ru"
 
         if (isNetworkAvailable()) {
             loadUrlWithFallback(primaryUrl, cloudUrl, fallbackUrl)
         } else {
+            // Show dialog immediately if no network? Or offline mode?
+            // Existing logic was load cloudUrl.
+            // Let's keep existing logic but maybe warn.
             webView.loadUrl(cloudUrl)
-            Toast.makeText(this, "Нет подключения к интернету. Загружено облачное приложение.", Toast.LENGTH_LONG).show()
+             Toast.makeText(this, "Нет подключения к интернету. Загружено облачное приложение.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -173,6 +181,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadUrlWithFallback(primaryUrl: String, cloudUrl: String, fallbackUrl: String) {
         isPrimaryUrlLoaded = false
+        currentServerUrl = primaryUrl
         webView.loadUrl(primaryUrl)
         
         // Store fallback URLs for use in error handler
@@ -360,25 +369,24 @@ class MainActivity : AppCompatActivity() {
                 startLoadingAnimation()
                 
                 // Start timeout timer for local server
-                if (url?.contains("192.168.0.239") == true) {
-                    timeoutRunnable = Runnable {
-                        if (!isPrimaryUrlLoaded) {
-                            Log.w("WebView", "Timeout reaching local server")
-                            stopLoadingAnimation()
-                            // Cancel loading and switch to cloud fallback
-                            webView.stopLoading()
-                            
-                            @Suppress("UNCHECKED_CAST")
-                            val fallbackUrls = webView.tag as? Map<String, String>
-                            val cloudUrl = fallbackUrls?.get("cloudUrl") ?: "https://lightly-shipshape-stonefish.cloudpub.ru/"
-                            
-                            Toast.makeText(this@MainActivity, "Локальный сервер не отвечает. Переход на облачный сервер...", Toast.LENGTH_SHORT).show()
-                            webView.loadUrl(cloudUrl)
-                        }
+                val currentUrl = url ?: ""
+                // Check if it's our primary server (could be 192.168... or a custom one)
+                // We trust the user's input, so if it's the one we tried to load, we monitor it.
+                // However, determining "isPrimary" is tricky if we changed it.
+                // Simplification for now: If we are not loaded and timeout passes, ask user.
+                
+                timeoutRunnable = Runnable {
+                    if (!isPrimaryUrlLoaded) {
+                        Log.w("WebView", "Timeout reached")
+                        stopLoadingAnimation()
+                        webView.stopLoading()
+                        
+                        // Instead of auto-fallback, show dialog
+                        showConnectionErrorDialog()
                     }
-                    // 2.5 seconds timeout
-                    timeoutHandler.postDelayed(timeoutRunnable!!, 2500) 
                 }
+                // 5 seconds timeout (increased from 2.5s for custom IPs which might be slower)
+                timeoutHandler.postDelayed(timeoutRunnable!!, 5000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -390,6 +398,26 @@ class MainActivity : AppCompatActivity() {
                 timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                 
                 isPrimaryUrlLoaded = true
+                
+                // If loaded successfully, save this URL as the new default
+                url?.let { validUrl ->
+                    // Only save if it looks like a base URL (root) or we are just happy it worked.
+                    // To avoid saving deep links as the "Server URL", we might want to be careful.
+                    // But effectively, if we loaded the "Server URL", we are at root or close to it.
+                    // Let's just save validUrl if it matches what we tried to load or user input.
+                    // For simplicity, we just save the domain/root if possible, or the full URL.
+                    // Actually, let's only save it if we are sure it's the server root we asked for.
+                    // But easier: The user entered X. If X loaded, save X.
+                    // Since we don't track "what was entered" easily here without extra state,
+                    // we can just save it if it's NOT the cloud URL.
+                // If loaded successfully, save this URL as the new default if it matches what we tried
+                // and it's not the fallback cloud URL.
+                if (currentServerUrl.isNotEmpty() && 
+                    !currentServerUrl.contains("lightly-shipshape-stonefish.cloudpub.ru") && 
+                    !currentServerUrl.contains("dev.tpw-xxar.ru")) {
+                     saveServerUrl(currentServerUrl)
+                }
+            }
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -399,17 +427,11 @@ class MainActivity : AppCompatActivity() {
 
                 // If primary URL fails to load initially
                 if (request?.isForMainFrame == true) {
-                    if (!isPrimaryUrlLoaded && url.contains("192.168.0.239")) {
+                    if (!isPrimaryUrlLoaded) {
                          timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                          stopLoadingAnimation()
-                         runOnUiThread {
-                            @Suppress("UNCHECKED_CAST")
-                            val fallbackUrls = webView.tag as? Map<String, String>
-                            val cloudUrl = fallbackUrls?.get("cloudUrl") ?: "https://lightly-shipshape-stonefish.cloudpub.ru/"
-                            
-                            Toast.makeText(this@MainActivity, "Ошибка локального сервера. Переход на облачный сервер...", Toast.LENGTH_LONG).show()
-                            webView.loadUrl(cloudUrl)
-                        }
+                         // Show dialog
+                         showConnectionErrorDialog()
                     }
                 }
                 
@@ -452,6 +474,61 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+    }
+
+
+    private fun saveServerUrl(url: String) {
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val serverList = getServerList().toMutableSet()
+        serverList.add(url)
+        
+        prefs.edit()
+            .putString("last_server_url", url)
+            .putStringSet("server_list", serverList)
+            .apply()
+    }
+
+    private fun getLastServerUrl(): String {
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        return prefs.getString("last_server_url", "http://192.168.0.239:5050/") ?: "http://192.168.0.239:5050/"
+    }
+    
+    private fun getServerList(): Set<String> {
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        return prefs.getStringSet("server_list", emptySet()) ?: emptySet()
+    }
+
+    private fun showConnectionErrorDialog() {
+        if (isFinishing || isDestroyed) return
+        
+        // For simplicity, let's use a standard EditText first or basic view
+        val editText = android.widget.EditText(this)
+        editText.hint = "http://192.168.0.xxx:5050"
+        editText.setText(getLastServerUrl())
+        
+        // Setup dropdown for history if needed, but simple input first as requested
+        
+        AlertDialog.Builder(this)
+            .setTitle("Ошибка подключения")
+            .setMessage("Не удалось подключиться к серверу. Введите адрес вручную:")
+            .setView(editText)
+            .setCancelable(false)
+            .setPositiveButton("Подключить") { _, _ ->
+                var newUrl = editText.text.toString().trim()
+                if (newUrl.isNotEmpty()) {
+                    if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
+                        newUrl = "http://$newUrl"
+                    }
+                    loadUrlWithFallback(newUrl, "https://lightly-shipshape-stonefish.cloudpub.ru/", "https://dev.tpw-xxar.ru")
+                } else {
+                    showConnectionErrorDialog() // Show again if empty
+                }
+            }
+            .setNeutralButton("Использовать Облако") { _, _ ->
+                webView.loadUrl("https://lightly-shipshape-stonefish.cloudpub.ru/")
+            }
+            .setNegativeButton("Выход") { _, _ -> finish() }
+            .show()
     }
 
     private fun uriToBase64(uri: Uri): String? {

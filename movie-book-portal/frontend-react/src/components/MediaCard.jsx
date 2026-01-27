@@ -88,6 +88,7 @@ export function MediaCard({ item, onClick, onPlay }) {
                     )}
                     <div className="flex flex-wrap gap-2 text-xs">
                         {item.year && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.year}</span>}
+                        {item.total_pages && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.total_pages} стр.</span>}
                         {item.genre && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.genre}</span>}
                         {item.rating && <span className="text-yellow-500 font-bold">★ {item.rating}</span>}
                     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
-import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings, Maximize, Minimize } from 'lucide-react';
 
 export default function Reader() {
     const { id } = useParams();
@@ -18,6 +18,8 @@ export default function Reader() {
     const [savedProgress, setSavedProgress] = useState(null);
     const [initialProgressApplied, setInitialProgressApplied] = useState(false);
     const [scrollRatio, setScrollRatio] = useState(0); // Track scroll position on current page
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [immersiveMode, setImmersiveMode] = useState(false);
 
     const contentRef = useRef(null);
 
@@ -316,6 +318,22 @@ export default function Reader() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [currentPage, totalPages]);
 
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+            setIsFullscreen(true);
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        }
+    };
+
+    const toggleImmersive = () => {
+        setImmersiveMode(!immersiveMode);
+    };
+
     const getThemeColors = () => {
         switch (theme) {
             case 'night': return { bg: '#121212', text: '#e0e0e0', header: '#1a1a1a' };
@@ -384,46 +402,57 @@ export default function Reader() {
             style={{ backgroundColor: colors.bg, color: colors.text }}
         >
             {/* Header */}
-            <header
-                className="flex items-center justify-between p-2 sm:p-4 border-b shadow-sm flex-shrink-0 gap-2"
-                style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
-            >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <button
-                        onClick={() => navigate('/books', { replace: true })}
-                        className="p-1.5 sm:p-2 rounded-full hover:bg-black/10 transition-colors tv-focusable flex-shrink-0"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
-                    >
-                        <ArrowLeft size={18} className="sm:w-6 sm:h-6" />
-                    </button>
-                    <div className="min-w-0 pr-2">
-                        <h1 className="font-bold text-xs sm:text-lg truncate leading-tight">{book.title}</h1>
-                        <p className="text-[9px] sm:text-xs opacity-60 truncate">{book.author || 'Автор неизвестен'}</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable"
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <Sun size={16} className="sm:w-5 sm:h-5" />
-                            <span className="text-[10px] sm:text-sm font-bold uppercase">Темы</span>
+            {!immersiveMode && (
+                <header
+                    className="flex items-center justify-between p-2 sm:p-4 border-b shadow-sm flex-shrink-0 gap-2 transition-all duration-300"
+                    style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
+                >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <button
+                            onClick={() => navigate('/books', { replace: true })}
+                            className="p-1.5 sm:p-2 rounded-full hover:bg-black/10 transition-colors tv-focusable flex-shrink-0"
+                            style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
+                        >
+                            <ArrowLeft size={18} className="sm:w-6 sm:h-6" />
+                        </button>
+                        <div className="min-w-0 pr-2">
+                            <h1 className="font-bold text-xs sm:text-lg truncate leading-tight">{book.title}</h1>
+                            <p className="text-[9px] sm:text-xs opacity-60 truncate">{book.author || 'Автор неизвестен'}</p>
                         </div>
-                    </button>
-                </div>
-            </header>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable hidden sm:block"
+                            title={isFullscreen ? "Выйти из полноэкранного" : "На весь экран"}
+                        >
+                            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                        </button>
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="p-2 rounded-lg bg-black/5 hover:bg-black/10 transition-all tv-focusable"
+                        >
+                            <div className="flex items-center gap-1.5">
+                                <Sun size={16} className="sm:w-5 sm:h-5" />
+                                <span className="text-[10px] sm:text-sm font-bold uppercase">Темы</span>
+                            </div>
+                        </button>
+                    </div>
+                </header>
+            )}
 
             {/* Content */}
             <main
                 ref={contentRef}
                 onScroll={handleScroll}
+                onClick={toggleImmersive} // Tap content to toggle UI
                 className="flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-8 select-none"
                 style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: '1.6',
-                    fontFamily: "'EB Garamond', Georgia, serif"
+                    fontFamily: "'EB Garamond', Georgia, serif",
+                    cursor: 'text'
                 }}
             >
                 {pageContent ? (
@@ -443,70 +472,72 @@ export default function Reader() {
             </main>
 
             {/* Footer */}
-            <div className="flex flex-col flex-shrink-0 z-10">
-                {/* Thin Progress line above footer on mobile */}
-                <div className="w-full h-1 bg-black/5 flex-shrink-0">
-                    <div
-                        className="h-full bg-blue-500/60 transition-all duration-300"
-                        style={{ width: `${calculateTotalProgress()}%` }}
-                    ></div>
-                </div>
-
-                <footer
-                    className="flex flex-row items-center justify-between p-2 sm:p-4 border-t shadow-lg gap-2 sm:gap-4"
-                    style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
-                >
-                    <button
-                        onClick={handlePrev}
-                        disabled={currentPage <= 0}
-                        className="flex items-center justify-center gap-1 px-3 py-2 sm:px-6 sm:py-3 rounded-lg font-bold transition-all active:scale-95 flex-1 sm:flex-none"
-                        style={{
-                            backgroundColor: currentPage <= 0 ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
-                            opacity: currentPage <= 0 ? 0.3 : 1,
-                            cursor: currentPage <= 0 ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        <ChevronLeft size={18} className="sm:w-6 sm:h-6" />
-                        <span className="text-[11px] sm:text-base">{currentPage > 0 ? 'Назад' : ''}</span>
-                    </button>
-
-                    <div className="flex flex-col items-center justify-center px-2">
-                        <div className="text-[10px] sm:text-sm font-bold whitespace-nowrap">
-                            {currentPage === 0 ? 'Описание' : `${currentPage} / ${totalPages}`}
-                        </div>
-                        <div className="hidden sm:block w-48 h-1.5 bg-black/10 rounded-full overflow-hidden mt-1">
-                            <div
-                                className="h-full bg-blue-500 transition-all duration-300"
-                                style={{ width: `${calculateTotalProgress()}%` }}
-                            ></div>
-                        </div>
+            {!immersiveMode && (
+                <div className="flex flex-col flex-shrink-0 z-10 transition-all duration-300">
+                    {/* Thin Progress line above footer on mobile */}
+                    <div className="w-full h-1 bg-black/5 flex-shrink-0">
+                        <div
+                            className="h-full bg-blue-500/60 transition-all duration-300"
+                            style={{ width: `${calculateTotalProgress()}%` }}
+                        ></div>
                     </div>
 
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="flex items-center justify-center gap-1 px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-bold transition-all active:scale-95 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                        style={{
-                            backgroundColor: 'rgba(0,0,0,0.06)'
-                        }}
+                    <footer
+                        className="flex flex-row items-center justify-between p-2 sm:p-4 border-t shadow-lg gap-2 sm:gap-4"
+                        style={{ backgroundColor: colors.header, borderColor: 'rgba(0,0,0,0.1)' }}
                     >
-                        <Settings size={18} className="sm:w-6 sm:h-6" />
-                    </button>
+                        <button
+                            onClick={handlePrev}
+                            disabled={currentPage <= 0}
+                            className="flex items-center justify-center gap-1 px-3 py-2 sm:px-6 sm:py-3 rounded-lg font-bold transition-all active:scale-95 flex-1 sm:flex-none"
+                            style={{
+                                backgroundColor: currentPage <= 0 ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
+                                opacity: currentPage <= 0 ? 0.3 : 1,
+                                cursor: currentPage <= 0 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <ChevronLeft size={18} className="sm:w-6 sm:h-6" />
+                            <span className="text-[11px] sm:text-base">{currentPage > 0 ? 'Назад' : ''}</span>
+                        </button>
 
-                    <button
-                        onClick={handleNext}
-                        disabled={currentPage >= totalPages}
-                        className="flex items-center justify-center gap-1 px-3 py-2 sm:px-6 sm:py-3 rounded-lg font-bold transition-all active:scale-95 flex-1 sm:flex-none"
-                        style={{
-                            backgroundColor: currentPage >= totalPages ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
-                            opacity: currentPage >= totalPages ? 0.3 : 1,
-                            cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        <span className="text-[11px] sm:text-base">{currentPage < totalPages ? 'Вперед' : ''}</span>
-                        <ChevronRight size={18} className="sm:w-6 sm:h-6" />
-                    </button>
-                </footer>
-            </div>
+                        <div className="flex flex-col items-center justify-center px-2">
+                            <div className="text-[10px] sm:text-sm font-bold whitespace-nowrap">
+                                {currentPage === 0 ? 'Описание' : `${currentPage} / ${totalPages}`}
+                            </div>
+                            <div className="hidden sm:block w-48 h-1.5 bg-black/10 rounded-full overflow-hidden mt-1">
+                                <div
+                                    className="h-full bg-blue-500 transition-all duration-300"
+                                    style={{ width: `${calculateTotalProgress()}%` }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowSettings(true)}
+                            className="flex items-center justify-center gap-1 px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-bold transition-all active:scale-95 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                            style={{
+                                backgroundColor: 'rgba(0,0,0,0.06)'
+                            }}
+                        >
+                            <Settings size={18} className="sm:w-6 sm:h-6" />
+                        </button>
+
+                        <button
+                            onClick={handleNext}
+                            disabled={currentPage >= totalPages}
+                            className="flex items-center justify-center gap-1 px-3 py-2 sm:px-6 sm:py-3 rounded-lg font-bold transition-all active:scale-95 flex-1 sm:flex-none"
+                            style={{
+                                backgroundColor: currentPage >= totalPages ? 'rgba(0,0,0,0.02)' : 'rgba(0,0,0,0.06)',
+                                opacity: currentPage >= totalPages ? 0.3 : 1,
+                                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <span className="text-[11px] sm:text-base">{currentPage < totalPages ? 'Вперед' : ''}</span>
+                            <ChevronRight size={18} className="sm:w-6 sm:h-6" />
+                        </button>
+                    </footer>
+                </div>
+            )}
 
             {/* Settings Modal */}
             {showSettings && (

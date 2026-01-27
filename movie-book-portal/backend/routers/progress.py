@@ -96,6 +96,7 @@ def get_latest_progress(
                 item_data["title"] = item.title
                 item_data["author"] = item.author
                 item_data["thumbnail"] = item.thumbnail_path
+                item_data["total_pages"] = item.total_pages
                 
         elif search_type == "episode":
             episode = db_tvshows.query(Episode).filter(Episode.id == progress.item_id).first()

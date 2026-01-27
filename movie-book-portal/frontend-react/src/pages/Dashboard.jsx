@@ -155,7 +155,7 @@ export default function Dashboard() {
                                         <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10">
                                             <div
                                                 className="h-full bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.9)] transition-all duration-1000"
-                                                style={{ width: `${item.type === 'book' ? Math.max(5, (item.scroll_ratio || 0) * 100) : (item.progress > 0 ? 30 : 0)}%` }}
+                                                style={{ width: `${item.type === 'book' ? Math.min(100, Math.max(5, ((item.progress || 0) / (item.total_pages || 1)) * 100)) : (item.progress > 0 ? 30 : 0)}%` }}
                                             />
                                         </div>
                                     </div>

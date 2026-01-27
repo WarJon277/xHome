@@ -447,7 +447,7 @@ export default function Reader() {
                 ref={contentRef}
                 onScroll={handleScroll}
                 onClick={toggleImmersive} // Tap content to toggle UI
-                className="flex-1 overflow-y-auto px-4 sm:px-8 py-3 sm:py-8 select-none"
+                className="flex-1 overflow-y-auto px-2 sm:px-8 py-2 sm:py-8 select-none"
                 style={{
                     fontSize: `${fontSize}px`,
                     lineHeight: '1.6',

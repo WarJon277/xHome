@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from database_books import Book
 from models import BookCreate
 from dependencies import get_db_books_simple
-from utils import get_book_page_content
+from dependencies import get_db_books_simple
+from utils import get_book_page_content, get_epub_page_count
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -99,7 +100,10 @@ async def upload_book_file(book_id: int, file: UploadFile = File(...), db: Sessi
 
     relative_path = os.path.relpath(file_path, BASE_DIR)
     book.file_path = relative_path.replace(os.sep, '/').replace('\\', '/')
-    book.total_pages = 1
+    
+    # Calculate pages
+    book.total_pages = get_epub_page_count(file_path)
+    
     db.commit()
     return book
 

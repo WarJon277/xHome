@@ -91,6 +91,14 @@ def process_auto_audiobook(genre_name):
                 db.close()
                 continue
 
+            # DOUBLE CHECK: If no thumbnail_path is set (paranoid check)
+            if not new_audio.thumbnail_path:
+                 log_audio(f"Skipping '{suggestion.title}': thumbnail path is empty.")
+                 db.delete(new_audio)
+                 db.commit()
+                 db.close()
+                 continue
+
             # Download file (usually ZIP or MP3)
             file_success = False
             if suggestion.download_url:

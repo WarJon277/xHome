@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database_books import Book, SessionLocalBooks
 from routers.discovery import suggest_book, GENRE_MAPPING
 from discovery_shared import log, load_settings, get_weighted_genre, download_file
+from utils import get_epub_page_count
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "books_discovery.log")
@@ -102,6 +103,13 @@ def process_auto_book(genre_name):
                 if download_file(suggestion.download_url, file_path, log_book, referer=suggestion.source_url):
                     new_book.file_path = os.path.relpath(file_path, BASE_DIR).replace(os.sep, '/')
                     file_success = True
+                    
+                    # Update page count from file
+                    try:
+                        new_book.total_pages = get_epub_page_count(file_path)
+                    except Exception as e:
+                        log_book(f"Error counting pages: {e}")
+                    
                     log_book(f"Successfully added book: {suggestion.title} (ext: {ext})")
 
             if not file_success:

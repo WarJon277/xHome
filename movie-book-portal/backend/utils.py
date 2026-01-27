@@ -30,6 +30,62 @@ def unzip_file(zip_path, dest_dir):
         print(f"Error unzipping file {zip_path}: {e}")
         return None
 
+def get_epub_page_count(file_path):
+    """
+    Extracts the page count (number of spine items) from an EPUB file.
+    Returns default 1 if extraction fails.
+    """
+    if not file_path or not os.path.exists(file_path):
+        return 1
+        
+    try:
+        with zipfile.ZipFile(file_path, 'r') as epub:
+            if 'META-INF/container.xml' not in epub.namelist():
+                return 1
+
+            container_content = epub.read('META-INF/container.xml').decode('utf-8')
+            root = ET.fromstring(container_content)
+            ns = {'c': 'urn:oasis:names:tc:opendocument:xmlns:container'}
+            rootfile = root.find('.//c:rootfile', ns)
+            if rootfile is None:
+                return 1
+                
+            opf_path = rootfile.get('full-path')
+            if not opf_path or opf_path not in epub.namelist():
+                return 1
+
+            opf_content = epub.read(opf_path).decode('utf-8')
+            opf_root = ET.fromstring(opf_content)
+             # Handle namespaces gracefully (sometimes it's default, sometimes named)
+            # We'll strip namespaces for simpler finding or try standard ones
+            
+            # Simple approach: find all itemrefs
+            # Note: ET search with namespaces can be tricky if they vary. 
+            # Let's try standard OPF namespace first.
+            ns_opf = {'opf': 'http://www.idpf.org/2007/opf'}
+            spine = opf_root.find('.//opf:spine', ns_opf)
+            
+            # Fallback if find fails (e.g. diff version or no namespace prefix in tag)
+            if spine is None:
+                # Try finding by local name ignoring namespace
+                for elem in opf_root.iter():
+                    if elem.tag.endswith('spine'):
+                        spine = elem
+                        break
+            
+            if spine is not None:
+                # Count itemrefs
+                count = 0
+                for child in spine:
+                    if child.tag.endswith('itemref'):
+                        count += 1
+                return count if count > 0 else 1
+                
+            return 1
+    except Exception as e:
+        print(f"Error calculating page count for {file_path}: {e}")
+        return 1
+
 def find_audio_files(directory):
     """
     Recursively finds all audio files in a directory.

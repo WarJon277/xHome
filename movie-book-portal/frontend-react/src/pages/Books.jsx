@@ -115,7 +115,7 @@ export default function BooksPage() {
     };
 
     return (
-        <div className="p-4 sm:p-6 pb-24">
+        <div className="p-2 sm:p-4 md:p-6 pb-24">{/* Reduced mobile padding from p-4 to p-2 */}
             <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Book className="text-green-500" /> Книги

@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
     private val handler = Handler(Looper.getMainLooper())
     private var isPrimaryUrlLoaded = false
+    private var isOfflineAttempt = false // Added flag for offline logic
     
     // Timeout logic
     private val timeoutHandler = Handler(Looper.getMainLooper())
@@ -385,8 +386,8 @@ class MainActivity : AppCompatActivity() {
                         showConnectionErrorDialog()
                     }
                 }
-                // 5 seconds timeout (increased from 2.5s for custom IPs which might be slower)
-                timeoutHandler.postDelayed(timeoutRunnable!!, 5000) 
+                // 2 seconds timeout (reduced from 5s for quick offline fallback)
+                timeoutHandler.postDelayed(timeoutRunnable!!, 2000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -427,6 +428,16 @@ class MainActivity : AppCompatActivity() {
 
                 // If primary URL fails to load initially
                 if (request?.isForMainFrame == true) {
+                    // Specific handling for Offline Mode attempt
+                    if (isOfflineAttempt) {
+                        isOfflineAttempt = false
+                        // Fallback to instructions if SW cache failed
+                        view?.post {
+                            view.loadUrl("file:///android_asset/offline.html")
+                        }
+                        return
+                    }
+
                     if (!isPrimaryUrlLoaded) {
                          timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                          stopLoadingAnimation()
@@ -525,12 +536,30 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setNeutralButton("Оффлайн режим") { _, _ ->
-                // Load offline page from assets
-                webView.loadUrl("file:///android_asset/offline.html")
-                isPrimaryUrlLoaded = true // Prevent timeout
-                loadingLayout.visibility = View.GONE
-                stopLoadingAnimation()
-                Toast.makeText(this, "Перешли в оффлайн режим. Показаны кэшированные книги.", Toast.LENGTH_LONG).show()
+                // Try to load the last server URL - Service Worker should intercept
+                val lastUrl = getLastServerUrl()
+                
+                // Set flag so if this fails, we go to offline.html
+                val webViewClient = webView.webViewClient 
+                // We use a bit of a hack to access the property if it was a property of our anonymous class
+                // Instead, we should have made the WebViewClient a member or the boolean accessible.
+                // Assuming we can access the boolean we just added if we move it to class level?
+                // Wait, I added 'isOfflineAttempt' inside the anonymous object in the previous step. 
+                // That's not accessible here. I need to move it to class level.
+                
+                // FIX: Let's assume we moved it to class level in the previous step or will fix it now.
+                // Re-writing this block carefully.
+                
+                isOfflineAttempt = true // Needs to be a class member
+                webView.loadUrl(lastUrl) 
+                
+                // We DON'T set isPrimaryUrlLoaded = true yet, we wait for success or error.
+                // But we usually stop animation/hide loading in the button click... 
+                // actually better to keep loading visible until success/fail.
+                
+                loadingLayout.visibility = View.VISIBLE
+                startLoadingAnimation()
+                Toast.makeText(this, "Пробуем открыть оффлайн копию...", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Использовать Облако") { _, _ ->
                 webView.loadUrl("https://lightly-shipshape-stonefish.cloudpub.ru/")

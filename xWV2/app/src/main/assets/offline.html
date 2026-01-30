@@ -18,107 +18,87 @@
             color: #ffffff;
             min-height: 100vh;
             padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .header {
+            max-width: 600px;
             text-align: center;
-            padding: 40px 20px;
         }
 
         .icon {
-            font-size: 64px;
+            font-size: 80px;
             margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
         }
 
         h1 {
             font-size: 28px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             color: #ff6b6b;
         }
 
-        .subtitle {
+        .message {
             font-size: 16px;
-            opacity: 0.7;
+            line-height: 1.6;
             margin-bottom: 30px;
+            opacity: 0.9;
         }
 
         .card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
-            padding: 20px;
+            padding: 25px;
             margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .card h2 {
-            font-size: 20px;
+            font-size: 18px;
             margin-bottom: 15px;
             color: #4CAF50;
         }
 
-        #booksList {
-            list-style: none;
+        .steps {
+            text-align: left;
+            margin: 0 auto;
+            max-width: 400px;
         }
 
-        #booksList li {
+        .step {
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        #booksList li:hover {
-            background: rgba(76, 175, 80, 0.2);
-            transform: translateX(5px);
-        }
-
-        .book-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .book-author {
-            font-size: 14px;
-            opacity: 0.7;
-        }
-
-        .book-pages {
-            font-size: 12px;
-            opacity: 0.5;
-            margin-top: 5px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            opacity: 0.5;
-        }
-
-        .empty-state .icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #4CAF50;
         }
 
         button {
             background: #4CAF50;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 15px 30px;
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 15px;
             transition: background 0.3s;
+            font-weight: bold;
         }
 
         button:hover {
@@ -127,147 +107,66 @@
 
         button.secondary {
             background: rgba(255, 255, 255, 0.1);
+            margin-top: 10px;
         }
 
         button.secondary:hover {
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            opacity: 0.7;
+        .highlight {
+            color: #4CAF50;
+            font-weight: bold;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="header">
-            <div class="icon">📚</div>
-            <h1>Оффлайн режим</h1>
-            <p class="subtitle">Сервер недоступен. Показываются только кэшированные книги.</p>
+        <div class="icon">📡❌</div>
+        <h1>Нет подключения к серверу</h1>
+
+        <div class="message">
+            Для работы оффлайн режима необходимо <span class="highlight">хотя бы один раз</span>
+            открыть приложение с интернетом.
         </div>
 
         <div class="card">
-            <h2>📖 Кэшированные книги</h2>
-            <div id="loading" class="loading">Загрузка...</div>
-            <ul id="booksList" style="display: none;"></ul>
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <div class="icon">📭</div>
-                <p>Нет кэшированных книг</p>
-                <p style="font-size: 14px; margin-top: 10px;">Откройте книги когда есть интернет, чтобы читать их
-                    оффлайн</p>
+            <h2>📋 Что нужно сделать:</h2>
+            <div class="steps">
+                <div class="step">1️⃣ Подключитесь к WiFi или Mobile Data</div>
+                <div class="step">2️⃣ Нажмите "Повторить подключение"</div>
+                <div class="step">3️⃣ Откройте 2-3 книги в приложении</div>
+                <div class="step">4️⃣ Пролистайте несколько страниц</div>
+                <div class="step">5️⃣ Теперь можно читать оффлайн! 📚</div>
             </div>
         </div>
 
-        <div class="card">
-            <h2>🔧 Попробовать подключиться</h2>
-            <button onclick="retryConnection()">Повторить подключение</button>
-            <button class="secondary" onclick="changeServer()">Изменить адрес сервера</button>
+        <div class="card" style="background: rgba(76, 175, 80, 0.1);">
+            <h2>💡 Почему так?</h2>
+            <p style="font-size: 14px; line-height: 1.6;">
+                Приложение кэширует книги <span class="highlight">по мере чтения</span>.
+                После первого онлайн запуска все открытые книги будут доступны без интернета.
+            </p>
         </div>
+
+        <button onclick="retryConnection()">🔄 Повторить подключение</button>
+        <button class="secondary" onclick="useCloud()">☁️ Использовать облачную версию</button>
     </div>
 
     <script>
-        const DB_NAME = 'xHomePortal';
-        const DB_VERSION = 1;
-        const BOOKS_STORE = 'books';
+        function retryConnection() { window.location.reload(); }
+        function useCloud() { window.location.href = 'https://lightly-shipshape-stonefish.cloudpub.ru/'; }
 
-        // Open IndexedDB
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(BOOKS_STORE)) {
-                        const booksStore = db.createObjectStore(BOOKS_STORE, { keyPath: 'id' });
-                        booksStore.createIndex('lastAccessed', 'lastAccessed', { unique: false });
-                    }
-                };
-            });
-        }
-
-        // Get all cached books
-        async function getCachedBooks() {
-            try {
-                const db = await openDB();
-                const tx = db.transaction(BOOKS_STORE, 'readonly');
-                const store = tx.objectStore(BOOKS_STORE);
-
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
-            } catch (error) {
-                console.error('Error accessing IndexedDB:', error);
-                return [];
+        // Auto-refresh every 30 seconds if network becomes available
+        let checkCount = 0;
+        setInterval(() => {
+            if (navigator.onLine && checkCount < 10) {
+                checkCount++;
+                console.log('Network detected, attempting reconnection...');
+                retryConnection();
             }
-        }
-
-        // Load and display books
-        async function loadBooks() {
-            const loading = document.getElementById('loading');
-            const booksList = document.getElementById('booksList');
-            const emptyState = document.getElementById('emptyState');
-
-            try {
-                const books = await getCachedBooks();
-
-                loading.style.display = 'none';
-
-                if (books.length === 0) {
-                    emptyState.style.display = 'block';
-                } else {
-                    booksList.style.display = 'block';
-                    booksList.innerHTML = '';
-
-                    books.forEach(book => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <div class="book-title">${book.title || 'Без названия'}</div>
-                            <div class="book-author">${book.author || 'Автор неизвестен'}</div>
-                            <div class="book-pages">📄 ${book.totalPages || '?'} страниц</div>
-                        `;
-                        li.onclick = () => openBook(book.id);
-                        booksList.appendChild(li);
-                    });
-                }
-            } catch (error) {
-                loading.innerHTML = 'Ошибка загрузки: ' + error.message;
-            }
-        }
-
-        // Open book in reader
-        function openBook(bookId) {
-            // Try to load the main app with direct link to book
-            const serverUrl = localStorage.getItem('last_server_url') || 'http://192.168.0.239:5050';
-            window.location.href = `${serverUrl}/books/${bookId}`;
-        }
-
-        // Retry connection
-        function retryConnection() {
-            window.location.reload();
-        }
-
-        // Change server
-        function changeServer() {
-            if (typeof AndroidApp !== 'undefined') {
-                // Call Android app to show server dialog
-                alert('Используйте кнопку "Изменить адрес" в диалоге подключения');
-            } else {
-                const newUrl = prompt('Введите адрес сервера:', 'http://192.168.0.xxx:5050');
-                if (newUrl) {
-                    localStorage.setItem('last_server_url', newUrl);
-                    window.location.href = newUrl;
-                }
-            }
-        }
-
-        // Load books on page load
-        window.addEventListener('DOMContentLoaded', loadBooks);
+        }, 30000);
     </script>
 </body>
 

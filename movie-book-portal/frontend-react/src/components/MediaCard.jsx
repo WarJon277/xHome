@@ -72,7 +72,9 @@ export function MediaCard({ item, onClick, onPlay, type }) {
             style={{
                 backgroundColor: 'var(--card-bg)',
                 cursor: 'pointer',
-                height: '100%' // Stretch to fill grid height if needed
+                height: '100%', // Stretch to fill grid height if needed
+                maxWidth: '100%', // Prevent overflow
+                overflow: 'hidden' // Hide any overflow
             }}
         >
             {/* Image Container */}
@@ -111,10 +113,10 @@ export function MediaCard({ item, onClick, onPlay, type }) {
                         onClick={handleDownload}
                         disabled={isDownloaded || isDownloading}
                         className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-lg z-10 ${isDownloaded
-                                ? 'bg-green-600 text-white cursor-default'
-                                : isDownloading
-                                    ? 'bg-blue-600 text-white cursor-wait'
-                                    : 'bg-black/60 text-white hover:bg-black/80 hover:scale-110'
+                            ? 'bg-green-600 text-white cursor-default'
+                            : isDownloading
+                                ? 'bg-blue-600 text-white cursor-wait'
+                                : 'bg-black/60 text-white hover:bg-black/80 hover:scale-110'
                             }`}
                         title={isDownloaded ? 'Скачано' : isDownloading ? 'Скачивание...' : 'Скачать для офлайн'}
                     >

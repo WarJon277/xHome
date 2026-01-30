@@ -21,8 +21,9 @@ export default defineConfig({
           {
             // Book downloads - Allow long timeout (avoid 3s limit)
             urlPattern: /\/api\/books\/.*\/download/i,
-            handler: 'NetworkOnly',
+            handler: 'NetworkFirst', // Changed from NetworkOnly to fix error
             options: {
+              cacheName: 'book-downloads',
               networkTimeoutSeconds: 60
             }
           },

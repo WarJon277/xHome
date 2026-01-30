@@ -19,6 +19,14 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/, /^\/thumbnails/],
         runtimeCaching: [
           {
+            // Book downloads - Allow long timeout (avoid 3s limit)
+            urlPattern: /\/api\/books\/.*\/download/i,
+            handler: 'NetworkOnly',
+            options: {
+              networkTimeoutSeconds: 60
+            }
+          },
+          {
             // API calls - Network First with fallback
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
             handler: 'NetworkFirst',

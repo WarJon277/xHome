@@ -105,9 +105,10 @@ def convert_to_mp4(input_path: str, output_path: str, delete_source: bool = Fals
         # Create output directory if needed
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # FFmpeg command with optimized settings for speed
+        # FFmpeg command with optimized settings for speed and browser compatibility
         # Using H.264 codec with CRF=23 for good quality/speed balance
         # -preset faster for quicker encoding (was 'medium')
+        # -ac 2 forces stereo audio (browsers don't support 5.1/multi-channel)
         cmd = [
             'ffmpeg',
             '-i', input_path,
@@ -115,6 +116,7 @@ def convert_to_mp4(input_path: str, output_path: str, delete_source: bool = Fals
             '-crf', '23',              # Constant Rate Factor (23 = good quality, faster than 18)
             '-preset', 'faster',       # Encoding speed (faster = quicker conversion)
             '-c:a', 'aac',            # AAC audio codec
+            '-ac', '2',               # Force stereo audio (2 channels) for browser compatibility
             '-b:a', '192k',           # Audio bitrate
             '-movflags', '+faststart', # Enable streaming
             '-y',                      # Overwrite output file

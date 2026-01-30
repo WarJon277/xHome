@@ -167,7 +167,7 @@ def fix_video(video_path: str, backup: bool = True) -> bool:
         log_message(f"❌ Ошибка при исправлении файла: {e}", LOG_FILE)
         return False
 
-def scan_and_fix_movies(auto_fix: bool = False, backup: bool = True):
+def scan_and_fix_movies(auto_fix: bool = False, backup: bool = False):
     """
     Сканировать папку с фильмами и исправить проблемные
     
@@ -265,7 +265,7 @@ def scan_and_fix_movies(auto_fix: bool = False, backup: bool = True):
             print(f"\n🔧 Начинаем автоматическое исправление...\n")
         else:
             print(f"\n🔧 Исправить несовместимые файлы?")
-            response = input(f"Введите 'y' для исправления (будут созданы резервные копии) или 'n' для отмены: ").lower()
+            response = input(f"Введите 'y' для исправления или 'n' для отмены: ").lower()
             
             if response != 'y':
                 log_message("ℹ️  Исправление отменено пользователем", LOG_FILE)
@@ -304,11 +304,10 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Проверка и исправление видеофайлов фильмов')
     parser.add_argument('--auto-fix', action='store_true', help='Автоматически исправлять без подтверждения')
-    parser.add_argument('--no-backup', action='store_true', help='Не создавать резервные копии (опасно!)')
     
     args = parser.parse_args()
     
     scan_and_fix_movies(
         auto_fix=args.auto_fix,
-        backup=not args.no_backup
+        backup=False
     )

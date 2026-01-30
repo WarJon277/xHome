@@ -4,8 +4,15 @@ Video converter using FFmpeg for MP4 conversion
 import subprocess
 import os
 import shutil
+import re
 from typing import Optional
 from datetime import datetime
+
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
 
 def log_message(message: str, log_file: str = None):
     """Log a message"""
@@ -117,6 +124,9 @@ def convert_to_mp4(input_path: str, output_path: str, delete_source: bool = Fals
         # Run conversion
         log_message(f"Running FFmpeg conversion...", log_file)
         
+        # Get video duration for progress bar
+        duration_seconds = get_video_duration(input_path)
+        
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -124,14 +134,51 @@ def convert_to_mp4(input_path: str, output_path: str, delete_source: bool = Fals
             universal_newlines=True
         )
         
-        # Monitor progress
+        # Monitor progress with progress bar
         stderr_output = []
+        pbar = None
+        
+        # Pattern to extract time from FFmpeg output (e.g., "time=00:01:23.45")
+        time_pattern = re.compile(r'time=(\d+):(\d+):(\d+\.\d+)')
+        
+        if TQDM_AVAILABLE and duration_seconds:
+            pbar = tqdm(
+                total=duration_seconds,
+                desc="⏳ Конвертация",
+                unit="сек",
+                bar_format='{desc}: {percentage:3.0f}%|{bar}| {n:.0f}/{total:.0f} [{elapsed}<{remaining}, {rate_fmt}]'
+            )
+        
         for line in process.stderr:
             stderr_output.append(line)
-            # Log progress lines (FFmpeg outputs to stderr)
-            if 'time=' in line.lower() or 'frame=' in line.lower():
-                # Extract and log progress (optional, can be verbose)
-                pass
+            
+            # Parse progress from FFmpeg output
+            if 'time=' in line:
+                match = time_pattern.search(line)
+                if match and pbar:
+                    hours = int(match.group(1))
+                    minutes = int(match.group(2))
+                    seconds = float(match.group(3))
+                    current_time = hours * 3600 + minutes * 60 + seconds
+                    
+                    # Update progress bar
+                    pbar.n = min(current_time, duration_seconds)
+                    pbar.refresh()
+                elif not TQDM_AVAILABLE and duration_seconds:
+                    # Fallback: print progress without tqdm
+                    match = time_pattern.search(line)
+                    if match:
+                        hours = int(match.group(1))
+                        minutes = int(match.group(2))
+                        seconds = float(match.group(3))
+                        current_time = hours * 3600 + minutes * 60 + seconds
+                        progress = (current_time / duration_seconds) * 100
+                        print(f"\r⏳ Прогресс: {progress:.1f}%", end='', flush=True)
+        
+        if pbar:
+            pbar.close()
+        elif not TQDM_AVAILABLE and duration_seconds:
+            print()  # New line after progress
         
         # Wait for completion
         process.wait()

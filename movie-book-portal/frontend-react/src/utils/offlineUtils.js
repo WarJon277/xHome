@@ -7,6 +7,16 @@ const STORE_NAME = 'epub-files';
 const MAX_BOOKS = 20; // Maximum number of cached books
 
 /**
+ * Helper to promisify IndexedDB requests
+ */
+function requestToPromise(request) {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
  * Open IndexedDB database
  */
 async function openDB() {
@@ -57,14 +67,14 @@ export async function downloadBookForOffline(bookId, metadata) {
         const tx = db.transaction([STORE_NAME], 'readwrite');
         const store = tx.objectStore(STORE_NAME);
 
-        await store.put({
+        await requestToPromise(store.put({
             bookId,
             bookData,
             metadata, // Book info (title, author, total_pages, etc.)
             lastAccessed: Date.now(),
             downloadedAt: Date.now(),
             size: bookData.byteLength
-        });
+        }));
 
         console.log(`[Offline] Book ${bookId} cached successfully`);
         return true;
@@ -82,7 +92,7 @@ export async function checkIfDownloaded(bookId) {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readonly');
         const store = tx.objectStore(STORE_NAME);
-        const book = await store.get(bookId);
+        const book = await requestToPromise(store.get(bookId));
         return book !== undefined;
     } catch (error) {
         console.error(`[Offline] Error checking if book ${bookId} is downloaded:`, error);
@@ -98,12 +108,12 @@ export async function getCachedBook(bookId) {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-        const book = await store.get(bookId);
+        const book = await requestToPromise(store.get(bookId));
 
         if (book) {
             // Update last accessed time
             book.lastAccessed = Date.now();
-            await store.put(book);
+            await requestToPromise(store.put(book));
         }
 
         return book;
@@ -120,7 +130,7 @@ export async function removeBookFromCache(bookId) {
     try {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
-        await tx.objectStore(STORE_NAME).delete(bookId);
+        await requestToPromise(tx.objectStore(STORE_NAME).delete(bookId));
         console.log(`[Offline] Removed book ${bookId} from cache`);
         return true;
     } catch (error) {
@@ -136,7 +146,7 @@ export async function getCachedBookIds() {
     try {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readonly');
-        const keys = await tx.objectStore(STORE_NAME).getAllKeys();
+        const keys = await requestToPromise(tx.objectStore(STORE_NAME).getAllKeys());
         return keys;
     } catch (error) {
         console.error('[Offline] Error getting cached book IDs:', error);
@@ -151,7 +161,7 @@ async function getBookCount() {
     try {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readonly');
-        const count = await tx.objectStore(STORE_NAME).count();
+        const count = await requestToPromise(tx.objectStore(STORE_NAME).count());
         return count;
     } catch (error) {
         console.error('[Offline] Error getting book count:', error);
@@ -169,12 +179,22 @@ async function removeOldestBook() {
         const store = tx.objectStore(STORE_NAME);
         const index = store.index('lastAccessed');
 
-        // Get oldest book
-        const cursor = await index.openCursor();
-        if (cursor) {
-            console.log(`[Offline] Removing oldest book: ${cursor.primaryKey}`);
-            await store.delete(cursor.primaryKey);
-        }
+        // Get oldest book using cursor
+        return new Promise((resolve, reject) => {
+            const request = index.openCursor();
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    console.log(`[Offline] Removing oldest book: ${cursor.primaryKey}`);
+                    const deleteRequest = store.delete(cursor.primaryKey);
+                    deleteRequest.onsuccess = () => resolve();
+                    deleteRequest.onerror = () => reject(deleteRequest.error);
+                } else {
+                    resolve(); // No books to remove
+                }
+            };
+            request.onerror = () => reject(request.error);
+        });
     } catch (error) {
         console.error('[Offline] Error removing oldest book:', error);
     }
@@ -188,7 +208,7 @@ export async function getCacheStats() {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readonly');
         const store = tx.objectStore(STORE_NAME);
-        const allBooks = await store.getAll();
+        const allBooks = await requestToPromise(store.getAll());
 
         const totalSize = allBooks.reduce((sum, book) => sum + (book.size || 0), 0);
         const count = allBooks.length;
@@ -218,7 +238,7 @@ export async function clearAllCache() {
     try {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
-        await tx.objectStore(STORE_NAME).clear();
+        await requestToPromise(tx.objectStore(STORE_NAME).clear());
         console.log('[Offline] All cached books cleared');
         return true;
     } catch (error) {

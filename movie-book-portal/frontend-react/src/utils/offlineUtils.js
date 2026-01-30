@@ -44,10 +44,24 @@ export async function downloadBookForOffline(bookId, metadata) {
     try {
         console.log(`[Offline] Downloading book ${bookId} for offline use...`);
 
-        // Download EPUB file
-        const response = await fetch(`/api/books/${bookId}/download`);
+        console.log(`[Offline] Downloading book ${bookId} for offline use...`);
+
+        // Construct absolute URL to avoid potential PWA relative path issues
+        const baseUrl = window.location.origin;
+        const downloadUrl = `${baseUrl}/api/books/${bookId}/download?t=${Date.now()}`;
+
+        // Download EPUB file with no-cache headers
+        const response = await fetch(downloadUrl, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+
         if (!response.ok) {
-            throw new Error(`Failed to download book: ${response.status}`);
+            throw new Error(`Failed to download book: ${response.status} ${response.statusText}`);
         }
 
         const bookData = await response.arrayBuffer();

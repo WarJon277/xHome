@@ -4,7 +4,7 @@
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Configuration
-export const API_TIMEOUT = 3000; // 3 seconds timeout for quick offline detection
+export const API_TIMEOUT = 5000; // 5 seconds timeout for quick offline detection
 
 // Helper to get or create a unique Device ID
 function getDeviceId() {

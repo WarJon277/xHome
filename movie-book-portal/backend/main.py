@@ -106,7 +106,6 @@ os.makedirs(os.path.join(UPLOADS_PATH, "kaleidoscopes_music"), exist_ok=True)
 # Mount static files only if dist directory exists (production mode)
 if os.path.exists(FRONTEND_PATH):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_PATH, "assets")), name="assets")
-    app.mount("/icons", StaticFiles(directory=os.path.join(FRONTEND_PATH, "icons")), name="icons")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
 
 # Добавляем маршрут для favicon.ico

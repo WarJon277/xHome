@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { fetchBooks, fetchLatestProgress, searchBooks } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import ResumeBanner from '../components/ResumeBanner';
+import OfflineBanner from '../components/OfflineBanner';
+import { getCachedBooks } from '../utils/offlineStorage';
 import '../custom-grid.css';
-import { Book, Search } from 'lucide-react';
+import { Book, Search, Download } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
 
 export default function BooksPage() {
@@ -13,6 +15,8 @@ export default function BooksPage() {
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestBook, setLatestBook] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isOffline, setIsOffline] = useState(false);
+    const [showOnlyCached, setShowOnlyCached] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -32,17 +36,32 @@ export default function BooksPage() {
     const loadBooks = async () => {
         try {
             setLoading(true);
+            setIsOffline(false);
             const data = await fetchBooks();
             console.log("Books data fetched:", data);
             setBooks(data);
         } catch (err) {
             console.error("Failed to fetch books:", err);
+
+            // Check if it's a network error or timeout
+            if (err.isNetworkError || err.isTimeout) {
+                console.log('[Books] Network error detected, switching to offline mode');
+                setIsOffline(true);
+
+                // Load cached books
+                const cachedBooks = await getCachedBooks();
+                setBooks(cachedBooks);
+                setShowOnlyCached(true);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        // Don't search in offline mode
+        if (isOffline) return;
+
         const delayDebounceFn = setTimeout(async () => {
             if (searchQuery.trim()) {
                 try {
@@ -51,6 +70,14 @@ export default function BooksPage() {
                     setBooks(results);
                 } catch (err) {
                     console.error("Search failed:", err);
+
+                    // If search fails due to network, switch to offline
+                    if (err.isNetworkError || err.isTimeout) {
+                        setIsOffline(true);
+                        const cachedBooks = await getCachedBooks();
+                        setBooks(cachedBooks);
+                        setShowOnlyCached(true);
+                    }
                 } finally {
                     setLoading(false);
                 }
@@ -112,6 +139,14 @@ export default function BooksPage() {
                 </div>
             </header>
 
+            {/* Offline Banner */}
+            {isOffline && (
+                <OfflineBanner
+                    cachedBooksCount={books.length}
+                    onViewCached={() => setShowOnlyCached(true)}
+                />
+            )}
+
             <GenreFilter
                 genres={genres}
                 selectedGenre={selectedGenre}
@@ -131,12 +166,19 @@ export default function BooksPage() {
             ) : (
                 <div className="media-grid">
                     {filteredBooks.map(book => (
-                        <MediaCard
-                            key={book.id}
-                            item={book}
-                            type="book"
-                            onClick={() => handleOpenBook(book)}
-                        />
+                        <div key={book.id} className="relative">
+                            <MediaCard
+                                item={book}
+                                type="book"
+                                onClick={() => handleOpenBook(book)}
+                            />
+                            {book.isCached && (
+                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                    <Download size={12} />
+                                    <span>Оффлайн</span>
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </div>
             )}

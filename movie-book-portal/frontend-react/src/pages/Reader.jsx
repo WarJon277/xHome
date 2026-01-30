@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
+import { saveBookMetadata, getBookMetadata, saveBookPage, getBookPage, getCachedPagesForBook } from '../utils/offlineStorage';
 import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings, Maximize, Minimize, WifiOff } from 'lucide-react';
 
 export default function Reader() {
@@ -21,17 +22,47 @@ export default function Reader() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [immersiveMode, setImmersiveMode] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const [cachedPages, setCachedPages] = useState([]);
 
     const contentRef = useRef(null);
 
     useEffect(() => {
         const loadMetadata = async () => {
             try {
-                const data = await fetchBook(id);
+                let data;
+                try {
+                    // Try to fetch from server
+                    data = await fetchBook(id);
+                    console.log('[Reader] Loaded book from server:', data);
+
+                    // Cache the metadata for offline use
+                    await saveBookMetadata(data);
+                } catch (err) {
+                    console.warn('[Reader] Failed to load from server, trying cache:', err);
+
+                    // If network error, try to load from cache
+                    if (err.isNetworkError || err.isTimeout) {
+                        data = await getBookMetadata(id);
+                        if (data) {
+                            console.log('[Reader] Loaded book from cache:', data);
+                            setIsOnline(false);
+                        } else {
+                            throw new Error('Книга недоступна оффлайн');
+                        }
+                    } else {
+                        throw err;
+                    }
+                }
+
                 setBook(data);
                 if (data.total_pages) {
                     setTotalPages(data.total_pages);
                 }
+
+                // Load cached pages list
+                const cached = await getCachedPagesForBook(id);
+                setCachedPages(cached);
+                console.log('[Reader] Cached pages:', cached);
 
                 // Load Progress
                 try {
@@ -172,7 +203,42 @@ export default function Reader() {
                 setError(null);
                 console.log(`\n=== Loading page ${currentPage} of book ${id} ===`);
 
-                const data = await fetchBookPage(id, currentPage);
+                let data;
+                let fromCache = false;
+
+                try {
+                    // Try to fetch from server
+                    data = await fetchBookPage(id, currentPage);
+                    console.log('✓ Loaded page from server');
+
+                    // Cache the page content for offline use
+                    if (data && data.content) {
+                        await saveBookPage(id, currentPage, data.content);
+
+                        // Update cached pages list
+                        if (!cachedPages.includes(currentPage)) {
+                            setCachedPages(prev => [...prev, currentPage]);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[Reader] Failed to load page from server:', err);
+
+                    // If network error, try to load from cache
+                    if (err.isNetworkError || err.isTimeout) {
+                        const cachedContent = await getBookPage(id, currentPage);
+                        if (cachedContent) {
+                            console.log('✓ Loaded page from cache');
+                            data = { content: cachedContent };
+                            fromCache = true;
+                            setIsOnline(false);
+                        } else {
+                            throw new Error('Эта страница недоступна оффлайн. Подключитесь к интернету для загрузки.');
+                        }
+                    } else {
+                        throw err;
+                    }
+                }
+
                 console.log('Raw API response:', data);
                 console.log('Response type:', typeof data);
                 console.log('Has content property:', 'content' in data);
@@ -189,6 +255,11 @@ export default function Reader() {
                     if (data.total) {
                         console.log('✓ Updating total pages:', data.total);
                         setTotalPages(data.total);
+                    }
+
+                    // Show indicator if loaded from cache
+                    if (fromCache) {
+                        console.log('📦 Page loaded from offline cache');
                     }
                 } else {
                     console.warn('✗ No content in response');
@@ -228,6 +299,7 @@ export default function Reader() {
                 setPageContent(`<div style="text-align:center; padding:40px; color:#ef4444;">
                     <h3>Ошибка загрузки страницы</h3>
                     <p>${e.message}</p>
+                    ${!isOnline ? '<p style="margin-top:20px; font-size:14px; opacity:0.8;">💡 Эта страница не была кэширована. Подключитесь к интернету для загрузки.</p>' : ''}
                 </div>`);
             }
         };

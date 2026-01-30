@@ -3,6 +3,9 @@
 
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
+// Configuration
+export const API_TIMEOUT = 3000; // 3 seconds timeout for quick offline detection
+
 // Helper to get or create a unique Device ID
 function getDeviceId() {
     let deviceId = localStorage.getItem('device_id');
@@ -13,7 +16,7 @@ function getDeviceId() {
     return deviceId;
 }
 
-// Wraps fetch to handle errors consistently
+// Wraps fetch to handle errors consistently with timeout support
 async function request(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
 
@@ -23,22 +26,50 @@ async function request(endpoint, options = {}) {
         ...(options.headers || {})
     };
 
-    // Support AbortSignal
-    const fetchOptions = { ...options, headers };
-    if (options.signal) {
-        fetchOptions.signal = options.signal;
-    }
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeout || API_TIMEOUT);
 
-    const response = await fetch(url, fetchOptions);
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        let detail = errorBody.detail || `HTTP Error ${response.status}`;
-        if (typeof detail === 'object') {
-            detail = JSON.stringify(detail);
+    try {
+        // Support custom AbortSignal or use timeout controller
+        const fetchOptions = {
+            ...options,
+            headers,
+            signal: options.signal || controller.signal
+        };
+
+        const response = await fetch(url, fetchOptions);
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({}));
+            let detail = errorBody.detail || `HTTP Error ${response.status}`;
+            if (typeof detail === 'object') {
+                detail = JSON.stringify(detail);
+            }
+            const error = new Error(detail);
+            error.isServerError = true;
+            error.statusCode = response.status;
+            throw error;
         }
-        throw new Error(detail);
+        return response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Classify error type
+        if (error.name === 'AbortError') {
+            const timeoutError = new Error('Connection timeout - server not responding');
+            timeoutError.isTimeout = true;
+            timeoutError.isNetworkError = true;
+            throw timeoutError;
+        }
+
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            error.isNetworkError = true;
+        }
+
+        throw error;
     }
-    return response.json();
 }
 
 // --- MOVIES ---

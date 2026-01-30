@@ -14,6 +14,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+        // Ensure app shell is always cached
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/uploads/, /^\/thumbnails/],
         runtimeCaching: [
           {
             // API calls - Network First with fallback
@@ -21,7 +24,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
+              networkTimeoutSeconds: 3, // Reduced to 3s for quick offline detection
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 // 1 hour
@@ -55,7 +58,7 @@ export default defineConfig({
           {
             // Static assets
             urlPattern: /\.(js|css|woff2?)$/,
-            handler: 'StaleWhileRevalidate',
+            handler: 'CacheFirst', // Changed to CacheFirst for offline support
             options: {
               cacheName: 'static-cache',
               expiration: {

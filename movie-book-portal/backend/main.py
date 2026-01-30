@@ -127,14 +127,27 @@ create_gallery_tables()
 create_progress_tables()
 create_kaleidoscope_tables()
 
-# React SPA routing - serve index.html for all non-API routes
+# Подключение роутеров
+app.include_router(movies.router, prefix="/api")
+app.include_router(books.router, prefix="/api")
+app.include_router(audiobooks.router, prefix="/api")
+app.include_router(tvshows.router, prefix="/api")
+app.include_router(gallery.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
+app.include_router(kaleidoscopes.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(flibusta.router, prefix="/api")
+app.include_router(audiobooks_source.router, prefix="/api")
+# Register discovery with explicit sub-prefix
+app.include_router(discovery.router, prefix="/api/discovery")
+app.include_router(system.router, prefix="/api")
+
+# IMPORTANT: React SPA routing - MUST be registered LAST (catch-all route)
+# This serves index.html for all non-API routes to support React Router
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # Skip API routes
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Not found")
-    
-    # Serve index.html for React Router
+    # Serve index.html for React Router (SPA)
     index_path = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
@@ -161,20 +174,4 @@ npm run dev
             """,
             status_code=503
         )
-
-# Подключение роутеров
-app.include_router(movies.router, prefix="/api")
-app.include_router(books.router, prefix="/api")
-app.include_router(audiobooks.router, prefix="/api")
-app.include_router(tvshows.router, prefix="/api")
-app.include_router(gallery.router, prefix="/api")
-app.include_router(admin.router, prefix="/api")
-app.include_router(progress.router, prefix="/api")
-app.include_router(kaleidoscopes.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
-app.include_router(flibusta.router, prefix="/api")
-app.include_router(audiobooks_source.router, prefix="/api")
-# Register discovery with explicit sub-prefix
-app.include_router(discovery.router, prefix="/api/discovery")
-app.include_router(system.router, prefix="/api")
 

@@ -186,3 +186,26 @@ def get_book_file_resource(book_id: int, file_path: str, db: Session = Depends(g
         raise HTTPException(status_code=500, detail=f"Error accessing resource: {str(e)}")
 
 
+@router.get("/{book_id}/download")
+async def download_book_file(book_id: int, db: Session = Depends(get_db_books_simple)):
+    """Download complete EPUB file for offline caching"""
+    from fastapi.responses import FileResponse
+    
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book or not book.file_path:
+        raise HTTPException(status_code=404, detail="Book file not found")
+    
+    file_path = os.path.join(BASE_DIR, book.file_path)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Book file not found on disk")
+    
+    # Sanitize filename for download
+    safe_title = "".join(c for c in book.title if c.isalnum() or c in (' ', '-', '_')).strip()
+    filename = f"{safe_title}.epub" if safe_title else "book.epub"
+    
+    return FileResponse(
+        path=file_path,
+        media_type="application/epub+zip",
+        filename=filename
+    )
+

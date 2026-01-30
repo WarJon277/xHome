@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
-import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings, Maximize, Minimize } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings, Maximize, Minimize, WifiOff } from 'lucide-react';
 
 export default function Reader() {
     const { id } = useParams();
@@ -20,6 +20,7 @@ export default function Reader() {
     const [scrollRatio, setScrollRatio] = useState(0); // Track scroll position on current page
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [immersiveMode, setImmersiveMode] = useState(false);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
 
     const contentRef = useRef(null);
 
@@ -53,6 +54,26 @@ export default function Reader() {
         };
         loadMetadata();
     }, [id]);
+
+    // Listen for online/offline events
+    useEffect(() => {
+        const handleOnline = () => {
+            console.log('[Reader] Network online');
+            setIsOnline(true);
+        };
+        const handleOffline = () => {
+            console.log('[Reader] Network offline');
+            setIsOnline(false);
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const handleSaveProgress = async () => {
         if (!id || !contentRef.current) return;
@@ -440,6 +461,14 @@ export default function Reader() {
                         </button>
                     </div>
                 </header>
+            )}
+
+            {/* Offline Indicator Banner */}
+            {!isOnline && (
+                <div className="flex-shrink-0 bg-orange-600 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-semibold">
+                    <WifiOff size={16} />
+                    <span>Офлайн режим - работает только кэшированное содержимое</span>
+                </div>
             )}
 
             {/* Content */}

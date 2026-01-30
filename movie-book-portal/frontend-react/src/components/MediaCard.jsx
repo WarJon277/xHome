@@ -1,6 +1,37 @@
-import { Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Download, Check, Loader2 } from 'lucide-react';
+import { downloadBookForOffline, checkIfDownloaded } from '../utils/offlineUtils';
+import { fetchBook } from '../api';
 
-export function MediaCard({ item, onClick, onPlay }) {
+export function MediaCard({ item, onClick, onPlay, type }) {
+    const [isDownloaded, setIsDownloaded] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    // Check if book is already downloaded (for books only)
+    useEffect(() => {
+        if (type === 'book') {
+            checkIfDownloaded(item.id).then(setIsDownloaded);
+        }
+    }, [item.id, type]);
+
+    const handleDownload = async (e) => {
+        e.stopPropagation();
+        if (isDownloaded || isDownloading) return;
+
+        setIsDownloading(true);
+        try {
+            // Fetch full metadata
+            const metadata = await fetchBook(item.id);
+            await downloadBookForOffline(item.id, metadata);
+            setIsDownloaded(true);
+        } catch (error) {
+            console.error('Failed to download book:', error);
+            alert('Ошибка при скачивании книги: ' + error.message);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     // Logic ported from itemDisplay.js to fix missing thumbnails
     const getImageUrl = () => {
         // 1. If explicit pre-processed URL exists
@@ -72,6 +103,29 @@ export function MediaCard({ item, onClick, onPlay }) {
                             <Play fill="currentColor" size={32} />
                         </button>
                     </div>
+                )}
+
+                {/* Download Button for Books (top-right corner) */}
+                {type === 'book' && (
+                    <button
+                        onClick={handleDownload}
+                        disabled={isDownloaded || isDownloading}
+                        className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-lg z-10 ${isDownloaded
+                                ? 'bg-green-600 text-white cursor-default'
+                                : isDownloading
+                                    ? 'bg-blue-600 text-white cursor-wait'
+                                    : 'bg-black/60 text-white hover:bg-black/80 hover:scale-110'
+                            }`}
+                        title={isDownloaded ? 'Скачано' : isDownloading ? 'Скачивание...' : 'Скачать для офлайн'}
+                    >
+                        {isDownloading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : isDownloaded ? (
+                            <Check size={20} />
+                        ) : (
+                            <Download size={20} />
+                        )}
+                    </button>
                 )}
             </div>
 

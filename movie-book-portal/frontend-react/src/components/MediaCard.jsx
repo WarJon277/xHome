@@ -78,16 +78,17 @@ export function MediaCard({ item, onClick, onPlay, type }) {
             }}
         >
             {/* Image Container */}
-            <div className="relative aspect-[2/3] w-full bg-gray-900 group">
+            {/* Image Container */}
+            <div className="relative w-full pb-[150%] bg-gray-900 group overflow-hidden">
                 {imageUrl ? (
                     <img
                         src={imageUrl}
                         alt={title}
-                        className="w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                         No Image
                     </div>
                 )}
@@ -132,26 +133,25 @@ export function MediaCard({ item, onClick, onPlay, type }) {
             </div>
 
             {/* Content Section */}
-            <div className="p-4 flex flex-col gap-2 flex-grow">
-                <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+            <div className="p-3 flex flex-col gap-1 flex-grow">
+                <h3 className="text-sm sm:text-base font-bold leading-tight line-clamp-2 h-10 sm:h-12 overflow-hidden" style={{ color: 'var(--text-primary)' }}>{title}</h3>
 
                 {/* Info: Director / Year */}
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {item.director && (
-                        <div className="mb-1">
+                        <div className="mb-1 truncate">
                             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Режиссёр:</span> {item.director}
                         </div>
                     )}
-                    <div className="flex flex-wrap gap-2 text-xs">
-                        {item.year && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.year}</span>}
-                        {item.total_pages && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.total_pages} стр.</span>}
-                        {item.genre && <span className="bg-gray-800 px-2 py-0.5 rounded text-gray-300">{item.genre}</span>}
-                        {item.rating && <span className="text-yellow-500 font-bold">★ {item.rating}</span>}
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        {item.year && <span className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">{item.year}</span>}
+                        {item.total_pages && <span className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">{item.total_pages} стр.</span>}
+                        {item.rating && <span className="text-yellow-500 font-bold ml-auto">★ {item.rating}</span>}
                     </div>
                 </div>
 
-                {/* Description */}
-                <p className="text-sm line-clamp-3 mt-1" style={{ color: 'var(--text-secondary)' }}>
+                {/* Description - Hidden on small mobile to save space */}
+                <p className="text-xs sm:text-sm line-clamp-2 sm:line-clamp-3 mt-1 hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
                     {truncate(item.description, 120) || "Нет описания"}
                 </p>
             </div>

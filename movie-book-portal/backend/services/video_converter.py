@@ -88,19 +88,10 @@ def convert_to_mp4(input_path: str, output_path: str, delete_source: bool = Fals
             log_message("FFmpeg is not available. Please install FFmpeg.", log_file)
             return False
         
-        # Check if input is already MP4
-        if input_path.lower().endswith('.mp4'):
-            log_message(f"File is already MP4, copying to output location", log_file)
-            try:
-                shutil.copy2(input_path, output_path)
-                if delete_source and input_path != output_path:
-                    os.remove(input_path)
-                return True
-            except Exception as e:
-                log_message(f"Error copying MP4 file: {e}", log_file)
-                return False
+        log_message(f"Processing video file: {input_path}", log_file)
         
-        log_message(f"Converting {input_path} to MP4...", log_file)
+        # Always re-encode to ensure proper audio channels (stereo)
+        # Even if file is already MP4, it may have incompatible multi-channel audio
         
         # Create output directory if needed
         os.makedirs(os.path.dirname(output_path), exist_ok=True)

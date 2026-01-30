@@ -454,6 +454,83 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url.toString()
+                if (url == null || request?.method != "GET") return null
+
+                // 1. Only cache resources from our target server (skip external analytics, ads, etc.)
+                // Also skip API calls (let the app handle JSON/Blobs via Fetch)
+                val currentServer = getLastServerUrl()
+                // Simple check: part of the URL matches our IP/Server
+                if ((!url.startsWith("http://192.168.") && !url.contains("tpw-xxar.ru")) || url.contains("/api/")) {
+                    return null 
+                }
+
+                // 2. Determine File and MimeType
+                var extension = android.webkit.MimeTypeMap.getFileExtensionFromUrl(url)
+                if (extension.isNullOrEmpty()) {
+                     // Assume HTML if no extension (like http://.../) or typical SPA routes
+                     if (url.endsWith("/") || !url.substringAfterLast("/").contains(".")) extension = "html"
+                }
+                
+                val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: 
+                               if (extension == "html") "text/html" else "application/octet-stream"
+
+                // Create a cache file based on URL hash
+                val cacheDir = java.io.File(cacheDir, "web_native_cache")
+                if (!cacheDir.exists()) cacheDir.mkdirs()
+                
+                val safeFileName = url.hashCode().toString() + "." + extension
+                val cacheFile = java.io.File(cacheDir, safeFileName)
+
+                // 3. Strategy: Network First -> Fallback to Cache
+                if (isNetworkAvailable()) {
+                    try {
+                        // Try to fetch fresh content
+                        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                        connection.connectTimeout = 3000
+                        connection.readTimeout = 5000
+                        connection.connect()
+
+                        if (connection.responseCode == 200) {
+                            // Save to disk
+                            val inputStream = connection.inputStream
+                            val outputStream = java.io.FileOutputStream(cacheFile)
+                            inputStream.copyTo(outputStream)
+                            outputStream.close()
+                            inputStream.close()
+                            connection.disconnect()
+                            
+                            // Return the fresh content from the file we just wrote
+                            return WebResourceResponse(mimeType, "UTF-8", java.io.FileInputStream(cacheFile))
+                        }
+                    } catch (e: Exception) {
+                        Log.w("NativeCache", "Fetch failed for $url: ${e.message}. Trying cache.")
+                        // If network fails (timeout), fall through to cache check
+                    }
+                }
+
+                // 4. Offline or Fetch Fail: Serve from Cache
+                if (cacheFile.exists()) {
+                    Log.i("NativeCache", "OFFLINE HIT: $url")
+                    val headers = mapOf("Access-Control-Allow-Origin" to "*")
+                    return WebResourceResponse(mimeType, "UTF-8", 200, "OK", headers, java.io.FileInputStream(cacheFile))
+                }
+
+                
+                // 5. Special Case for SPA (Single Page App):
+                // If requesting a route like /books/123 and it's missing, serve index.html from cache
+                if (extension == "html" && !url.endsWith(".js") && !url.endsWith(".css")) {
+                     val indexFile = java.io.File(cacheDir, getLastServerUrl().hashCode().toString() + ".html")
+                     // Try to find the root index.html hash (a bit tricky to guess exact hash)
+                     // Alternative: look for ANY .html file in cache that is > 1kb? Too risky.
+                     // Better: If we failed to load route, return null (let standard error page show)
+                     // or if we have offline.html logic, let it handle it.
+                }
+
+                return null // Let WebView handle it (or show error)
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 if (url.startsWith("myapp://exit/") || url.startsWith("myapp://close-reader")) {

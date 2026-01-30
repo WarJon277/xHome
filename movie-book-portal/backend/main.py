@@ -90,7 +90,8 @@ async def security_middleware(request: Request, call_next):
 
 # Пути
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_PATH = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
+# Use React frontend build directory
+FRONTEND_PATH = os.path.abspath(os.path.join(BASE_DIR, "../frontend-react/dist"))
 UPLOADS_PATH = os.path.abspath(os.path.join(BASE_DIR, "uploads"))
 
 # Статические файлы
@@ -102,7 +103,10 @@ os.makedirs(os.path.join(UPLOADS_PATH, "tvshows"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "gallery"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "kaleidoscopes_music"), exist_ok=True)
 
-app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
+# Mount static files only if dist directory exists (production mode)
+if os.path.exists(FRONTEND_PATH):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_PATH, "assets")), name="assets")
+    app.mount("/icons", StaticFiles(directory=os.path.join(FRONTEND_PATH, "icons")), name="icons")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_PATH), name="uploads")
 
 # Добавляем маршрут для favicon.ico
@@ -123,26 +127,40 @@ create_gallery_tables()
 create_progress_tables()
 create_kaleidoscope_tables()
 
-# Основные маршруты для фронтенда
-@app.get("/")
-async def root():
-    return FileResponse(os.path.join(FRONTEND_PATH, "index.html"))
-
-@app.get("/gallery.html")
-async def gallery_page():
-    return FileResponse(os.path.join(FRONTEND_PATH, "gallery.html"))
-
-@app.get("/reader.html")
-async def reader_page():
-    return FileResponse(os.path.join(FRONTEND_PATH, "reader.html"))
-
-@app.get("/audiobooks.html")
-async def audiobooks_page():
-    return FileResponse(os.path.join(FRONTEND_PATH, "audiobooks.html"))
-
-@app.get("/admin")
-async def admin_page():
-    return FileResponse(os.path.join(FRONTEND_PATH, "admin.html"))
+# React SPA routing - serve index.html for all non-API routes
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # Skip API routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # Serve index.html for React Router
+    index_path = os.path.join(FRONTEND_PATH, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        # Development mode - frontend not built yet
+        return HTMLResponse(
+            content="""
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                    <h1>⚠️ Frontend Not Built</h1>
+                    <p>Please build the frontend first:</p>
+                    <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; display: inline-block; text-align: left;">
+cd frontend-react
+npm run build
+                    </pre>
+                    <p>Or run in development mode:</p>
+                    <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; display: inline-block; text-align: left;">
+cd frontend-react
+npm run dev
+                    </pre>
+                    <p>Then access at <a href="http://localhost:5050">http://localhost:5050</a></p>
+                </body>
+            </html>
+            """,
+            status_code=503
+        )
 
 # Подключение роутеров
 app.include_router(movies.router, prefix="/api")

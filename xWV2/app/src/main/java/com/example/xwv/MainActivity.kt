@@ -510,7 +510,7 @@ class MainActivity : AppCompatActivity() {
         
         AlertDialog.Builder(this)
             .setTitle("Ошибка подключения")
-            .setMessage("Не удалось подключиться к серверу. Введите адрес вручную:")
+            .setMessage("Не удалось подключиться к серверу. Выберите действие:")
             .setView(editText)
             .setCancelable(false)
             .setPositiveButton("Подключить") { _, _ ->
@@ -524,10 +524,17 @@ class MainActivity : AppCompatActivity() {
                     showConnectionErrorDialog() // Show again if empty
                 }
             }
-            .setNeutralButton("Использовать Облако") { _, _ ->
+            .setNeutralButton("Оффлайн режим") { _, _ ->
+                // Load offline page from assets
+                webView.loadUrl("file:///android_asset/offline.html")
+                isPrimaryUrlLoaded = true // Prevent timeout
+                loadingLayout.visibility = View.GONE
+                stopLoadingAnimation()
+                Toast.makeText(this, "Перешли в оффлайн режим. Показаны кэшированные книги.", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("Использовать Облако") { _, _ ->
                 webView.loadUrl("https://lightly-shipshape-stonefish.cloudpub.ru/")
             }
-            .setNegativeButton("Выход") { _, _ -> finish() }
             .show()
     }
 

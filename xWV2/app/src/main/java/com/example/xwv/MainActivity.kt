@@ -151,8 +151,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Clear cache on start to avoid white screen issues after portal updates
-        webView.clearCache(false)
+        // CLEAR CACHE REMOVED: To allow instant loading from Service Worker and Browser cache
+        // webView.clearCache(false)
 
 
         // Load saved server URL or use local backend by default  
@@ -172,9 +172,12 @@ class MainActivity : AppCompatActivity() {
             currentServerUrl = primaryUrl
             webView.loadUrl(primaryUrl)
         } else {
-            // Offline: try to load from Service Worker cache
-            Toast.makeText(this, "Нет интернета. Загрузка кешированной версии...", Toast.LENGTH_LONG).show()
-            webView.loadUrl(primaryUrl) // Service Worker will serve from cache
+            // Offline: Force WebView to use cache immediately
+            isPrimaryUrlLoaded = false
+            isOfflineAttempt = true
+            webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
+            Toast.makeText(this, "Нет интернета. Загрузка из кеша...", Toast.LENGTH_SHORT).show()
+            webView.loadUrl(primaryUrl)
         }
     }
 
@@ -379,8 +382,8 @@ class MainActivity : AppCompatActivity() {
                         showConnectionErrorDialog()
                     }
                 }
-                // 3 seconds timeout for initial load
-                timeoutHandler.postDelayed(timeoutRunnable!!, 3000) 
+                // Reduce timeout to 1.5 seconds for snappier feedback
+                timeoutHandler.postDelayed(timeoutRunnable!!, 1500) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {

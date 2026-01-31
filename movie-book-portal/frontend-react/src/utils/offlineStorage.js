@@ -47,7 +47,7 @@ export const saveBookMetadata = async (book) => {
         const store = tx.objectStore(BOOKS_STORE);
 
         const bookData = {
-            id: book.id,
+            id: parseInt(book.id),
             title: book.title,
             author: book.author,
             thumbnail_path: book.thumbnail_path,
@@ -176,7 +176,7 @@ export const getBookPage = async (bookId, pageNumber) => {
 // Check if book is cached
 export const isBookCached = async (bookId) => {
     try {
-        const metadata = await getBookMetadata(bookId);
+        const metadata = await getBookMetadata(parseInt(bookId));
         return metadata !== null;
     } catch (error) {
         console.error('[OfflineStorage] Failed to check if book is cached:', error);

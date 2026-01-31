@@ -128,8 +128,12 @@ export default function Reader() {
     }, []);
 
     const handleSaveProgress = async () => {
-        if (!id || !contentRef.current) return;
+        if (!id || !contentRef.current || isInitialLoad || !content) return;
+
         const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
+        // Don't save if content is not actually scrollable yet but we expect it to be
+        if (scrollTotal <= 0 && content.length > 1000) return;
+
         const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
 
         // Save to local storage FIRST (always works)

@@ -64,38 +64,52 @@ export default function Reader() {
                 setCachedPages(cached);
                 console.log('[Reader] Cached pages:', cached);
 
-                // Load Progress
+                // Load Progress - Bidirectional Sync (Furthest Wins)
                 try {
-                    let prog;
-                    try {
-                        prog = await fetchProgress('book', id);
-                        console.log('[Reader] Loaded progress from server:', prog);
+                    const [remoteProg, localProg] = await Promise.all([
+                        fetchProgress('book', id).catch(() => null),
+                        getLocalProgress(id)
+                    ]);
 
-                        // Sync online progress to local backup
-                        if (prog && prog.progress_seconds > 0) {
-                            await saveLocalProgress(id, Math.floor(prog.progress_seconds), prog.scroll_ratio || 0);
+                    console.log('[Reader] Progress check - Remote:', remoteProg, 'Local:', localProg);
+
+                    let winner = null;
+                    const r = remoteProg ? { page: Math.floor(remoteProg.progress_seconds), scrollRatio: remoteProg.scroll_ratio || 0 } : null;
+                    const l = localProg ? { page: localProg.page, scrollRatio: localProg.scrollRatio || 0 } : null;
+
+                    if (r && l) {
+                        // Compare: furthest wins
+                        if (l.page > r.page || (l.page === r.page && l.scrollRatio > r.scrollRatio)) {
+                            winner = l;
+                            console.log('[Reader] Local progress is FURTHER. Using it.');
+                            // Push local to server if online
+                            if (isOnline) {
+                                saveProgress('book', id, l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
+                            }
+                        } else {
+                            winner = r;
+                            console.log('[Reader] Server progress is FURTHER or SAME. Using it.');
                         }
-                    } catch (err) {
-                        console.warn('[Reader] Failed to fetch progress from server, trying local backup:', err);
-                        prog = await getLocalProgress(id);
-                        if (prog) {
-                            console.log('[Reader] Loaded progress from local backup:', prog);
-                            // Adapt local format to matching field names used below
-                            prog = {
-                                progress_seconds: prog.page,
-                                scroll_ratio: prog.scrollRatio
-                            };
+                    } else if (r) {
+                        winner = r;
+                    } else if (l) {
+                        winner = l;
+                        // Push local to server if online
+                        if (isOnline) {
+                            saveProgress('book', id, l.page, l.scrollRatio).catch(e => console.warn("Failed to sync initial local progress to server", e));
                         }
                     }
 
-                    if (prog && prog.progress_seconds > 0) {
-                        const savedPage = Math.floor(prog.progress_seconds);
-                        if (savedPage > 0 && savedPage <= (data.total_pages || 9999)) {
+                    if (winner && winner.page > 0) {
+                        const savedPage = winner.page;
+                        if (savedPage <= (data.total_pages || 9999)) {
                             setCurrentPage(savedPage);
                             setSavedProgress({
                                 page: savedPage,
-                                scrollRatio: prog.scroll_ratio || 0
+                                scrollRatio: winner.scrollRatio || 0
                             });
+                            // Ensure local is also up to date with the winner
+                            await saveLocalProgress(id, savedPage, winner.scrollRatio || 0);
                         }
                     }
                 } catch (e) { console.warn("Could not load progress", e); }

@@ -452,7 +452,7 @@ class MainActivity : AppCompatActivity() {
                          }
                          
                          // Show dialog
-                         showConnectionErrorDialog()
+                         triggerOfflineFallback()
                     }
                 }
                 

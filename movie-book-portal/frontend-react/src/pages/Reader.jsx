@@ -144,11 +144,11 @@ export default function Reader() {
     }, []);
 
     const handleSaveProgress = async () => {
-        if (!id || !contentRef.current || isInitialLoad || !content) return;
+        if (!id || !contentRef.current || isInitialLoad || !pageContent) return;
 
         const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
         // Don't save if content is not actually scrollable yet but we expect it to be
-        if (scrollTotal <= 0 && content.length > 1000) return;
+        if (scrollTotal <= 0 && pageContent.length > 1000) return;
 
         const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
 
@@ -157,7 +157,7 @@ export default function Reader() {
         await saveLocalProgress(id, currentPage, scrollRatio);
 
         try {
-            const res = await saveProgress('book', id, currentPage, scrollRatio);
+            const res = await saveProgress('book', parseInt(id), currentPage, scrollRatio);
             console.log('[Reader] Remote progress save success:', res);
         } catch (e) {
             console.warn("[Reader] Remote progress save failed (offline or timeout)", e);
@@ -165,10 +165,10 @@ export default function Reader() {
     };
 
     useEffect(() => {
-        if (!isInitialLoad && id) {
+        if (!isInitialLoad && id && pageContent) {
             handleSaveProgress();
         }
-    }, [currentPage, id, isInitialLoad]);
+    }, [currentPage, id, isInitialLoad, pageContent]);
 
     useEffect(() => {
         const interval = setInterval(() => {

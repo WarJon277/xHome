@@ -113,20 +113,29 @@ export default function Reader() {
                     if (winner && winner.page >= 0) {
                         const savedPage = winner.page;
                         if (savedPage <= (data.total_pages || 9999)) {
-                            setCurrentPage(savedPage);
+                            console.log('[Reader] Setting initial progress restoration target:', winner);
                             setSavedProgress({
                                 page: savedPage,
                                 scrollRatio: winner.scrollRatio || 0
                             });
+                            setCurrentPage(savedPage);
+
                             // Ensure local is also up to date with the winner (if remote was the winner)
                             if (winner === r) {
                                 await saveLocalProgress(id, savedPage, winner.scrollRatio || 0, winner.updatedAt);
                             }
-                        }
-                    }
 
-                    // CRITICAL: Always mark as applied so subsequent saves can happen
-                    setInitialProgressApplied(true);
+                            // If we are on page 0 or description, no scroll to restore, can mark as applied
+                            if (savedPage === 0) {
+                                setInitialProgressApplied(true);
+                            }
+                        } else {
+                            setInitialProgressApplied(true);
+                        }
+                    } else {
+                        // No progress to restore
+                        setInitialProgressApplied(true);
+                    }
                 } catch (e) {
                     console.warn("Could not load progress", e);
                     setInitialProgressApplied(true);
@@ -162,7 +171,10 @@ export default function Reader() {
     }, []);
 
     const handleSaveProgress = async () => {
-        if (!id || !contentRef.current || isInitialLoad || !pageContent) return;
+        if (!id || !contentRef.current || isInitialLoad || !pageContent || !initialProgressApplied) {
+            // console.log('[Reader] Skipping save: state not ready', { id, isInitialLoad, initialProgressApplied });
+            return;
+        }
 
         const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
 
@@ -191,7 +203,7 @@ export default function Reader() {
     };
 
     useEffect(() => {
-        if (!isInitialLoad && id && pageContent) {
+        if (!isInitialLoad && id && pageContent && initialProgressApplied) {
             handleSaveProgress();
         }
     }, [currentPage, id, isInitialLoad, pageContent, initialProgressApplied]);
@@ -366,7 +378,7 @@ export default function Reader() {
 
                 if (contentRef.current) {
                     if (!initialProgressApplied && savedProgress && savedProgress.page === currentPage) {
-                        console.log(`[READER] Restore scroll: page ${currentPage}, ratio ${savedProgress.scrollRatio}`);
+                        console.log(`[READER] Restoration procedure started: page ${currentPage}, ratio ${savedProgress.scrollRatio}`);
 
                         let attempts = 0;
                         const restore = () => {
@@ -374,19 +386,24 @@ export default function Reader() {
                             const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
                             const target = savedProgress.scrollRatio * scrollTotal;
 
-                            // Check if content is actually there (scrollbar appeared or it's a small page)
-                            if (scrollTotal > 0 || attempts > 10) {
+                            // If we have scrollable area, OR we are at ratio 0 (no scroll needed), OR we exhausted attempts
+                            if (scrollTotal > 0 || savedProgress.scrollRatio === 0 || attempts > 15) {
                                 contentRef.current.scrollTop = target;
-                                console.log(`[READER] Scrolled to ${target} after ${attempts} attempts`);
+                                console.log(`[READER] Scrolled to ${target} (total: ${scrollTotal}) after ${attempts} attempts`);
                                 setInitialProgressApplied(true);
                             } else {
                                 attempts++;
                                 setTimeout(restore, 100);
                             }
                         };
-                        setTimeout(restore, 200);
+                        setTimeout(restore, 150);
                     } else {
                         contentRef.current.scrollTop = 0;
+                        // Mismatch or no restoration needed: finalize state so we can start saving
+                        if (!initialProgressApplied) {
+                            console.log('[READER] Restoration skipped (mismatch or not needed). Finalizing state.');
+                            setInitialProgressApplied(true);
+                        }
                     }
                 }
             } catch (e) {

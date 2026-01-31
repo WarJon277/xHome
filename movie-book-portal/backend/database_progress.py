@@ -52,3 +52,10 @@ def create_progress_tables():
             conn.commit()
         except Exception:
             pass
+
+        try:
+            conn.execute(text("ALTER TABLE playback_progress ADD COLUMN last_updated DATETIME"))
+            conn.execute(text("UPDATE playback_progress SET last_updated = CURRENT_TIMESTAMP WHERE last_updated IS NULL"))
+            conn.commit()
+        except Exception:
+            pass

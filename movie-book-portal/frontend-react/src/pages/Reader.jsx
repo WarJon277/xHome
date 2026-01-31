@@ -66,12 +66,16 @@ export default function Reader() {
 
                 // Load Progress - Bidirectional Sync (Furthest Wins)
                 try {
+                    console.log('[Reader] Checking progress for book', id);
                     const [remoteProg, localProg] = await Promise.all([
-                        fetchProgress('book', id).catch(() => null),
+                        fetchProgress('book', id).catch(err => {
+                            console.log('[Reader] Remote progress fetch failed:', err.message);
+                            return null;
+                        }),
                         getLocalProgress(id)
                     ]);
 
-                    console.log('[Reader] Progress check - Remote:', remoteProg, 'Local:', localProg);
+                    console.log('[Reader] Raw progress - Remote:', remoteProg, 'Local:', localProg);
 
                     let winner = null;
                     const r = remoteProg ? {
@@ -85,25 +89,27 @@ export default function Reader() {
                         updatedAt: localProg.updatedAt || 0
                     } : null;
 
-                    console.log('[Reader] Progress check - Remote:', r, 'Local:', l);
+                    console.log('[Reader] Parsed progress - Remote:', r, 'Local:', l);
 
                     if (r && l) {
                         // Compare: Newest Wins
                         if (l.updatedAt > r.updatedAt) {
                             winner = l;
-                            console.log('[Reader] Local progress is NEWER. Using it.');
+                            console.log('[Reader] WINNER: Local (Newer)');
                             // Push local to server if online
                             if (isOnline) {
                                 saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
                             }
                         } else {
                             winner = r;
-                            console.log('[Reader] Server progress is NEWER or SAME. Using it.');
+                            console.log('[Reader] WINNER: Server (Newer or Same)');
                         }
                     } else if (r) {
                         winner = r;
+                        console.log('[Reader] WINNER: Server (No Local)');
                     } else if (l) {
                         winner = l;
+                        console.log('[Reader] WINNER: Local (No Server)');
                         // Push local to server if online
                         if (isOnline) {
                             saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync initial local progress to server", e));
@@ -112,12 +118,21 @@ export default function Reader() {
 
                     if (winner && winner.page >= 0) {
                         const savedPage = winner.page;
+                        console.log('[Reader] Found valid winner page:', savedPage, 'Target pages:', data.total_pages);
                         if (savedPage <= (data.total_pages || 9999)) {
                             console.log('[Reader] Setting initial progress restoration target:', winner);
                             setSavedProgress({
                                 page: savedPage,
                                 scrollRatio: winner.scrollRatio || 0
                             });
+
+                            // IF we are restoring a page > 0, we MUST ensure initialProgressApplied is FALSE
+                            // so that loadPage triggers the restoration block.
+                            if (savedPage > 0) {
+                                console.log('[Reader] Targeting page > 0, ensuring restoration is NOT marked as applied yet');
+                                setInitialProgressApplied(false);
+                            }
+
                             setCurrentPage(savedPage);
 
                             // Ensure local is also up to date with the winner (if remote was the winner)
@@ -127,23 +142,27 @@ export default function Reader() {
 
                             // If we are on page 0 or description, no scroll to restore, can mark as applied
                             if (savedPage === 0) {
+                                console.log('[Reader] Target is page 0, marking applied immediately');
                                 setInitialProgressApplied(true);
                             }
                         } else {
+                            console.warn('[Reader] Saved page exceeds total pages, ignoring');
                             setInitialProgressApplied(true);
                         }
                     } else {
-                        // No progress to restore
+                        console.log('[Reader] No progress found to restore');
                         setInitialProgressApplied(true);
                     }
                 } catch (e) {
-                    console.warn("Could not load progress", e);
+                    console.warn("[Reader] Error loading progress:", e);
                     setInitialProgressApplied(true);
                 }
                 setIsInitialLoad(false);
+                console.log('[Reader] Metadata and progress loading complete. isInitialLoad -> false');
             } catch (e) {
                 setError(`Ошибка загрузки книги: ${e.message}`);
             }
+
         };
         loadMetadata();
     }, [id]);
@@ -386,8 +405,10 @@ export default function Reader() {
                 }
 
                 if (contentRef.current) {
-                    if (!initialProgressApplied && savedProgress && savedProgress.page === currentPage) {
-                        console.log(`[READER] Restoration procedure started: page ${currentPage}, ratio ${savedProgress.scrollRatio}`);
+                    const isTargetPage = savedProgress && savedProgress.page === currentPage;
+
+                    if (!initialProgressApplied && isTargetPage) {
+                        console.log(`[READER] Restoration target matched: page ${currentPage}, ratio ${savedProgress.scrollRatio}`);
 
                         let attempts = 0;
                         const restore = () => {
@@ -408,27 +429,37 @@ export default function Reader() {
                         setTimeout(restore, 150);
                     } else {
                         contentRef.current.scrollTop = 0;
-                        // Mismatch or no restoration needed: finalize state so we can start saving
-                        if (!initialProgressApplied) {
-                            console.log('[READER] Restoration skipped (mismatch or not needed). Finalizing state.');
+
+                        // Condition to finalize initialization:
+                        // 1. We're not already done with restoration
+                        // 2. We've finished loading metadata (isInitialLoad is false)
+                        // 3. Either we have no progress to restore, or we're on a different page intentionally
+                        if (!initialProgressApplied && !isInitialLoad) {
+                            if (savedProgress && !isTargetPage) {
+                                console.log(`[READER] On page ${currentPage}, but saved was ${savedProgress.page}. Assuming deliberate move, finalizing.`);
+                            } else if (!savedProgress) {
+                                console.log('[READER] No saved progress found, finalizing initialization.');
+                            }
                             setInitialProgressApplied(true);
+                        } else if (!initialProgressApplied) {
+                            console.log(`[READER] loadPage(page=${currentPage}) waiting for initialization to complete...`);
                         }
                     }
                 }
             } catch (e) {
                 console.error("✗ Page load error:", e);
-                console.error("Error stack:", e.stack);
                 setError(`Ошибка: ${e.message}`);
+
                 setPageContent(`<div style="text-align:center; padding:40px; color:#ef4444;">
-                    <h3>Ошибка загрузки страницы</h3>
-                    <p>${e.message}</p>
-                    ${!isOnline ? '<p style="margin-top:20px; font-size:14px; opacity:0.8;">💡 Эта страница не была кэширована. Подключитесь к интернету для загрузки.</p>' : ''}
-                </div>`);
+                        <h3>Ошибка загрузки страницы</h3>
+                        <p>${e.message}</p>
+                        ${!isOnline ? '<p style="margin-top:20px; font-size:14px; opacity:0.8;">💡 Эта страница не была кэширована. Подключитесь к интернету для загрузки.</p>' : ''}
+                    </div>`);
             }
         };
 
         loadPage();
-    }, [id, currentPage, book]);
+    }, [id, currentPage, book, savedProgress, isInitialLoad, isOnline]);
 
     // Global error handler for broken images (capture phase)
     useEffect(() => {

@@ -374,16 +374,12 @@ class MainActivity : AppCompatActivity() {
                 
                 timeoutRunnable = Runnable {
                     if (!isPrimaryUrlLoaded) {
-                        Log.w("WebView", "Timeout reached for $url")
-                        // Store the URL we were trying to load
-                        currentServerUrl = url ?: ""
-                        stopLoadingAnimation()
-                        webView.stopLoading()
-                        showConnectionErrorDialog()
+                        Log.w("WebView", "Timeout reached for $url - Triggering Auto-Offline")
+                        triggerOfflineFallback()
                     }
                 }
-                // Reduce timeout to 1.5 seconds for snappier feedback
-                timeoutHandler.postDelayed(timeoutRunnable!!, 1500) 
+                // Reduce timeout to 1 second for ultra-snappy feedback
+                timeoutHandler.postDelayed(timeoutRunnable!!, 1000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -526,56 +522,33 @@ class MainActivity : AppCompatActivity() {
         return prefs.getStringSet("server_list", emptySet()) ?: emptySet()
     }
 
-    private fun showConnectionErrorDialog() {
+    private fun triggerOfflineFallback() {
         if (isFinishing || isDestroyed) return
         
-        val editText = android.widget.EditText(this)
-        editText.hint = "http://192.168.0.xxx:5055"
-        
-        // IGNORE cloud URLs and old ports - always use local server or current URL
-        val savedUrl = getLastServerUrl()
-        val displayUrl = when {
-            savedUrl.contains("cloudpub.ru") || savedUrl.contains("tpw-xxar.ru") -> "http://192.168.0.239:5055/"
-            savedUrl.contains(":5050") -> savedUrl.replace(":5050", ":5055")
-            savedUrl.isNotEmpty() -> savedUrl
-            else -> "http://192.168.0.239:5055/"
+        runOnUiThread {
+            webView.stopLoading()
+            stopLoadingAnimation()
+            
+            // If we are ALREADY in an offline attempt and it failed, show the asset fallback
+            if (isOfflineAttempt) {
+                isOfflineAttempt = false
+                webView.loadUrl("file:///android_asset/offline.html")
+                return@runOnUiThread
+            }
+
+            Log.i("WebView", "Falling back to LOAD_CACHE_ELSE_NETWORK")
+            webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
+            isOfflineAttempt = true
+            
+            val urlToLoad = if (currentServerUrl.isNotEmpty()) currentServerUrl else getLastServerUrl()
+            webView.loadUrl(urlToLoad)
+            
+            // Shorter toast for less intrusive feel
+            Toast.makeText(this, "Оффлайн режим", Toast.LENGTH_SHORT).show()
         }
-        editText.setText(displayUrl)
-        
-        AlertDialog.Builder(this)
-            .setTitle("Ошибка подключения")
-            .setMessage("Не удалось подключиться к серверу.\n\nПопробуйте переподключиться или используйте оффлайн режим.")
-            .setView(editText)
-            .setCancelable(false)
-            .setPositiveButton("Переподключить") { _, _ ->
-                var newUrl = editText.text.toString().trim()
-                if (newUrl.isNotEmpty()) {
-                    if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
-                        newUrl = "http://$newUrl"
-                    }
-                    saveServerUrl(newUrl)
-                    currentServerUrl = newUrl
-                    webView.loadUrl(newUrl)
-                } else {
-                    showConnectionErrorDialog()
-                }
-            }
-            .setNeutralButton("Оффлайн") { _, _ ->
-                // Try to load from Service Worker cache
-                Toast.makeText(this, "Загрузка из кеша...", Toast.LENGTH_SHORT).show()
-                
-                // CRITICAL: Force WebView to look into cache FIRST
-                webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
-                isOfflineAttempt = true
-                
-                val urlToLoad = if (displayUrl.isNotEmpty()) displayUrl else currentServerUrl
-                webView.loadUrl(urlToLoad)
-            }
-            .setNegativeButton("Выход") { _, _ ->
-                finish()
-            }
-            .show()
     }
+
+    private fun showConnectionErrorDialog() {
 
     private fun uriToBase64(uri: Uri): String? {
         return try {

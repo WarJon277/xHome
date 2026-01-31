@@ -1,6 +1,6 @@
 // This file provides functions for downloading, caching, and managing offline books
 import { fetchBookPage } from '../api';
-import { saveBookPage, saveBookMetadata } from './offlineStorage';
+import { saveBookPage, saveBookMetadata, clearAllData } from './offlineStorage';
 
 const DB_NAME = 'books-offline-cache';
 const DB_VERSION = 1;
@@ -298,10 +298,43 @@ export async function clearAllCache() {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
         await requestToPromise(tx.objectStore(STORE_NAME).clear());
-        console.log('[Offline] All cached books cleared');
+        console.log('[Offline] All cached books (EPUBs) cleared');
         return true;
     } catch (error) {
         console.error('[Offline] Error clearing cache:', error);
+        return false;
+    }
+}
+
+/**
+ * Comprehensive reset of all offline data
+ * Wipes both IndexedDB databases and all Service Worker caches
+ */
+export async function resetOfflineData() {
+    try {
+        console.log('[Offline] Starting comprehensive cache reset...');
+
+        // 1. Clear IndexedDB 'xHomePortal' (reader pages/metadata)
+        await clearAllData();
+
+        // 2. Clear IndexedDB 'books-offline-cache' (EPUB files)
+        await clearAllCache();
+
+        // 3. Clear Service Worker Caches (Workbox rules)
+        if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(
+                cacheNames.map(name => {
+                    console.log(`[Offline] Deleting cache: ${name}`);
+                    return caches.delete(name);
+                })
+            );
+        }
+
+        console.log('[Offline] Comprehensive reset complete');
+        return true;
+    } catch (error) {
+        console.error('[Offline] Failed during comprehensive reset:', error);
         return false;
     }
 }

@@ -281,6 +281,24 @@ export const deleteBookCache = async (bookId) => {
     }
 };
 
+// Clear all data from this store
+export const clearAllData = async () => {
+    try {
+        const db = await initDB();
+        const tx = db.transaction([BOOKS_STORE, PAGES_STORE], 'readwrite');
+        await Promise.all([
+            tx.objectStore(BOOKS_STORE).clear(),
+            tx.objectStore(PAGES_STORE).clear()
+        ]);
+        await tx.complete;
+        console.log('[OfflineStorage] All book data cleared');
+        return true;
+    } catch (error) {
+        console.error('[OfflineStorage] Failed to clear all data:', error);
+        return false;
+    }
+};
+
 // Get storage usage estimate
 export const getStorageEstimate = async () => {
     if (navigator.storage && navigator.storage.estimate) {

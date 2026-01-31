@@ -1,5 +1,6 @@
-// Offline Books Utility - IndexedDB wrapper for storing books offline
 // This file provides functions for downloading, caching, and managing offline books
+import { fetchBookPage } from '../api';
+import { saveBookPage } from './offlineStorage';
 
 const DB_NAME = 'books-offline-cache';
 const DB_VERSION = 1;
@@ -39,25 +40,21 @@ async function openDB() {
 
 /**
  * Download book EPUB file and cache it in IndexedDB
+ * Also pre-fetches all pages and internal resources to "warm up" the Service Worker cache
  */
-export async function downloadBookForOffline(bookId, metadata) {
+export async function downloadBookForOffline(bookId, metadata, onProgress) {
     try {
-        console.log(`[Offline] Downloading book ${bookId} for offline use...`);
+        console.log(`[Offline] Starting comprehensive download for book ${bookId}: ${metadata.title}...`);
 
-        console.log(`[Offline] Downloading book ${bookId} for offline use...`);
+        if (onProgress) onProgress({ status: 'metadata', progress: 5 });
 
-        // Construct absolute URL to avoid potential PWA relative path issues
+        // 1. Download EPUB file (Shell/Legacy support)
         const baseUrl = window.location.origin;
         const downloadUrl = `${baseUrl}/api/books/${bookId}/download?t=${Date.now()}`;
 
-        // Download EPUB file with no-cache headers
         const response = await fetch(downloadUrl, {
             method: 'GET',
-            cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
+            cache: 'no-store'
         });
 
         if (!response.ok) {
@@ -65,32 +62,76 @@ export async function downloadBookForOffline(bookId, metadata) {
         }
 
         const bookData = await response.arrayBuffer();
-        console.log(`[Offline] Downloaded ${bookData.byteLength} bytes`);
 
-        // Open database
+        // Open/Save to EPUB database
         const db = await openDB();
-
-        // Check if we need to make room
-        const count = await getBookCount();
-        if (count >= MAX_BOOKS) {
-            console.log(`[Offline] Cache full (${count}/${MAX_BOOKS}), removing oldest book`);
-            await removeOldestBook();
-        }
-
-        // Save to IndexedDB
         const tx = db.transaction([STORE_NAME], 'readwrite');
         const store = tx.objectStore(STORE_NAME);
 
         await requestToPromise(store.put({
             bookId,
             bookData,
-            metadata, // Book info (title, author, total_pages, etc.)
+            metadata,
             lastAccessed: Date.now(),
             downloadedAt: Date.now(),
             size: bookData.byteLength
         }));
 
-        console.log(`[Offline] Book ${bookId} cached successfully`);
+        if (onProgress) onProgress({ status: 'epub', progress: 15 });
+
+        // 2. Pre-fetch all pages and resources to warm up SW cache
+        const totalPages = metadata.total_pages || metadata.totalPages || 0;
+        console.log(`[Offline] Pre-fetching ${totalPages} pages...`);
+
+        if (totalPages > 0) {
+            // Fetch pages in chunks to avoid overwhelming the network
+            const CHUNK_SIZE = 5;
+            for (let i = 1; i <= totalPages; i += CHUNK_SIZE) {
+                const chunkPromise = [];
+                const end = Math.min(i + CHUNK_SIZE - 1, totalPages);
+
+                for (let p = i; p <= end; p++) {
+                    chunkPromise.push((async (pageNum) => {
+                        try {
+                            const pageData = await fetchBookPage(bookId, pageNum);
+
+                            // Also save to offlineStorage for double redundancy
+                            if (pageData && pageData.content) {
+                                await saveBookPage(bookId, pageNum, pageData.content);
+
+                                // Scan for internal resources (images) and fetch them to warm SW cache
+                                // Pattern: /api/books/{id}/file_resource/{path}
+                                const resourceRegex = /\/api\/books\/\d+\/file_resource\/[^"'> ]+/g;
+                                const resources = pageData.content.match(resourceRegex) || [];
+
+                                if (resources.length > 0) {
+                                    // Fetch resources in background (don't block page loop too much)
+                                    resources.forEach(resUrl => {
+                                        fetch(resUrl).catch(e => console.warn(`Failed to pre-cache resource: ${resUrl}`, e));
+                                    });
+                                }
+                            }
+                        } catch (err) {
+                            console.warn(`[Offline] Failed to pre-fetch page ${pageNum}:`, err);
+                        }
+                    })(p));
+                }
+
+                await Promise.all(chunkPromise);
+
+                if (onProgress) {
+                    const percent = 15 + Math.round((end / totalPages) * 85);
+                    onProgress({
+                        status: 'pages',
+                        progress: percent,
+                        current: end,
+                        total: totalPages
+                    });
+                }
+            }
+        }
+
+        console.log(`[Offline] Book ${bookId} fully cached with pages`);
         return true;
     } catch (error) {
         console.error(`[Offline] Failed to download book ${bookId}:`, error);

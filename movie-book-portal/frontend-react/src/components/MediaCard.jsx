@@ -6,6 +6,7 @@ import { fetchBook } from '../api';
 export function MediaCard({ item, onClick, onPlay, type }) {
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(0);
 
     // Check if book is already downloaded (for books only)
     useEffect(() => {
@@ -19,16 +20,20 @@ export function MediaCard({ item, onClick, onPlay, type }) {
         if (isDownloaded || isDownloading) return;
 
         setIsDownloading(true);
+        setDownloadProgress(0);
         try {
             // Fetch full metadata
             const metadata = await fetchBook(item.id);
-            await downloadBookForOffline(item.id, metadata);
+            await downloadBookForOffline(item.id, metadata, (p) => {
+                setDownloadProgress(p.progress);
+            });
             setIsDownloaded(true);
         } catch (error) {
             console.error('Failed to download book:', error);
             alert('Ошибка при скачивании книги: ' + error.message);
         } finally {
             setIsDownloading(false);
+            setDownloadProgress(0);
         }
     };
 
@@ -122,7 +127,10 @@ export function MediaCard({ item, onClick, onPlay, type }) {
                         title={isDownloaded ? 'Скачано' : isDownloading ? 'Скачивание...' : 'Скачать для офлайн'}
                     >
                         {isDownloading ? (
-                            <Loader2 size={20} className="animate-spin" />
+                            <div className="relative flex items-center justify-center">
+                                <Loader2 size={20} className="animate-spin" />
+                                <span className="absolute text-[8px] font-bold">{downloadProgress}%</span>
+                            </div>
                         ) : isDownloaded ? (
                             <Check size={20} />
                         ) : (

@@ -155,14 +155,22 @@ class MainActivity : AppCompatActivity() {
         webView.clearCache(false)
 
 
-        // Load saved server URL or use local dev server by default
+        // Load saved server URL or use local backend by default  
         val savedUrl = getLastServerUrl()
-        val primaryUrl = if (savedUrl.isNotEmpty()) savedUrl else "http://192.168.0.239:5050/"
-        
-        val fallbackUrl = "https://lightly-shipshape-stonefish.cloudpub.ru/"
+        // Migration: If we have an old 5050 URL, force it to 5055 for production
+        val initialUrl = if (savedUrl.contains(":5050")) {
+            savedUrl.replace(":5050", ":5055")
+        } else if (savedUrl.isNotEmpty()) {
+            savedUrl
+        } else {
+            "http://192.168.0.239:5055/"
+        }
+        val primaryUrl = initialUrl
 
         if (isNetworkAvailable()) {
-            loadUrlWithFallback(primaryUrl, fallbackUrl)
+            isPrimaryUrlLoaded = false
+            currentServerUrl = primaryUrl
+            webView.loadUrl(primaryUrl)
         } else {
             // Offline: try to load from Service Worker cache
             Toast.makeText(this, "Нет интернета. Загрузка кешированной версии...", Toast.LENGTH_LONG).show()
@@ -177,14 +185,6 @@ class MainActivity : AppCompatActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun loadUrlWithFallback(primaryUrl: String, fallbackUrl: String) {
-        isPrimaryUrlLoaded = false
-        currentServerUrl = primaryUrl
-        webView.loadUrl(primaryUrl)
-        
-        // Store fallback URL for use in error handler
-        webView.tag = mapOf("fallbackUrl" to fallbackUrl)
-    }
 
     private fun startLoadingAnimation() {
         if (pulseAnimator == null) {
@@ -371,16 +371,16 @@ class MainActivity : AppCompatActivity() {
                 
                 timeoutRunnable = Runnable {
                     if (!isPrimaryUrlLoaded) {
-                        Log.w("WebView", "Timeout reached")
+                        Log.w("WebView", "Timeout reached for $url")
+                        // Store the URL we were trying to load
+                        currentServerUrl = url ?: ""
                         stopLoadingAnimation()
                         webView.stopLoading()
-                        
-                        // Instead of auto-fallback, show dialog
                         showConnectionErrorDialog()
                     }
                 }
-                // 2 seconds timeout (reduced from 5s for quick offline fallback)
-                timeoutHandler.postDelayed(timeoutRunnable!!, 2000) 
+                // 3 seconds timeout for initial load
+                timeoutHandler.postDelayed(timeoutRunnable!!, 3000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -392,6 +392,10 @@ class MainActivity : AppCompatActivity() {
                 timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                 
                 isPrimaryUrlLoaded = true
+                
+                // Reset cache mode to default after successful load (especially after offline mode)
+                webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                isOfflineAttempt = false
                 
                 // If loaded successfully, save this URL as the new default
                 url?.let { validUrl ->
@@ -434,6 +438,20 @@ class MainActivity : AppCompatActivity() {
                     if (!isPrimaryUrlLoaded) {
                          timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                          stopLoadingAnimation()
+                         // Store the URL we were trying to load if not already set
+                         if (currentServerUrl.isEmpty() && url.isNotEmpty()) {
+                             currentServerUrl = url
+                         }
+                         
+                         // If this was an offline attempt and it failed, show catastrophic fallback
+                         if (isOfflineAttempt) {
+                             isOfflineAttempt = false
+                             view?.post {
+                                 view.loadUrl("file:///android_asset/offline.html")
+                             }
+                             return
+                         }
+                         
                          // Show dialog
                          showConnectionErrorDialog()
                     }
@@ -509,30 +527,46 @@ class MainActivity : AppCompatActivity() {
         if (isFinishing || isDestroyed) return
         
         val editText = android.widget.EditText(this)
-        editText.hint = "http://192.168.0.xxx:5050"
-        editText.setText(getLastServerUrl())
+        editText.hint = "http://192.168.0.xxx:5055"
+        
+        // IGNORE cloud URLs and old ports - always use local server or current URL
+        val savedUrl = getLastServerUrl()
+        val displayUrl = when {
+            savedUrl.contains("cloudpub.ru") || savedUrl.contains("tpw-xxar.ru") -> "http://192.168.0.239:5055/"
+            savedUrl.contains(":5050") -> savedUrl.replace(":5050", ":5055")
+            savedUrl.isNotEmpty() -> savedUrl
+            else -> "http://192.168.0.239:5055/"
+        }
+        editText.setText(displayUrl)
         
         AlertDialog.Builder(this)
             .setTitle("Ошибка подключения")
-            .setMessage("Не удалось подключиться к серверу.\n\n💡 Для оффлайн режима используйте облачную версию")
+            .setMessage("Не удалось подключиться к серверу.\n\nПопробуйте переподключиться или используйте оффлайн режим.")
             .setView(editText)
             .setCancelable(false)
-            .setPositiveButton("Подключить") { _, _ ->
+            .setPositiveButton("Переподключить") { _, _ ->
                 var newUrl = editText.text.toString().trim()
                 if (newUrl.isNotEmpty()) {
                     if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
                         newUrl = "http://$newUrl"
                     }
-                    loadUrlWithFallback(newUrl, "https://dev.tpw-xxar.ru")
+                    saveServerUrl(newUrl)
+                    currentServerUrl = newUrl
+                    webView.loadUrl(newUrl)
                 } else {
                     showConnectionErrorDialog()
                 }
             }
-            .setNeutralButton("Облако (с оффлайн)") { _, _ ->
-                val cloudUrl = "https://lightly-shipshape-stonefish.cloudpub.ru/"
-                saveServerUrl(cloudUrl)
-                webView.loadUrl(cloudUrl)
-                Toast.makeText(this, "Подключение к облаку. Service Worker обеспечит работу оффлайн.", Toast.LENGTH_LONG).show()
+            .setNeutralButton("Оффлайн") { _, _ ->
+                // Try to load from Service Worker cache
+                Toast.makeText(this, "Загрузка из кеша...", Toast.LENGTH_SHORT).show()
+                
+                // CRITICAL: Force WebView to look into cache FIRST
+                webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
+                isOfflineAttempt = true
+                
+                val urlToLoad = if (displayUrl.isNotEmpty()) displayUrl else currentServerUrl
+                webView.loadUrl(urlToLoad)
             }
             .setNegativeButton("Выход") { _, _ ->
                 finish()

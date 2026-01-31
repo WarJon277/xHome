@@ -19,9 +19,40 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/, /^\/thumbnails/],
         runtimeCaching: [
           {
-            // Book downloads - Allow long timeout (avoid 3s limit)
+            // Book Pages - Network First but with very long expiration
+            urlPattern: /\/api\/books\/.*\/page\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'book-pages-cache',
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 2000, // Large Enough for multiple books
+                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Book Internal Resources (Images/CSS inside EPUB)
+            urlPattern: /\/api\/books\/.*\/file_resource\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'book-resources-cache',
+              expiration: {
+                maxEntries: 5000, // Very large for all images
+                maxAgeSeconds: 60 * 24 * 60 * 60 // 60 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Book downloads (The EPUB file itself)
             urlPattern: /\/api\/books\/.*\/download/i,
-            handler: 'NetworkFirst', // Changed from NetworkOnly to fix error
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'book-downloads',
               networkTimeoutSeconds: 60

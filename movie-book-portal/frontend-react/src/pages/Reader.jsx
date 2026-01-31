@@ -84,7 +84,7 @@ export default function Reader() {
                             console.log('[Reader] Local progress is FURTHER. Using it.');
                             // Push local to server if online
                             if (isOnline) {
-                                saveProgress('book', id, l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
+                                saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
                             }
                         } else {
                             winner = r;
@@ -96,11 +96,11 @@ export default function Reader() {
                         winner = l;
                         // Push local to server if online
                         if (isOnline) {
-                            saveProgress('book', id, l.page, l.scrollRatio).catch(e => console.warn("Failed to sync initial local progress to server", e));
+                            saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync initial local progress to server", e));
                         }
                     }
 
-                    if (winner && winner.page > 0) {
+                    if (winner && winner.page >= 0) {
                         const savedPage = winner.page;
                         if (savedPage <= (data.total_pages || 9999)) {
                             setCurrentPage(savedPage);
@@ -111,8 +111,14 @@ export default function Reader() {
                             // Ensure local is also up to date with the winner
                             await saveLocalProgress(id, savedPage, winner.scrollRatio || 0);
                         }
+                    } else {
+                        // Mark as applied if there's no progress to restore
+                        setInitialProgressApplied(true);
                     }
-                } catch (e) { console.warn("Could not load progress", e); }
+                } catch (e) {
+                    console.warn("Could not load progress", e);
+                    setInitialProgressApplied(true);
+                }
                 setIsInitialLoad(false);
             } catch (e) {
                 setError(`Ошибка загрузки книги: ${e.message}`);
@@ -147,6 +153,14 @@ export default function Reader() {
         if (!id || !contentRef.current || isInitialLoad || !pageContent) return;
 
         const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
+
+        // PROTECTION: Don't save if we're on the page to restore, but restoration hasn't finished yet
+        // This prevents overwriting a valid saved position with 0 top scroll during page load
+        if (savedProgress && savedProgress.page === currentPage && !initialProgressApplied && savedProgress.scrollRatio > 0.05) {
+            console.log('[Reader] Protection: Skipping save until initial scroll is restored');
+            return;
+        }
+
         // Don't save if content is not actually scrollable yet but we expect it to be
         if (scrollTotal <= 0 && pageContent.length > 1000) return;
 
@@ -168,7 +182,7 @@ export default function Reader() {
         if (!isInitialLoad && id && pageContent) {
             handleSaveProgress();
         }
-    }, [currentPage, id, isInitialLoad, pageContent]);
+    }, [currentPage, id, isInitialLoad, pageContent, initialProgressApplied]);
 
     useEffect(() => {
         const interval = setInterval(() => {

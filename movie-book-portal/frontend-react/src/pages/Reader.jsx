@@ -10,15 +10,45 @@ export default function Reader() {
 
     const [book, setBook] = useState(null);
     const [pageContent, setPageContent] = useState('');
-    const [currentPage, setCurrentPage] = useState(0); // Start at 0 for description page
+
+    // FAST PATH: Initialize from localStorage immediately
+    const [currentPage, setCurrentPage] = useState(() => {
+        const fast = localStorage.getItem(`book-pos-${id}`);
+        if (fast) {
+            try {
+                const data = JSON.parse(fast);
+                console.log('[Reader] Fast-path initial page:', data.page);
+                return data.page || 0;
+            } catch (e) { }
+        }
+        return 0;
+    });
+    const [scrollRatio, setScrollRatio] = useState(() => {
+        const fast = localStorage.getItem(`book-pos-${id}`);
+        if (fast) {
+            try {
+                const data = JSON.parse(fast);
+                return data.scrollRatio || 0;
+            } catch (e) { }
+        }
+        return 0;
+    });
+    const [savedProgress, setSavedProgress] = useState(() => {
+        const fast = localStorage.getItem(`book-pos-${id}`);
+        if (fast) {
+            try {
+                return JSON.parse(fast);
+            } catch (e) { }
+        }
+        return null;
+    });
+
     const [totalPages, setTotalPages] = useState(1);
     const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('reader-font-size')) || 20);
     const [theme, setTheme] = useState(() => localStorage.getItem('reader-theme') || 'sepia');
     const [error, setError] = useState(null);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [savedProgress, setSavedProgress] = useState(null);
     const [initialProgressApplied, setInitialProgressApplied] = useState(false);
-    const [scrollRatio, setScrollRatio] = useState(0); // Track scroll position on current page
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [immersiveMode, setImmersiveMode] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -33,18 +63,18 @@ export default function Reader() {
                 try {
                     // Try to fetch from server
                     data = await fetchBook(id);
-                    console.log('[Reader] Loaded book from server:', data);
+                    console.log('[Reader] Loaded book metadata from server');
 
                     // Cache the metadata for offline use
                     await saveBookMetadata(data);
                 } catch (err) {
-                    console.warn('[Reader] Failed to load from server, trying cache:', err);
+                    console.warn('[Reader] Failed to load from server, trying cache:', err.message);
 
                     // If network error, try to load from cache
                     if (err.isNetworkError || err.isTimeout) {
                         data = await getBookMetadata(id);
                         if (data) {
-                            console.log('[Reader] Loaded book from cache:', data);
+                            console.log('[Reader] Loaded book metadata from cache');
                             setIsOnline(false);
                         } else {
                             throw new Error('Книга недоступна оффлайн');
@@ -62,20 +92,14 @@ export default function Reader() {
                 // Load cached pages list
                 const cached = await getCachedPagesForBook(id);
                 setCachedPages(cached);
-                console.log('[Reader] Cached pages:', cached);
 
-                // Load Progress - Bidirectional Sync (Furthest Wins)
+                // BACKGROUND SYNC: Check for newer progress from server
                 try {
-                    console.log('[Reader] Checking progress for book', id);
+                    console.log('[Reader] Syncing progress in background...');
                     const [remoteProg, localProg] = await Promise.all([
-                        fetchProgress('book', id).catch(err => {
-                            console.log('[Reader] Remote progress fetch failed:', err.message);
-                            return null;
-                        }),
+                        fetchProgress('book', id).catch(() => null),
                         getLocalProgress(id)
                     ]);
-
-                    console.log('[Reader] Raw progress - Remote:', remoteProg, 'Local:', localProg);
 
                     let winner = null;
                     const r = remoteProg ? {
@@ -89,80 +113,34 @@ export default function Reader() {
                         updatedAt: localProg.updatedAt || 0
                     } : null;
 
-                    console.log('[Reader] Parsed progress - Remote:', r, 'Local:', l);
-
                     if (r && l) {
-                        // Compare: Newest Wins
-                        if (l.updatedAt > r.updatedAt) {
-                            winner = l;
-                            console.log('[Reader] WINNER: Local (Newer)');
-                            // Push local to server if online
-                            if (isOnline) {
-                                saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
-                            }
-                        } else {
+                        if (r.updatedAt > l.updatedAt + 1000) { // Server is clearly newer
                             winner = r;
-                            console.log('[Reader] WINNER: Server (Newer or Same)');
                         }
                     } else if (r) {
                         winner = r;
-                        console.log('[Reader] WINNER: Server (No Local)');
-                    } else if (l) {
-                        winner = l;
-                        console.log('[Reader] WINNER: Local (No Server)');
-                        // Push local to server if online
-                        if (isOnline) {
-                            saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync initial local progress to server", e));
-                        }
                     }
 
-                    if (winner && winner.page >= 0) {
-                        const savedPage = winner.page;
-                        console.log('[Reader] Found valid winner page:', savedPage, 'Target pages:', data.total_pages);
-                        if (savedPage <= (data.total_pages || 9999)) {
-                            console.log('[Reader] Setting initial progress restoration target:', winner);
-                            setSavedProgress({
-                                page: savedPage,
-                                scrollRatio: winner.scrollRatio || 0
-                            });
+                    if (winner && (winner.page !== currentPage || Math.abs(winner.scrollRatio - scrollRatio) > 0.1)) {
+                        console.log('[Reader] Found newer progress on server. Updating position:', winner);
+                        setSavedProgress(winner);
+                        setInitialProgressApplied(false); // Re-trigger restoration
+                        setCurrentPage(winner.page);
 
-                            // IF we are restoring a page > 0, we MUST ensure initialProgressApplied is FALSE
-                            // so that loadPage triggers the restoration block.
-                            if (savedPage > 0) {
-                                console.log('[Reader] Targeting page > 0, ensuring restoration is NOT marked as applied yet');
-                                setInitialProgressApplied(false);
-                            }
-
-                            setCurrentPage(savedPage);
-
-                            // Ensure local is also up to date with the winner (if remote was the winner)
-                            if (winner === r) {
-                                await saveLocalProgress(id, savedPage, winner.scrollRatio || 0, winner.updatedAt);
-                            }
-
-                            // If we are on page 0 or description, no scroll to restore, can mark as applied
-                            if (savedPage === 0) {
-                                console.log('[Reader] Target is page 0, marking applied immediately');
-                                setInitialProgressApplied(true);
-                            }
-                        } else {
-                            console.warn('[Reader] Saved page exceeds total pages, ignoring');
-                            setInitialProgressApplied(true);
-                        }
+                        // Sync back to local storage
+                        await saveLocalProgress(id, winner.page, winner.scrollRatio, winner.updatedAt);
                     } else {
-                        console.log('[Reader] No progress found to restore');
-                        setInitialProgressApplied(true);
+                        console.log('[Reader] Local progress is up to date.');
                     }
                 } catch (e) {
-                    console.warn("[Reader] Error loading progress:", e);
-                    setInitialProgressApplied(true);
+                    console.warn("[Reader] Background sync failed:", e);
                 }
+
                 setIsInitialLoad(false);
-                console.log('[Reader] Metadata and progress loading complete. isInitialLoad -> false');
             } catch (e) {
                 setError(`Ошибка загрузки книги: ${e.message}`);
+                setIsInitialLoad(false);
             }
-
         };
         loadMetadata();
     }, [id]);

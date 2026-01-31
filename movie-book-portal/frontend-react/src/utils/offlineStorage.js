@@ -233,17 +233,23 @@ export const clearOldCache = async (daysToKeep = 30) => {
 
 // Save progress locally
 export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null) => {
+    const ts = updatedAt || Date.now();
     try {
+        // FAST PATH: localStorage (synchronous, instant)
+        const fastData = {
+            id: parseInt(id),
+            page: parseInt(page),
+            scrollRatio: scrollRatio,
+            updatedAt: ts
+        };
+        localStorage.setItem(`book-pos-${id}`, JSON.stringify(fastData));
+
+        // DURABLE PATH: IndexedDB (asynchronous)
         const db = await initDB();
         const tx = db.transaction(PROGRESS_STORE, 'readwrite');
         const store = tx.objectStore(PROGRESS_STORE);
 
-        await requestToPromise(store.put({
-            id: parseInt(id),
-            page: parseInt(page),
-            scrollRatio: scrollRatio,
-            updatedAt: updatedAt || Date.now()
-        }));
+        await requestToPromise(store.put(fastData));
         return true;
     } catch (error) {
         console.error('[OfflineStorage] Failed to save local progress:', error);
@@ -253,6 +259,16 @@ export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null)
 
 // Get progress locally
 export const getLocalProgress = async (id) => {
+    // TRY FAST PATH FIRST
+    const fastData = localStorage.getItem(`book-pos-${id}`);
+    if (fastData) {
+        try {
+            return JSON.parse(fastData);
+        } catch (e) {
+            console.warn('[OfflineStorage] Corrupt fast-path data:', e);
+        }
+    }
+
     try {
         const db = await initDB();
         const tx = db.transaction(PROGRESS_STORE, 'readonly');
@@ -267,9 +283,13 @@ export const getLocalProgress = async (id) => {
 };
 
 
+
 // Delete specific book and its pages
 export const deleteBookCache = async (bookId) => {
     try {
+        // Clear FAST PATH
+        localStorage.removeItem(`book-pos-${bookId}`);
+
         const db = await initDB();
 
         // Delete book metadata
@@ -305,6 +325,13 @@ export const deleteBookCache = async (bookId) => {
 // Clear all data from this store
 export const clearAllData = async () => {
     try {
+        // Clear all progress-related fast path entries
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('book-pos-')) {
+                localStorage.removeItem(key);
+            }
+        });
+
         const db = await initDB();
         const tx = db.transaction([BOOKS_STORE, PAGES_STORE, PROGRESS_STORE], 'readwrite');
         await Promise.all([

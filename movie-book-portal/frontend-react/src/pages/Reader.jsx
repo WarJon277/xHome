@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchBook, fetchBookPage, fetchProgress, saveProgress } from '../api';
-import { saveBookMetadata, getBookMetadata, saveBookPage, getBookPage, getCachedPagesForBook } from '../utils/offlineStorage';
+import { saveBookMetadata, getBookMetadata, saveBookPage, getBookPage, getCachedPagesForBook, saveLocalProgress, getLocalProgress } from '../utils/offlineStorage';
 import { ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Moon, Sun, Coffee, RotateCcw, Settings, Maximize, Minimize, WifiOff } from 'lucide-react';
 
 export default function Reader() {
@@ -66,7 +66,28 @@ export default function Reader() {
 
                 // Load Progress
                 try {
-                    const prog = await fetchProgress('book', id);
+                    let prog;
+                    try {
+                        prog = await fetchProgress('book', id);
+                        console.log('[Reader] Loaded progress from server:', prog);
+
+                        // Sync online progress to local backup
+                        if (prog && prog.progress_seconds > 0) {
+                            await saveLocalProgress(id, Math.floor(prog.progress_seconds), prog.scroll_ratio || 0);
+                        }
+                    } catch (err) {
+                        console.warn('[Reader] Failed to fetch progress from server, trying local backup:', err);
+                        prog = await getLocalProgress(id);
+                        if (prog) {
+                            console.log('[Reader] Loaded progress from local backup:', prog);
+                            // Adapt local format to matching field names used below
+                            prog = {
+                                progress_seconds: prog.page,
+                                scroll_ratio: prog.scrollRatio
+                            };
+                        }
+                    }
+
                     if (prog && prog.progress_seconds > 0) {
                         const savedPage = Math.floor(prog.progress_seconds);
                         if (savedPage > 0 && savedPage <= (data.total_pages || 9999)) {
@@ -110,10 +131,14 @@ export default function Reader() {
         if (!id || !contentRef.current) return;
         const scrollTotal = contentRef.current.scrollHeight - contentRef.current.clientHeight;
         const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
+
+        // Save to local storage FIRST (always works)
+        await saveLocalProgress(id, currentPage, scrollRatio);
+
         try {
             await saveProgress('book', id, currentPage, scrollRatio);
         } catch (e) {
-            console.error("Save progress failed", e);
+            console.warn("[Reader] Remote progress save failed (offline?)", e);
         }
     };
 

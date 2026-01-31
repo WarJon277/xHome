@@ -39,6 +39,18 @@ export default function BooksPage() {
         try {
             setLoading(true);
             setIsOffline(false);
+
+            // Fast check for offline state
+            if (!navigator.onLine) {
+                console.log('[Books] Initializing in offline mode (navigator.onLine is false)');
+                setIsOffline(true);
+                const cachedBooks = await getCachedBooks();
+                setBooks(cachedBooks);
+                setShowOnlyCached(true);
+                setLoading(false);
+                return;
+            }
+
             const data = await fetchBooks();
             console.log("Books data fetched:", data);
             setBooks(data);

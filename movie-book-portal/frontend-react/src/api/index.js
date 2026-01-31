@@ -4,7 +4,7 @@
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Configuration
-export const API_TIMEOUT = 5000; // 5 seconds timeout for quick offline detection
+export const API_TIMEOUT = 2000; // 2 seconds timeout for fast offline detection
 
 // Helper to get or create a unique Device ID
 function getDeviceId() {
@@ -28,6 +28,15 @@ async function request(endpoint, options = {}) {
 
     // Create AbortController for timeout
     const controller = new AbortController();
+
+    // IF EXPLICITLY OFFLINE: Fail fast immediately
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const offlineError = new Error('Browser is offline');
+        offlineError.isNetworkError = true;
+        offlineError.isTimeout = true;
+        return Promise.reject(offlineError);
+    }
+
     const timeoutId = setTimeout(() => controller.abort(), options.timeout || API_TIMEOUT);
 
     try {

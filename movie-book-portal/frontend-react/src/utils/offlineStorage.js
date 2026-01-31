@@ -5,6 +5,7 @@ const DB_NAME = 'xHomePortal';
 const DB_VERSION = 1;
 const BOOKS_STORE = 'books';
 const PAGES_STORE = 'pages';
+const PROGRESS_STORE = 'progress';
 
 // Initialize IndexedDB
 const initDB = () => {
@@ -28,6 +29,11 @@ const initDB = () => {
                 const pagesStore = db.createObjectStore(PAGES_STORE, { keyPath: ['bookId', 'pageNumber'] });
                 pagesStore.createIndex('bookId', 'bookId', { unique: false });
                 pagesStore.createIndex('cachedAt', 'cachedAt', { unique: false });
+            }
+
+            // Progress store: local progress backup
+            if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
+                db.createObjectStore(PROGRESS_STORE, { keyPath: 'id' });
             }
         };
     });
@@ -244,6 +250,45 @@ export const clearOldCache = async (daysToKeep = 30) => {
     } catch (error) {
         console.error('[OfflineStorage] Failed to clear old cache:', error);
         return false;
+    }
+};
+
+// Save progress locally
+export const saveLocalProgress = async (id, page, scrollRatio) => {
+    try {
+        const db = await initDB();
+        const tx = db.transaction(PROGRESS_STORE, 'readwrite');
+        const store = tx.objectStore(PROGRESS_STORE);
+
+        await store.put({
+            id: parseInt(id),
+            page: parseInt(page),
+            scrollRatio: scrollRatio,
+            updatedAt: Date.now()
+        });
+        await tx.complete;
+        return true;
+    } catch (error) {
+        console.error('[OfflineStorage] Failed to save local progress:', error);
+        return false;
+    }
+};
+
+// Get progress locally
+export const getLocalProgress = async (id) => {
+    try {
+        const db = await initDB();
+        const tx = db.transaction(PROGRESS_STORE, 'readonly');
+        const store = tx.objectStore(PROGRESS_STORE);
+
+        return new Promise((resolve) => {
+            const request = store.get(parseInt(id));
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+        });
+    } catch (error) {
+        console.error('[OfflineStorage] Failed to get local progress:', error);
+        return null;
     }
 };
 

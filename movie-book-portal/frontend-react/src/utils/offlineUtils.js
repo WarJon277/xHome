@@ -1,6 +1,6 @@
 // This file provides functions for downloading, caching, and managing offline books
-import { fetchBookPage } from '../api';
-import { saveBookPage, saveBookMetadata, clearAllData } from './offlineStorage';
+import { fetchBookPage, fetchProgress } from '../api';
+import { saveBookPage, saveBookMetadata, clearAllData, saveLocalProgress } from './offlineStorage';
 
 const DB_NAME = 'books-offline-cache';
 const DB_VERSION = 1;
@@ -51,6 +51,17 @@ export async function downloadBookForOffline(bookId, metadata, onProgress) {
         // Save metadata to BOTH stores to ensure Reader.jsx finds it
         await saveBookMetadata(metadata);
         console.log(`[Offline] Metadata synced to Reader storage for book ${bookId}`);
+
+        // Fetch latest progress from server and save it locally
+        try {
+            const prog = await fetchProgress('book', bookId);
+            if (prog && prog.progress_seconds > 0) {
+                await saveLocalProgress(bookId, Math.floor(prog.progress_seconds), prog.scroll_ratio || 0);
+                console.log(`[Offline] Pre-fetched server progress for book ${bookId}: page ${Math.floor(prog.progress_seconds)}`);
+            }
+        } catch (e) {
+            console.warn('[Offline] Failed to pre-fetch progress for book', bookId, e);
+        }
 
         // 1. Download EPUB file (Shell/Legacy support)
         const baseUrl = window.location.origin;

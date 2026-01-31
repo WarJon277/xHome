@@ -207,36 +207,48 @@ export default function Reader() {
                 let fromCache = false;
 
                 try {
-                    // Try to fetch from server
-                    data = await fetchBookPage(id, currentPage);
-                    console.log('✓ Loaded page from server');
+                    // IF OFFLINE: Try local storage FIRST (immediate load)
+                    if (!isOnline) {
+                        console.log(`[Reader] App is OFFLINE, checking local storage for page ${currentPage}...`);
+                        const cachedContent = await getBookPage(id, currentPage);
+                        if (cachedContent) {
+                            console.log('✓ [Offline] Loaded page from IndexedDB');
+                            data = { content: cachedContent };
+                            fromCache = true;
+                        } else {
+                            throw new Error('Эта страница не была загружена для чтения оффлайн.');
+                        }
+                    } else {
+                        // IF ONLINE: Try server first
+                        try {
+                            data = await fetchBookPage(id, currentPage);
+                            console.log('✓ Loaded page from server');
 
-                    // Cache the page content for offline use
-                    if (data && data.content) {
-                        await saveBookPage(id, currentPage, data.content);
+                            // Cache the page content for offline use
+                            if (data && data.content) {
+                                await saveBookPage(id, currentPage, data.content);
 
-                        // Update cached pages list
-                        if (!cachedPages.includes(currentPage)) {
-                            setCachedPages(prev => [...prev, currentPage]);
+                                // Update cached pages list
+                                if (!cachedPages.includes(currentPage)) {
+                                    setCachedPages(prev => [...prev, currentPage]);
+                                }
+                            }
+                        } catch (err) {
+                            console.warn('[Reader] Server fetch failed, falling back to cache:', err);
+                            const cachedContent = await getBookPage(id, currentPage);
+                            if (cachedContent) {
+                                console.log('✓ Loaded page from cache after server error');
+                                data = { content: cachedContent };
+                                fromCache = true;
+                                setIsOnline(false); // Mark as offline if server fails
+                            } else {
+                                throw err; // Re-throw if no cache either
+                            }
                         }
                     }
                 } catch (err) {
-                    console.warn('[Reader] Failed to load page from server:', err);
-
-                    // If network error, try to load from cache
-                    if (err.isNetworkError || err.isTimeout) {
-                        const cachedContent = await getBookPage(id, currentPage);
-                        if (cachedContent) {
-                            console.log('✓ Loaded page from cache');
-                            data = { content: cachedContent };
-                            fromCache = true;
-                            setIsOnline(false);
-                        } else {
-                            throw new Error('Эта страница недоступна оффлайн. Подключитесь к интернету для загрузки.');
-                        }
-                    } else {
-                        throw err;
-                    }
+                    console.error('[Reader] Error in loadPage logic:', err);
+                    throw err;
                 }
 
                 console.log('Raw API response:', data);

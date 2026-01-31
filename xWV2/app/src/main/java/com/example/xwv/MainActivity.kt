@@ -548,7 +548,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showConnectionErrorDialog() {
 
     private fun uriToBase64(uri: Uri): String? {
         return try {

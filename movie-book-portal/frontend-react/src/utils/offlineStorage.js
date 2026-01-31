@@ -254,7 +254,7 @@ export const clearOldCache = async (daysToKeep = 30) => {
 };
 
 // Save progress locally
-export const saveLocalProgress = async (id, page, scrollRatio) => {
+export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null) => {
     try {
         const db = await initDB();
         const tx = db.transaction(PROGRESS_STORE, 'readwrite');
@@ -264,7 +264,7 @@ export const saveLocalProgress = async (id, page, scrollRatio) => {
             id: parseInt(id),
             page: parseInt(page),
             scrollRatio: scrollRatio,
-            updatedAt: Date.now()
+            updatedAt: updatedAt || Date.now()
         });
         await tx.complete;
         return true;

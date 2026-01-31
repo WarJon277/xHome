@@ -205,11 +205,20 @@ export default function Reader() {
         const onUnload = () => {
             handleSaveProgress();
         };
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                console.log('[Reader] Page hidden, triggering progress save...');
+                handleSaveProgress();
+            }
+        };
+
         window.addEventListener('beforeunload', onUnload);
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('beforeunload', onUnload);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
             handleSaveProgress(); // Final save on unmount
         };
     }, [id, currentPage]);

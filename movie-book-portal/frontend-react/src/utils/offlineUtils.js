@@ -1,6 +1,6 @@
 // This file provides functions for downloading, caching, and managing offline books
 import { fetchBookPage, fetchProgress } from '../api';
-import { saveBookPage, saveBookMetadata, clearAllData, saveLocalProgress } from './offlineStorage';
+import { saveBookPage, saveBookMetadata, clearAllData, saveLocalProgress, getLocalProgress } from './offlineStorage';
 
 const DB_NAME = 'books-offline-cache';
 const DB_VERSION = 1;
@@ -52,15 +52,26 @@ export async function downloadBookForOffline(bookId, metadata, onProgress) {
         await saveBookMetadata(metadata);
         console.log(`[Offline] Metadata synced to Reader storage for book ${bookId}`);
 
-        // Fetch latest progress from server and save it locally
+        // Fetch latest progress from server and save it locally (only if newer)
         try {
-            const prog = await fetchProgress('book', bookId);
-            if (prog && prog.progress_seconds > 0) {
-                await saveLocalProgress(bookId, Math.floor(prog.progress_seconds), prog.scroll_ratio || 0);
-                console.log(`[Offline] Pre-fetched server progress for book ${bookId}: page ${Math.floor(prog.progress_seconds)}`);
+            const [remoteProg, localProg] = await Promise.all([
+                fetchProgress('book', bookId).catch(() => null),
+                getLocalProgress(bookId)
+            ]);
+
+            if (remoteProg) {
+                const rTime = remoteProg.last_updated ? new Date(remoteProg.last_updated).getTime() : 0;
+                const lTime = localProg ? (localProg.updatedAt || 0) : 0;
+
+                if (rTime > lTime) {
+                    await saveLocalProgress(bookId, Math.floor(remoteProg.progress_seconds), remoteProg.scroll_ratio || 0, rTime);
+                    console.log(`[Offline] Synced newer server progress for book ${bookId}: page ${Math.floor(remoteProg.progress_seconds)}`);
+                } else {
+                    console.log(`[Offline] Local progress is newer/same (${lTime}) than server (${rTime}). Keeping local.`);
+                }
             }
         } catch (e) {
-            console.warn('[Offline] Failed to pre-fetch progress for book', bookId, e);
+            console.warn('[Offline] Failed to sync progress for book', bookId, e);
         }
 
         // 1. Download EPUB file (Shell/Legacy support)

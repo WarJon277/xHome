@@ -191,16 +191,25 @@ export default function Reader() {
         const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
 
         // Save to local storage FIRST (always works)
-        console.log(`[Reader] Saving progress locally: page ${currentPage}, ratio ${scrollRatio.toFixed(3)}`);
-        await saveLocalProgress(id, currentPage, scrollRatio);
+        const savedLocally = await saveLocalProgress(id, currentPage, scrollRatio);
+        if (savedLocally) {
+            console.log(`[Reader] ✓ Progress saved to IndexedDB: page ${currentPage}, ratio ${scrollRatio.toFixed(3)}`);
+        } else {
+            console.error('[Reader] ✗ Failed to save progress to IndexedDB');
+        }
 
         try {
-            const res = await saveProgress('book', parseInt(id), currentPage, scrollRatio);
-            console.log('[Reader] Remote progress save success:', res);
+            if (isOnline) {
+                const res = await saveProgress('book', parseInt(id), currentPage, scrollRatio);
+                console.log('[Reader] ✓ Remote progress saved to server:', res);
+            } else {
+                console.log('[Reader] Offline: skipping server progress save');
+            }
         } catch (e) {
             console.warn("[Reader] Remote progress save failed (offline or timeout)", e);
         }
     };
+
 
     useEffect(() => {
         if (!isInitialLoad && id && pageContent && initialProgressApplied) {

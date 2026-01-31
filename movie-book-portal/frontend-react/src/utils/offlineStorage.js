@@ -7,6 +7,14 @@ const BOOKS_STORE = 'books';
 const PAGES_STORE = 'pages';
 const PROGRESS_STORE = 'progress';
 
+// Helper to promisify IndexedDB requests
+const requestToPromise = (request) => {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
 // Initialize IndexedDB
 const initDB = () => {
     return new Promise((resolve, reject) => {
@@ -58,8 +66,7 @@ export const saveBookMetadata = async (book) => {
             lastAccessed: Date.now()
         };
 
-        await store.put(bookData);
-        await tx.complete;
+        await requestToPromise(store.put(bookData));
         console.log('[OfflineStorage] Saved book metadata:', book.id);
         return true;
     } catch (error) {
@@ -82,8 +89,7 @@ export const saveBookPage = async (bookId, pageNumber, content) => {
             cachedAt: Date.now()
         };
 
-        await store.put(pageData);
-        await tx.complete;
+        await requestToPromise(store.put(pageData));
         console.log(`[OfflineStorage] Saved page ${pageNumber} for book ${bookId}`);
         return true;
     } catch (error) {
@@ -99,19 +105,14 @@ export const getCachedBooks = async () => {
         const tx = db.transaction(BOOKS_STORE, 'readonly');
         const store = tx.objectStore(BOOKS_STORE);
 
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => {
-                const books = request.result.map(book => ({
-                    ...book,
-                    total_pages: book.totalPages,
-                    isCached: true
-                }));
-                console.log('[OfflineStorage] Retrieved cached books:', books.length);
-                resolve(books);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const result = await requestToPromise(store.getAll());
+        const books = result.map(book => ({
+            ...book,
+            total_pages: book.totalPages,
+            isCached: true
+        }));
+        console.log('[OfflineStorage] Retrieved cached books:', books.length);
+        return books;
     } catch (error) {
         console.error('[OfflineStorage] Failed to get cached books:', error);
         return [];
@@ -125,22 +126,15 @@ export const getBookMetadata = async (bookId) => {
         const tx = db.transaction(BOOKS_STORE, 'readonly');
         const store = tx.objectStore(BOOKS_STORE);
 
-        return new Promise((resolve, reject) => {
-            const request = store.get(parseInt(bookId));
-            request.onsuccess = () => {
-                const book = request.result;
-                if (book) {
-                    console.log('[OfflineStorage] Retrieved book metadata:', bookId);
-                    resolve({
-                        ...book,
-                        total_pages: book.totalPages
-                    });
-                } else {
-                    resolve(null);
-                }
+        const book = await requestToPromise(store.get(parseInt(bookId)));
+        if (book) {
+            console.log('[OfflineStorage] Retrieved book metadata:', bookId);
+            return {
+                ...book,
+                total_pages: book.totalPages
             };
-            request.onerror = () => reject(request.error);
-        });
+        }
+        return null;
     } catch (error) {
         console.error('[OfflineStorage] Failed to get book metadata:', error);
         return null;
@@ -154,19 +148,12 @@ export const getBookPage = async (bookId, pageNumber) => {
         const tx = db.transaction(PAGES_STORE, 'readonly');
         const store = tx.objectStore(PAGES_STORE);
 
-        return new Promise((resolve, reject) => {
-            const request = store.get([parseInt(bookId), parseInt(pageNumber)]);
-            request.onsuccess = () => {
-                const page = request.result;
-                if (page) {
-                    console.log(`[OfflineStorage] Retrieved page ${pageNumber} for book ${bookId}`);
-                    resolve(page.content);
-                } else {
-                    resolve(null);
-                }
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const page = await requestToPromise(store.get([parseInt(bookId), parseInt(pageNumber)]));
+        if (page) {
+            console.log(`[OfflineStorage] Retrieved page ${pageNumber} for book ${bookId}`);
+            return page.content;
+        }
+        return null;
     } catch (error) {
         console.error('[OfflineStorage] Failed to get page:', error);
         return null;
@@ -192,15 +179,10 @@ export const getCachedPagesForBook = async (bookId) => {
         const store = tx.objectStore(PAGES_STORE);
         const index = store.index('bookId');
 
-        return new Promise((resolve, reject) => {
-            const request = index.getAll(parseInt(bookId));
-            request.onsuccess = () => {
-                const pages = request.result.map(p => p.pageNumber);
-                console.log(`[OfflineStorage] Book ${bookId} has ${pages.length} cached pages`);
-                resolve(pages);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        const result = await requestToPromise(index.getAll(parseInt(bookId)));
+        const pages = result.map(p => p.pageNumber);
+        console.log(`[OfflineStorage] Book ${bookId} has ${pages.length} cached pages`);
+        return pages;
     } catch (error) {
         console.error('[OfflineStorage] Failed to get cached pages:', error);
         return [];
@@ -218,32 +200,28 @@ export const clearOldCache = async (daysToKeep = 30) => {
         const pagesStore = pagesTx.objectStore(PAGES_STORE);
         const pagesIndex = pagesStore.index('cachedAt');
 
-        const pagesRequest = pagesIndex.openCursor(IDBKeyRange.upperBound(cutoffTime));
-        pagesRequest.onsuccess = (event) => {
+        const pagesCursorRequest = pagesIndex.openCursor(IDBKeyRange.upperBound(cutoffTime));
+        pagesCursorRequest.onsuccess = (event) => {
             const cursor = event.target.result;
             if (cursor) {
                 cursor.delete();
                 cursor.continue();
             }
         };
-
-        await pagesTx.complete;
 
         // Clear old books
         const booksTx = db.transaction(BOOKS_STORE, 'readwrite');
         const booksStore = booksTx.objectStore(BOOKS_STORE);
         const booksIndex = booksStore.index('lastAccessed');
 
-        const booksRequest = booksIndex.openCursor(IDBKeyRange.upperBound(cutoffTime));
-        booksRequest.onsuccess = (event) => {
+        const booksCursorRequest = booksIndex.openCursor(IDBKeyRange.upperBound(cutoffTime));
+        booksCursorRequest.onsuccess = (event) => {
             const cursor = event.target.result;
             if (cursor) {
                 cursor.delete();
                 cursor.continue();
             }
         };
-
-        await booksTx.complete;
 
         console.log('[OfflineStorage] Cleared cache older than', daysToKeep, 'days');
         return true;
@@ -260,13 +238,12 @@ export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null)
         const tx = db.transaction(PROGRESS_STORE, 'readwrite');
         const store = tx.objectStore(PROGRESS_STORE);
 
-        await store.put({
+        await requestToPromise(store.put({
             id: parseInt(id),
             page: parseInt(page),
             scrollRatio: scrollRatio,
             updatedAt: updatedAt || Date.now()
-        });
-        await tx.complete;
+        }));
         return true;
     } catch (error) {
         console.error('[OfflineStorage] Failed to save local progress:', error);
@@ -281,16 +258,14 @@ export const getLocalProgress = async (id) => {
         const tx = db.transaction(PROGRESS_STORE, 'readonly');
         const store = tx.objectStore(PROGRESS_STORE);
 
-        return new Promise((resolve) => {
-            const request = store.get(parseInt(id));
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => resolve(null);
-        });
+        const result = await requestToPromise(store.get(parseInt(id)));
+        return result || null;
     } catch (error) {
         console.error('[OfflineStorage] Failed to get local progress:', error);
         return null;
     }
 };
+
 
 // Delete specific book and its pages
 export const deleteBookCache = async (bookId) => {
@@ -299,16 +274,15 @@ export const deleteBookCache = async (bookId) => {
 
         // Delete book metadata
         const booksTx = db.transaction(BOOKS_STORE, 'readwrite');
-        await booksTx.objectStore(BOOKS_STORE).delete(parseInt(bookId));
-        await booksTx.complete;
+        await requestToPromise(booksTx.objectStore(BOOKS_STORE).delete(parseInt(bookId)));
 
         // Delete all pages for this book
         const pagesTx = db.transaction(PAGES_STORE, 'readwrite');
         const pagesStore = pagesTx.objectStore(PAGES_STORE);
         const index = pagesStore.index('bookId');
 
-        const request = index.openCursor(parseInt(bookId));
-        request.onsuccess = (event) => {
+        const cursorRequest = index.openCursor(parseInt(bookId));
+        cursorRequest.onsuccess = (event) => {
             const cursor = event.target.result;
             if (cursor) {
                 cursor.delete();
@@ -316,9 +290,11 @@ export const deleteBookCache = async (bookId) => {
             }
         };
 
-        await pagesTx.complete;
+        // Also delete progress for this book
+        const progressTx = db.transaction(PROGRESS_STORE, 'readwrite');
+        await requestToPromise(progressTx.objectStore(PROGRESS_STORE).delete(parseInt(bookId)));
 
-        console.log('[OfflineStorage] Deleted cache for book:', bookId);
+        console.log('[OfflineStorage] Deleted cache and progress for book:', bookId);
         return true;
     } catch (error) {
         console.error('[OfflineStorage] Failed to delete book cache:', error);
@@ -330,19 +306,20 @@ export const deleteBookCache = async (bookId) => {
 export const clearAllData = async () => {
     try {
         const db = await initDB();
-        const tx = db.transaction([BOOKS_STORE, PAGES_STORE], 'readwrite');
+        const tx = db.transaction([BOOKS_STORE, PAGES_STORE, PROGRESS_STORE], 'readwrite');
         await Promise.all([
-            tx.objectStore(BOOKS_STORE).clear(),
-            tx.objectStore(PAGES_STORE).clear()
+            requestToPromise(tx.objectStore(BOOKS_STORE).clear()),
+            requestToPromise(tx.objectStore(PAGES_STORE).clear()),
+            requestToPromise(tx.objectStore(PROGRESS_STORE).clear())
         ]);
-        await tx.complete;
-        console.log('[OfflineStorage] All book data cleared');
+        console.log('[OfflineStorage] All book data and progress cleared');
         return true;
     } catch (error) {
         console.error('[OfflineStorage] Failed to clear all data:', error);
         return false;
     }
 };
+
 
 // Get storage usage estimate
 export const getStorageEstimate = async () => {

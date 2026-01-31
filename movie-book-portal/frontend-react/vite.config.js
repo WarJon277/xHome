@@ -24,7 +24,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'book-pages-cache',
-              networkTimeoutSeconds: 5,
+              networkTimeoutSeconds: 2,
               expiration: {
                 maxEntries: 2000, // Large Enough for multiple books
                 maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
@@ -59,12 +59,11 @@ export default defineConfig({
             }
           },
           {
-            // API calls - Network First with fallback
+            // API calls - Stale While Revalidate for speed, fallback to cache
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache',
-              networkTimeoutSeconds: 3, // Reduced to 3s for quick offline detection
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 // 1 hour

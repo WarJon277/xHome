@@ -133,12 +133,14 @@ export default function Reader() {
         const scrollRatio = scrollTotal > 0 ? contentRef.current.scrollTop / scrollTotal : 0;
 
         // Save to local storage FIRST (always works)
+        console.log(`[Reader] Saving progress locally: page ${currentPage}, ratio ${scrollRatio.toFixed(3)}`);
         await saveLocalProgress(id, currentPage, scrollRatio);
 
         try {
-            await saveProgress('book', id, currentPage, scrollRatio);
+            const res = await saveProgress('book', id, currentPage, scrollRatio);
+            console.log('[Reader] Remote progress save success:', res);
         } catch (e) {
-            console.warn("[Reader] Remote progress save failed (offline?)", e);
+            console.warn("[Reader] Remote progress save failed (offline or timeout)", e);
         }
     };
 
@@ -149,7 +151,10 @@ export default function Reader() {
     }, [currentPage, id, isInitialLoad]);
 
     useEffect(() => {
-        const interval = setInterval(handleSaveProgress, 30000); // Less frequent periodic save
+        const interval = setInterval(() => {
+            console.log('[Reader] Periodic progress check...');
+            handleSaveProgress();
+        }, 15000); // More frequent periodic save (15s)
 
         const onUnload = () => {
             handleSaveProgress();

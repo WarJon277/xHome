@@ -155,17 +155,9 @@ class MainActivity : AppCompatActivity() {
         // webView.clearCache(false)
 
 
-        // Load saved server URL or use local backend by default  
+        // Use saved server URL or default
         val savedUrl = getLastServerUrl()
-        // Migration: If we have an old 5050 URL, force it to 5055 for production
-        val initialUrl = if (savedUrl.contains(":5050")) {
-            savedUrl.replace(":5050", ":5055")
-        } else if (savedUrl.isNotEmpty()) {
-            savedUrl
-        } else {
-            "http://192.168.0.239:5055/"
-        }
-        val primaryUrl = initialUrl
+        val primaryUrl = if (savedUrl.isNotEmpty()) savedUrl else "http://192.168.0.239:5055/"
 
         if (isNetworkAvailable()) {
             isPrimaryUrlLoaded = false

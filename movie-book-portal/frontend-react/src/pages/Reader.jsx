@@ -120,13 +120,13 @@ export default function Reader() {
                             });
                             // Ensure local is also up to date with the winner (if remote was the winner)
                             if (winner === r) {
-                                await saveLocalProgress(id, savedPage, winner.scrollRatio || 0);
+                                await saveLocalProgress(id, savedPage, winner.scrollRatio || 0, winner.updatedAt);
                             }
                         }
-                    } else {
-                        // Mark as applied if there's no progress to restore
-                        setInitialProgressApplied(true);
                     }
+
+                    // CRITICAL: Always mark as applied so subsequent saves can happen
+                    setInitialProgressApplied(true);
                 } catch (e) {
                     console.warn("Could not load progress", e);
                     setInitialProgressApplied(true);

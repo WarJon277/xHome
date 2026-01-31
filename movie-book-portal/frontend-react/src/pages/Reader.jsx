@@ -110,8 +110,10 @@ export default function Reader() {
     // Listen for online/offline events
     useEffect(() => {
         const handleOnline = () => {
-            console.log('[Reader] Network online');
+            console.log('[Reader] Network online. Syncing local progress to server...');
             setIsOnline(true);
+            // Push local progress to server immediately on reconnect
+            handleSaveProgress();
         };
         const handleOffline = () => {
             console.log('[Reader] Network offline');

@@ -319,6 +319,15 @@ class MainActivity : AppCompatActivity() {
                     photoPickerLauncher.launch(Intent.createChooser(intent, "Выберите фото"))
                 }
             }
+
+            @JavascriptInterface
+            fun hideLoadingScreen() {
+                runOnUiThread {
+                    loadingLayout.visibility = View.GONE
+                    stopLoadingAnimation()
+                    timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                }
+            }
         }, "AndroidApp")
 
         // === ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
@@ -365,13 +374,15 @@ class MainActivity : AppCompatActivity() {
                 // Simplification for now: If we are not loaded and timeout passes, ask user.
                 
                 timeoutRunnable = Runnable {
-                    if (!isPrimaryUrlLoaded) {
+                    if (!isPrimaryUrlLoaded && url?.startsWith("file://") == false) {
                         Log.w("WebView", "Timeout reached for $url - Triggering Auto-Offline")
+                        loadingLayout.visibility = View.GONE
+                        stopLoadingAnimation()
                         triggerOfflineFallback()
                     }
                 }
-                // Reduce timeout to 1 second for ultra-snappy feedback
-                timeoutHandler.postDelayed(timeoutRunnable!!, 1000) 
+                // Increase timeout to 5 seconds for more reliable loading
+                timeoutHandler.postDelayed(timeoutRunnable!!, 5000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -428,6 +439,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (!isPrimaryUrlLoaded) {
                          timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                         loadingLayout.visibility = View.GONE
                          stopLoadingAnimation()
                          // Store the URL we were trying to load if not already set
                          if (currentServerUrl.isEmpty() && url.isNotEmpty()) {
@@ -518,8 +530,9 @@ class MainActivity : AppCompatActivity() {
         if (isFinishing || isDestroyed) return
         
         runOnUiThread {
-            webView.stopLoading()
+            loadingLayout.visibility = View.GONE
             stopLoadingAnimation()
+            webView.stopLoading()
             
             // If we are ALREADY in an offline attempt and it failed, show the asset fallback
             if (isOfflineAttempt) {

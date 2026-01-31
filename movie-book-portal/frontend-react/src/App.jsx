@@ -101,6 +101,11 @@ function App() {
           } catch (e) { console.error('Failed to parse localStorage theme', e); }
         }
       });
+
+    // 3. Hide native loading screen if running in Android app
+    if (window.AndroidApp && window.AndroidApp.hideLoadingScreen) {
+      window.AndroidApp.hideLoadingScreen();
+    }
   }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);

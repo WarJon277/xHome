@@ -273,6 +273,7 @@ export const getLocalProgress = async (id) => {
     if (window.AndroidApp && window.AndroidApp.getBookProgress) {
         try {
             const nativeData = window.AndroidApp.getBookProgress(parseInt(id));
+            console.log(`[STORAGE-TRACE] Native bridge read raw for ID ${id}:`, nativeData);
             if (nativeData) {
                 console.log('[OfflineStorage] Restored via Native Bridge');
                 return JSON.parse(nativeData);
@@ -280,6 +281,7 @@ export const getLocalProgress = async (id) => {
         } catch (e) {
             console.warn('[OfflineStorage] Native bridge read failed:', e);
         }
+
     }
 
     // 2. TRY FAST PATH (localStorage)

@@ -11,37 +11,43 @@ export default function Reader() {
     const [book, setBook] = useState(null);
     const [pageContent, setPageContent] = useState('');
 
-    // FAST PATH: Initialize from localStorage immediately
-    const [currentPage, setCurrentPage] = useState(() => {
+    // HELPERS FOR INITIALIZATION
+    const getInitialProgress = () => {
+        if (!id) return null;
+
+        // 1. TRY NATIVE BRIDGE (Most reliable source of truth)
+        if (window.AndroidApp && window.AndroidApp.getBookProgress) {
+            try {
+                const native = window.AndroidApp.getBookProgress(parseInt(id));
+                if (native) {
+                    const data = JSON.parse(native);
+                    console.log('[READER-STATE] Initialized via Native Bridge:', data);
+                    return data;
+                }
+            } catch (e) {
+                console.warn('[READER-STATE] Native bridge init failed:', e);
+            }
+        }
+
+        // 2. TRY LOCAL STORAGE (Standard fast path)
         const fast = localStorage.getItem(`book-pos-${id}`);
         if (fast) {
             try {
                 const data = JSON.parse(fast);
-                console.log('[Reader] Fast-path initial page:', data.page);
-                return data.page || 0;
-            } catch (e) { }
-        }
-        return 0;
-    });
-    const [scrollRatio, setScrollRatio] = useState(() => {
-        const fast = localStorage.getItem(`book-pos-${id}`);
-        if (fast) {
-            try {
-                const data = JSON.parse(fast);
-                return data.scrollRatio || 0;
-            } catch (e) { }
-        }
-        return 0;
-    });
-    const [savedProgress, setSavedProgress] = useState(() => {
-        const fast = localStorage.getItem(`book-pos-${id}`);
-        if (fast) {
-            try {
-                return JSON.parse(fast);
+                console.log('[READER-STATE] Initialized via Local Storage:', data);
+                return data;
             } catch (e) { }
         }
         return null;
-    });
+    };
+
+    const initialProg = getInitialProgress();
+
+    const [currentPage, setCurrentPage] = useState(initialProg?.page || 0);
+    const [scrollRatio, setScrollRatio] = useState(initialProg?.scrollRatio || 0);
+    const [savedProgress, setSavedProgress] = useState(initialProg);
+
+
 
     const [totalPages, setTotalPages] = useState(1);
     const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('reader-font-size')) || 20);
@@ -58,6 +64,16 @@ export default function Reader() {
 
     useEffect(() => {
         const loadMetadata = async () => {
+            console.log(`[READER-TRACE] loadMetadata starting for book ${id}. Online: ${isOnline}`);
+
+            // RESET STATE for the new book to prevent pollution from previously opened books
+            setIsInitialLoad(true);
+            setInitialProgressApplied(false);
+            const p = getInitialProgress();
+            setSavedProgress(p);
+            setCurrentPage(p?.page || 0);
+            setScrollRatio(p?.scrollRatio || 0);
+
             try {
                 let data;
                 try {
@@ -93,47 +109,47 @@ export default function Reader() {
                 const cached = await getCachedPagesForBook(id);
                 setCachedPages(cached);
 
-                // BACKGROUND SYNC: Check for newer progress from server
+                // BACKGROUND SYNC & AUDIT
                 try {
-                    console.log('[Reader] Syncing progress in background...');
-                    const [remoteProg, localProg] = await Promise.all([
+                    console.log('[Reader] Performing progress audit...');
+                    const [remoteProg, currentLocal] = await Promise.all([
                         fetchProgress('book', id).catch(() => null),
                         getLocalProgress(id)
                     ]);
 
-                    let winner = null;
                     const r = remoteProg ? {
                         page: Math.floor(remoteProg.progress_seconds),
                         scrollRatio: remoteProg.scroll_ratio || 0,
                         updatedAt: remoteProg.last_updated ? new Date(remoteProg.last_updated).getTime() : 0
                     } : null;
-                    const l = localProg ? {
-                        page: localProg.page,
-                        scrollRatio: localProg.scrollRatio || 0,
-                        updatedAt: localProg.updatedAt || 0
-                    } : null;
 
+                    const l = currentLocal; // Fresh from Native/Storage/DB
+
+                    // Global Winner
+                    let winner = null;
                     if (r && l) {
-                        if (r.updatedAt > l.updatedAt + 1000) { // Server is clearly newer
-                            winner = r;
-                        }
-                    } else if (r) {
-                        winner = r;
+                        winner = r.updatedAt > l.updatedAt + 2000 ? r : l;
+                    } else {
+                        winner = r || l;
                     }
 
-                    if (winner && (winner.page !== currentPage || Math.abs(winner.scrollRatio - scrollRatio) > 0.1)) {
-                        console.log('[Reader] Found newer progress on server. Updating position:', winner);
-                        setSavedProgress(winner);
-                        setInitialProgressApplied(false); // Re-trigger restoration
-                        setCurrentPage(winner.page);
+                    if (winner) {
+                        const hasSignificantChange =
+                            winner.page !== currentPage ||
+                            Math.abs(winner.scrollRatio - scrollRatio) > 0.05;
 
-                        // Sync back to local storage
-                        await saveLocalProgress(id, winner.page, winner.scrollRatio, winner.updatedAt);
-                    } else {
-                        console.log('[Reader] Local progress is up to date.');
+                        if (hasSignificantChange) {
+                            console.log('[Reader] Audit found better progress:', winner);
+                            setSavedProgress(winner);
+                            setInitialProgressApplied(false); // Re-trigger restoration
+                            setCurrentPage(winner.page);
+                            await saveLocalProgress(id, winner.page, winner.scrollRatio, winner.updatedAt);
+                        } else {
+                            console.log('[Reader] Current state is already the best.');
+                        }
                     }
                 } catch (e) {
-                    console.warn("[Reader] Background sync failed:", e);
+                    console.warn("[Reader] Progress audit failed:", e);
                 }
 
                 setIsInitialLoad(false);

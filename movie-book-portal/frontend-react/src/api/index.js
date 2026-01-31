@@ -177,27 +177,46 @@ export const downloadFromFlibusta = (data) => request('/audiobooks-source/downlo
 export const fetchBookPage = async (bookId, page) => {
     const url = `${API_BASE}/books/${bookId}/page/${page}`;
     const headers = { 'X-User-Id': getDeviceId() };
-    const response = await fetch(url, { headers });
 
-    if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
-    }
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('image')) {
-        const blob = await response.blob();
-        const imageUrl = URL.createObjectURL(blob);
-        // clean up previous url if stored globally? No, complex. React handles it?
-        // Return structured object mimicking the JSON response
-        return {
-            content: `<div style="display:flex;justify-content:center;"><img src="${imageUrl}" style="max-width:100%;height:auto;box-shadow:0 4px 6px rgba(0,0,0,0.1);" /></div>`,
-            total: 0 // total pages might be in headers? utils.py doesn't set it in header for images. 
-            // utils.py doesn't return total pages in StreamingResponse. 
-            // So we rely on book info for total pages.
-        };
+    try {
+        const response = await fetch(url, {
+            headers,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('image')) {
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+            return {
+                content: `<div style="display:flex;justify-content:center;"><img src="${imageUrl}" style="max-width:100%;height:auto;box-shadow:0 4px 6px rgba(0,0,0,0.1);" /></div>`,
+                total: 0
+            };
+        }
+        return response.json();
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            const timeoutError = new Error('Page request timeout');
+            timeoutError.isTimeout = true;
+            timeoutError.isNetworkError = true;
+            throw timeoutError;
+        }
+        if (error.message.includes('Failed to fetch')) {
+            error.isNetworkError = true;
+        }
+        throw error;
     }
-    return response.json();
 };
 
 

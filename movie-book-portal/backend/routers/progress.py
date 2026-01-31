@@ -139,7 +139,8 @@ def get_progress(
         "progress_seconds": progress.progress_seconds,
         "progress": progress.progress_seconds,
         "scroll_ratio": getattr(progress, "scroll_ratio", 0.0),
-        "track_index": progress.track_index
+        "track_index": progress.track_index,
+        "last_updated": progress.last_updated
     }
 @router.delete("/clear")
 def clear_all_progress(

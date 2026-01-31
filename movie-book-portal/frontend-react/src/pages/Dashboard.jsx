@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode } from '../api';
+import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode, saveProgress } from '../api';
 import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music } from 'lucide-react';
 import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
+import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
@@ -15,7 +16,60 @@ export default function Dashboard() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const result = await fetchDashboardData();
+            const [result, localBooks] = await Promise.all([
+                fetchDashboardData().catch(err => {
+                    console.warn("Dashboard fetch failed, using minimal mode", err);
+                    return { continue_watching: [], new_arrivals: [], latest_photos: [], stats: { movies_count: 0, books_count: 0, tvshows_count: 0, photos_count: 0 } };
+                }),
+                getCachedBooks().catch(() => [])
+            ]);
+
+            // Enrich continue_watching with local book progress
+            const localProgresses = await Promise.all(
+                localBooks.map(async (b) => {
+                    const lp = await getLocalProgress(b.id);
+                    if (!lp) return null;
+                    return {
+                        id: b.id,
+                        type: 'book',
+                        title: b.title,
+                        thumbnail: b.thumbnail_path,
+                        total_pages: b.total_pages || b.totalPages,
+                        progress: lp.page,
+                        scroll_ratio: lp.scrollRatio,
+                        last_updated: new Date(lp.updatedAt).toISOString()
+                    };
+                })
+            );
+
+            const validLocal = localProgresses.filter(p => p !== null);
+
+            // Merge: For each book, take newest between remote and local
+            const merged = [...result.continue_watching];
+            validLocal.forEach(lp => {
+                const existingIndex = merged.findIndex(rp => rp.type === 'book' && parseInt(rp.id) === parseInt(lp.id));
+                if (existingIndex !== -1) {
+                    const rp = merged[existingIndex];
+                    if (new Date(lp.last_updated) > new Date(rp.last_updated)) {
+                        merged[existingIndex] = lp;
+                        // Proactive Sync: Push newest local progress to server if online
+                        if (navigator.onLine) {
+                            saveProgress('book', parseInt(lp.id), lp.progress, lp.scroll_ratio).catch(() => { });
+                        }
+                    }
+                } else {
+                    merged.push(lp);
+                    // Proactive Sync: Push local progress to server if online
+                    if (navigator.onLine) {
+                        saveProgress('book', parseInt(lp.id), lp.progress, lp.scroll_ratio).catch(() => { });
+                    }
+                }
+            });
+
+            // Re-sort by last_updated
+            merged.sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+
+            result.continue_watching = merged.slice(0, 10);
             setData(result);
         } catch (err) {
             console.error("Failed to load dashboard:", err);

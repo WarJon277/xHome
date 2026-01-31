@@ -74,21 +74,31 @@ export default function Reader() {
                     console.log('[Reader] Progress check - Remote:', remoteProg, 'Local:', localProg);
 
                     let winner = null;
-                    const r = remoteProg ? { page: Math.floor(remoteProg.progress_seconds), scrollRatio: remoteProg.scroll_ratio || 0 } : null;
-                    const l = localProg ? { page: localProg.page, scrollRatio: localProg.scrollRatio || 0 } : null;
+                    const r = remoteProg ? {
+                        page: Math.floor(remoteProg.progress_seconds),
+                        scrollRatio: remoteProg.scroll_ratio || 0,
+                        updatedAt: remoteProg.last_updated ? new Date(remoteProg.last_updated).getTime() : 0
+                    } : null;
+                    const l = localProg ? {
+                        page: localProg.page,
+                        scrollRatio: localProg.scrollRatio || 0,
+                        updatedAt: localProg.updatedAt || 0
+                    } : null;
+
+                    console.log('[Reader] Progress check - Remote:', r, 'Local:', l);
 
                     if (r && l) {
-                        // Compare: furthest wins
-                        if (l.page > r.page || (l.page === r.page && l.scrollRatio > r.scrollRatio)) {
+                        // Compare: Newest Wins
+                        if (l.updatedAt > r.updatedAt) {
                             winner = l;
-                            console.log('[Reader] Local progress is FURTHER. Using it.');
+                            console.log('[Reader] Local progress is NEWER. Using it.');
                             // Push local to server if online
                             if (isOnline) {
                                 saveProgress('book', parseInt(id), l.page, l.scrollRatio).catch(e => console.warn("Failed to sync local progress to server", e));
                             }
                         } else {
                             winner = r;
-                            console.log('[Reader] Server progress is FURTHER or SAME. Using it.');
+                            console.log('[Reader] Server progress is NEWER or SAME. Using it.');
                         }
                     } else if (r) {
                         winner = r;
@@ -108,8 +118,10 @@ export default function Reader() {
                                 page: savedPage,
                                 scrollRatio: winner.scrollRatio || 0
                             });
-                            // Ensure local is also up to date with the winner
-                            await saveLocalProgress(id, savedPage, winner.scrollRatio || 0);
+                            // Ensure local is also up to date with the winner (if remote was the winner)
+                            if (winner === r) {
+                                await saveLocalProgress(id, savedPage, winner.scrollRatio || 0);
+                            }
                         }
                     } else {
                         // Mark as applied if there's no progress to restore

@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBooks, fetchLatestProgress, searchBooks } from '../api';
+import { fetchBooks, fetchLatestProgress, searchBooks, saveProgress } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import ResumeBanner from '../components/ResumeBanner';
 import OfflineBanner from '../components/OfflineBanner';
-import { getCachedBooks } from '../utils/offlineStorage';
+import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import { resetOfflineData } from '../utils/offlineUtils';
 import '../custom-grid.css';
 import { Book, Search, Download, Trash2, Loader2 } from 'lucide-react';
@@ -28,8 +28,49 @@ export default function BooksPage() {
 
     const loadLatestProgress = async () => {
         try {
-            const data = await fetchLatestProgress('book');
-            setLatestBook(data);
+            // Check both Remote and Local
+            const [remoteProg, localBooks] = await Promise.all([
+                fetchLatestProgress('book').catch(() => null),
+                getCachedBooks()
+            ]);
+
+            // For each cached book, try to get its local progress
+            const localProgresses = await Promise.all(
+                localBooks.map(async (b) => {
+                    const lp = await getLocalProgress(b.id);
+                    if (!lp) return null;
+                    return {
+                        ...lp,
+                        item_id: b.id,
+                        item_type: 'book',
+                        title: b.title,
+                        thumbnail: b.thumbnail_path,
+                        total_pages: b.total_pages || b.totalPages,
+                        // Convert Date.now() style timestamp to same format as server for comparison
+                        last_updated: new Date(lp.updatedAt).toISOString()
+                    };
+                })
+            );
+
+            const latestLocal = localProgresses
+                .filter(p => p !== null)
+                .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated))[0];
+
+            console.log('[Books] Latest Remote:', remoteProg, 'Latest Local:', latestLocal);
+
+            let winner = remoteProg;
+            if (latestLocal && (!remoteProg || new Date(latestLocal.last_updated) > new Date(remoteProg.last_updated))) {
+                winner = latestLocal;
+                // Normalize for display
+                winner.progress = latestLocal.page;
+
+                // Proactive Sync: Push newest local progress to server if online
+                if (navigator.onLine) {
+                    saveProgress('book', parseInt(latestLocal.item_id), latestLocal.page, latestLocal.scrollRatio).catch(() => { });
+                }
+            }
+
+            setLatestBook(winner);
         } catch (e) {
             console.error("Failed to fetch latest book progress", e);
         }

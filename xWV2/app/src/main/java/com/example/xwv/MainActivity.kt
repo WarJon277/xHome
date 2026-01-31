@@ -328,7 +328,33 @@ class MainActivity : AppCompatActivity() {
                     timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
                 }
             }
+
+            // NEW METHODS FOR BOOK PROGRESS PERSISTENCE:
+            @JavascriptInterface
+            fun saveBookProgress(id: Int, progressJson: String) {
+                try {
+                    val prefs = getSharedPreferences("BookProgress", Context.MODE_PRIVATE)
+                    prefs.edit().putString("book_$id", progressJson).apply()
+                    Log.d("xWV-Native", "Saved progress for book $id: $progressJson")
+                } catch (e: Exception) {
+                    Log.e("xWV-Native", "Failed to save book progress", e)
+                }
+            }
+
+            @JavascriptInterface
+            fun getBookProgress(id: Int): String? {
+                return try {
+                    val prefs = getSharedPreferences("BookProgress", Context.MODE_PRIVATE)
+                    val progress = prefs.getString("book_$id", null)
+                    Log.d("xWV-Native", "Retrieved progress for book $id: $progress")
+                    progress
+                } catch (e: Exception) {
+                    Log.e("xWV-Native", "Failed to get book progress", e)
+                    null
+                }
+            }
         }, "AndroidApp")
+
 
         // === ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
         webView.webChromeClient = object : WebChromeClient() {

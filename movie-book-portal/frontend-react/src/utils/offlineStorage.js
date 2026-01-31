@@ -235,21 +235,31 @@ export const clearOldCache = async (daysToKeep = 30) => {
 export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null) => {
     const ts = updatedAt || Date.now();
     try {
-        // FAST PATH: localStorage (synchronous, instant)
-        const fastData = {
+        const progressData = {
             id: parseInt(id),
             page: parseInt(page),
             scrollRatio: scrollRatio,
             updatedAt: ts
         };
-        localStorage.setItem(`book-pos-${id}`, JSON.stringify(fastData));
 
-        // DURABLE PATH: IndexedDB (asynchronous)
+        // 1. NATIVE BRIDGE PATH (Permanent, survives cache clear)
+        if (window.AndroidApp && window.AndroidApp.saveBookProgress) {
+            try {
+                window.AndroidApp.saveBookProgress(parseInt(id), JSON.stringify(progressData));
+            } catch (e) {
+                console.warn('[OfflineStorage] Native bridge save failed:', e);
+            }
+        }
+
+        // 2. FAST PATH: localStorage (synchronous, instant)
+        localStorage.setItem(`book-pos-${id}`, JSON.stringify(progressData));
+
+        // 3. DURABLE PATH: IndexedDB (asynchronous)
         const db = await initDB();
         const tx = db.transaction(PROGRESS_STORE, 'readwrite');
         const store = tx.objectStore(PROGRESS_STORE);
 
-        await requestToPromise(store.put(fastData));
+        await requestToPromise(store.put(progressData));
         return true;
     } catch (error) {
         console.error('[OfflineStorage] Failed to save local progress:', error);
@@ -259,7 +269,20 @@ export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null)
 
 // Get progress locally
 export const getLocalProgress = async (id) => {
-    // TRY FAST PATH FIRST
+    // 1. TRY NATIVE BRIDGE FIRST (The "Source of Truth")
+    if (window.AndroidApp && window.AndroidApp.getBookProgress) {
+        try {
+            const nativeData = window.AndroidApp.getBookProgress(parseInt(id));
+            if (nativeData) {
+                console.log('[OfflineStorage] Restored via Native Bridge');
+                return JSON.parse(nativeData);
+            }
+        } catch (e) {
+            console.warn('[OfflineStorage] Native bridge read failed:', e);
+        }
+    }
+
+    // 2. TRY FAST PATH (localStorage)
     const fastData = localStorage.getItem(`book-pos-${id}`);
     if (fastData) {
         try {
@@ -269,6 +292,7 @@ export const getLocalProgress = async (id) => {
         }
     }
 
+    // 3. TRY DURABLE PATH (IndexedDB)
     try {
         const db = await initDB();
         const tx = db.transaction(PROGRESS_STORE, 'readonly');
@@ -281,6 +305,7 @@ export const getLocalProgress = async (id) => {
         return null;
     }
 };
+
 
 
 

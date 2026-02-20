@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
     private lateinit var photoPickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var videoPickerLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,6 +107,15 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 webView.evaluateJavascript("window.onPhotosSelected([])", null)
+            }
+        }
+
+        // Video picker launcher — uses standard fileChooserCallback so WebView streams the file by URI (no OOM!)
+        videoPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (fileChooserCallback != null) {
+                val results = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+                fileChooserCallback?.onReceiveValue(results)
+                fileChooserCallback = null
             }
         }
 
@@ -320,6 +330,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // НОВЫЙ МЕТОД ДЛЯ ВЫБОРА ВИДЕО (без base64 - не грузит в память!):
+            @JavascriptInterface
+            fun pickVideos() {
+                runOnUiThread {
+                    // Имитируем нажатие на <input accept="video/*"> через fileChooserCallback
+                    // WebView сам передаст файл через URI - не загружает весь файл в RAM
+                    // fileChooserCallback будет установлен через onShowFileChooser при клике на input
+                    // Этот метод просто программно открывает выбор видео напрямую
+                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "video/*"
+                        putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                    }
+                    try {
+                        videoPickerLauncher.launch(Intent.createChooser(intent, "Выберите видео"))
+                    } catch (e: Exception) {
+                        Log.e("pickVideos", "Error launching video picker", e)
+                    }
+                }
+            }
+
             @JavascriptInterface
             fun hideLoadingScreen() {
                 runOnUiThread {
@@ -356,7 +387,7 @@ class MainActivity : AppCompatActivity() {
         }, "AndroidApp")
 
 
-        // === ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
+        // ОБРАБОТКА ВЫБОРА ФАЙЛОВ ===
         webView.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(
                 webView: WebView?,
@@ -366,14 +397,20 @@ class MainActivity : AppCompatActivity() {
                 fileChooserCallback?.onReceiveValue(null)
                 fileChooserCallback = filePathCallback
 
+                // Auto-detect if the page wants videos (accept="video/*")
+                val acceptTypes = fileChooserParams?.acceptTypes
+                val wantsVideo = acceptTypes?.any { it.contains("video") } == true
+                val mimeType = if (wantsVideo) "video/*" else "image/*"
+                val chooserTitle = if (wantsVideo) "Выберите видео" else "Выберите фото"
+
                 val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "image/*"
+                    type = mimeType
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                 }
 
                 try {
-                    fileChooserLauncher.launch(Intent.createChooser(intent, "Выберите фото"))
+                    fileChooserLauncher.launch(Intent.createChooser(intent, chooserTitle))
                 } catch (e: Exception) {
                     fileChooserCallback?.onReceiveValue(null)
                     fileChooserCallback = null

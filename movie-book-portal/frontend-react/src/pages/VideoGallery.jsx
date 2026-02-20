@@ -258,48 +258,11 @@ export default function VideoGalleryPage() {
     };
 
 
-    const handleUploadClick = async () => {
-        // Use native video picker if in Android app
-        if (window.AndroidApp && typeof window.AndroidApp.pickVideos === 'function') {
-            // Native Android video picker
-            try {
-                await new Promise((resolve, reject) => {
-                    window.onVideosSelected = (base64Array) => {
-                        try {
-                            const files = base64Array.map((base64, index) => {
-                                const byteString = atob(base64);
-                                const ab = new ArrayBuffer(byteString.length);
-                                const ia = new Uint8Array(ab);
-                                for (let i = 0; i < byteString.length; i++) {
-                                    ia[i] = byteString.charCodeAt(i);
-                                }
-                                const blob = new Blob([ab], { type: 'video/mp4' });
-                                return new File([blob], `video_${Date.now()}_${index}.mp4`, { type: 'video/mp4' });
-                            });
-                            resolve(files);
-                        } catch (e) {
-                            reject(e);
-                        } finally {
-                            delete window.onVideosSelected;
-                        }
-                    };
-                    window.AndroidApp.pickVideos();
-                }).then(files => {
-                    if (files && files.length > 0) processFiles(files);
-                });
-            } catch (error) {
-                console.error('Native video picker error:', error);
-                // Fallback to file input if native fails
-                fileInputRef.current.click();
-            }
-        } else if (window.AndroidApp && typeof window.AndroidApp.pickPhotos === 'function') {
-            // Old Android app without video picker — fallback to photo picker (user will see photo gallery)
-            // but filter on file input anyway
-            fileInputRef.current.click();
-        } else {
-            // Standard browser file input
-            fileInputRef.current.click();
-        }
+    const handleUploadClick = () => {
+        // Просто кликаем на скрытый <input accept="video/*">
+        // Android перехватывает onShowFileChooser и автоматически открывает видеогалерею
+        // Файл передаётся через URI (не загружается в RAM - нет краша!)
+        fileInputRef.current.click();
     };
 
     const processFiles = async (files) => {

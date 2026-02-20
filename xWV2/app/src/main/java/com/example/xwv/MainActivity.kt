@@ -690,7 +690,7 @@ class MainActivity : AppCompatActivity() {
                     setRequestProperty("X-User-Id", getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).getString("device_id", "android-app") ?: "android-app")
                     connectTimeout = 30000
                     readTimeout = 300000 // 5 min for large videos
-                    if (fileSize > 0) setFixedLengthStreamingMode(fileSize + 1024) // hint for large files
+                    setChunkedStreamingMode(0) // Use chunked mode to avoid ProtocolException with inaccurate fileSize
                 }
 
                 val out = java.io.BufferedOutputStream(connection.outputStream)

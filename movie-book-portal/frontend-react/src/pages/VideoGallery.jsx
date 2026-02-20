@@ -259,10 +259,41 @@ export default function VideoGalleryPage() {
 
 
     const handleUploadClick = () => {
-        // Просто кликаем на скрытый <input accept="video/*">
-        // Android перехватывает onShowFileChooser и автоматически открывает видеогалерею
-        // Файл передаётся через URI (не загружается в RAM - нет краша!)
-        fileInputRef.current.click();
+        if (window.AndroidApp && typeof window.AndroidApp.pickVideos === 'function') {
+            // Native Android upload — no page reload!
+            // Android uploads directly to the backend and calls these JS callbacks
+
+            window.onVideoUploadProgress = (filename, percent, current, total) => {
+                if (percent === -1) {
+                    // Error for this file
+                    setUploadStatus(prev => ({
+                        ...(prev || { active: true, total, failures: [] }),
+                        failures: [...(prev?.failures || []), { name: filename, error: 'Upload failed' }]
+                    }));
+                } else {
+                    setUploadStatus({
+                        active: true,
+                        total,
+                        current,
+                        progress: percent,
+                        failures: [],
+                        currentFile: filename
+                    });
+                }
+            };
+
+            window.onVideoUploadComplete = (success) => {
+                delete window.onVideoUploadProgress;
+                delete window.onVideoUploadComplete;
+                setRefreshTrigger(prev => prev + 1);
+                setTimeout(() => setUploadStatus(null), 1500);
+            };
+
+            window.AndroidApp.pickVideos(currentPath || '');
+        } else {
+            // Browser fallback — clicks <input accept="video/*">
+            fileInputRef.current.click();
+        }
     };
 
     const processFiles = async (files) => {

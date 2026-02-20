@@ -47,7 +47,8 @@ class MainActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
     private val handler = Handler(Looper.getMainLooper())
     private var isPrimaryUrlLoaded = false
-    private var isOfflineAttempt = false // Added flag for offline logic
+    private var isOfflineAttempt = false
+    private var currentVideoUploadFolder = "" // folder for video upload
     
     // Timeout logic
     private val timeoutHandler = Handler(Looper.getMainLooper())
@@ -110,12 +111,29 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Video picker launcher — uses standard fileChooserCallback so WebView streams the file by URI (no OOM!)
+        // Video picker launcher — uploads directly to backend via HTTP (no WebView reload!)
         videoPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (fileChooserCallback != null) {
-                val results = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
-                fileChooserCallback?.onReceiveValue(results)
-                fileChooserCallback = null
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                val uris = mutableListOf<Uri>()
+
+                data?.clipData?.let { clipData ->
+                    for (i in 0 until clipData.itemCount) uris.add(clipData.getItemAt(i).uri)
+                } ?: data?.data?.let { uri -> uris.add(uri) }
+
+                if (uris.isNotEmpty()) {
+                    Thread {
+                        uploadVideosToServer(uris, currentVideoUploadFolder)
+                    }.start()
+                } else {
+                    webView.post {
+                        webView.evaluateJavascript("window.onVideoUploadComplete && window.onVideoUploadComplete(false, 'No files selected')", null)
+                    }
+                }
+            } else {
+                webView.post {
+                    webView.evaluateJavascript("window.onVideoUploadComplete && window.onVideoUploadComplete(false, 'Cancelled')", null)
+                }
             }
         }
 
@@ -330,14 +348,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // НОВЫЙ МЕТОД ДЛЯ ВЫБОРА ВИДЕО (без base64 - не грузит в память!):
+            // МЕТОД ДЛЯ ВЫБОРА И ЗАГРУЗКИ ВИДЕО (прямой upload, без перезагрузки страницы!):
             @JavascriptInterface
-            fun pickVideos() {
+            fun pickVideos(folder: String) {
+                currentVideoUploadFolder = folder
                 runOnUiThread {
-                    // Имитируем нажатие на <input accept="video/*"> через fileChooserCallback
-                    // WebView сам передаст файл через URI - не загружает весь файл в RAM
-                    // fileChooserCallback будет установлен через onShowFileChooser при клике на input
-                    // Этот метод просто программно открывает выбор видео напрямую
                     val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
                         type = "video/*"
@@ -636,5 +651,119 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Да") { _, _ -> finish() }
             .setNegativeButton("Нет") { _, _ -> doubleBackToExitPressedOnce = false }
             .show()
+    }
+
+    private fun uploadVideosToServer(uris: List<Uri>, folder: String) {
+        val serverBase = getLastServerUrl().trimEnd('/')
+        val uploadUrl = "$serverBase/api/videogallery/upload"
+        val total = uris.size
+
+        for ((index, uri) in uris.withIndex()) {
+            try {
+                val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    cursor.moveToFirst()
+                    if (nameIndex >= 0) cursor.getString(nameIndex) else "video_${System.currentTimeMillis()}.mp4"
+                } ?: "video_${System.currentTimeMillis()}.mp4"
+
+                val mimeType = contentResolver.getType(uri) ?: "video/mp4"
+                val fileSize = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    cursor.moveToFirst()
+                    if (sizeIndex >= 0) cursor.getLong(sizeIndex) else -1L
+                } ?: -1L
+
+                // Notify JS upload started
+                val escapedName = fileName.replace("'", "\\'")
+                webView.post {
+                    webView.evaluateJavascript(
+                        "window.onVideoUploadProgress && window.onVideoUploadProgress('$escapedName', 0, ${index+1}, $total)", null
+                    )
+                }
+
+                val boundary = "----AndroidUpload${System.currentTimeMillis()}"
+                val connection = java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection
+                connection.apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    setRequestProperty("X-User-Id", getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).getString("device_id", "android-app") ?: "android-app")
+                    connectTimeout = 30000
+                    readTimeout = 300000 // 5 min for large videos
+                    if (fileSize > 0) setFixedLengthStreamingMode(fileSize + 1024) // hint for large files
+                }
+
+                val out = java.io.BufferedOutputStream(connection.outputStream)
+                val CRLF = "\r\n"
+                val dash = "--"
+
+                // Write folder field
+                out.write("$dash$boundary$CRLF".toByteArray())
+                out.write("Content-Disposition: form-data; name=\"folder\"$CRLF$CRLF".toByteArray())
+                out.write(folder.toByteArray())
+                out.write(CRLF.toByteArray())
+
+                // Write file field
+                out.write("$dash$boundary$CRLF".toByteArray())
+                out.write("Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"$CRLF".toByteArray())
+                out.write("Content-Type: $mimeType$CRLF$CRLF".toByteArray())
+
+                contentResolver.openInputStream(uri)?.use { input ->
+                    val buffer = ByteArray(65536)
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        out.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        if (fileSize > 0) {
+                            val percent = (totalRead * 100 / fileSize).toInt()
+                            webView.post {
+                                webView.evaluateJavascript(
+                                    "window.onVideoUploadProgress && window.onVideoUploadProgress('$escapedName', $percent, ${index+1}, $total)", null
+                                )
+                            }
+                        }
+                    }
+                }
+
+                out.write("$CRLF$dash$boundary$dash$CRLF".toByteArray())
+                out.flush()
+                out.close()
+
+                val responseCode = connection.responseCode
+                connection.disconnect()
+
+                if (responseCode !in 200..299) {
+                    Log.e("VideoUpload", "Server returned $responseCode for $fileName")
+                    webView.post {
+                        webView.evaluateJavascript(
+                            "window.onVideoUploadProgress && window.onVideoUploadProgress('$escapedName', -1, ${index+1}, $total)", null
+                        )
+                    }
+                } else {
+                    webView.post {
+                        webView.evaluateJavascript(
+                            "window.onVideoUploadProgress && window.onVideoUploadProgress('$escapedName', 100, ${index+1}, $total)", null
+                        )
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("VideoUpload", "Error uploading video", e)
+                val escaped = e.message?.replace("'", "\\'") ?: "Unknown error"
+                webView.post {
+                    webView.evaluateJavascript(
+                        "window.onVideoUploadProgress && window.onVideoUploadProgress('Error', -1, ${index+1}, $total)", null
+                    )
+                }
+            }
+        }
+
+        // All done
+        webView.post {
+            webView.evaluateJavascript(
+                "window.onVideoUploadComplete && window.onVideoUploadComplete(true, '')", null
+            )
+        }
     }
 }

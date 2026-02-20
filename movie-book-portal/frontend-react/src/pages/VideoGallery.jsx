@@ -10,7 +10,7 @@ import ContextMenu from '../components/ContextMenu';
 import MoveModal from '../components/MoveModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
-import { isNativeAppAvailable, pickPhotosNative } from '../utils/nativePhotoPicker';
+
 
 export default function VideoGalleryPage() {
     // State
@@ -259,20 +259,45 @@ export default function VideoGalleryPage() {
 
 
     const handleUploadClick = async () => {
-        // Use native picker if in Android app
-        if (isNativeAppAvailable()) {
+        // Use native video picker if in Android app
+        if (window.AndroidApp && typeof window.AndroidApp.pickVideos === 'function') {
+            // Native Android video picker
             try {
-                const files = await pickPhotosNative();
-                if (files && files.length > 0) {
-                    // Process files the same way as handleFileChange
-                    await processFiles(files);
-                }
+                await new Promise((resolve, reject) => {
+                    window.onVideosSelected = (base64Array) => {
+                        try {
+                            const files = base64Array.map((base64, index) => {
+                                const byteString = atob(base64);
+                                const ab = new ArrayBuffer(byteString.length);
+                                const ia = new Uint8Array(ab);
+                                for (let i = 0; i < byteString.length; i++) {
+                                    ia[i] = byteString.charCodeAt(i);
+                                }
+                                const blob = new Blob([ab], { type: 'video/mp4' });
+                                return new File([blob], `video_${Date.now()}_${index}.mp4`, { type: 'video/mp4' });
+                            });
+                            resolve(files);
+                        } catch (e) {
+                            reject(e);
+                        } finally {
+                            delete window.onVideosSelected;
+                        }
+                    };
+                    window.AndroidApp.pickVideos();
+                }).then(files => {
+                    if (files && files.length > 0) processFiles(files);
+                });
             } catch (error) {
-                console.error('Native picker error:', error);
-                alert('Ошибка при выборе фото: ' + error.message);
+                console.error('Native video picker error:', error);
+                // Fallback to file input if native fails
+                fileInputRef.current.click();
             }
+        } else if (window.AndroidApp && typeof window.AndroidApp.pickPhotos === 'function') {
+            // Old Android app without video picker — fallback to photo picker (user will see photo gallery)
+            // but filter on file input anyway
+            fileInputRef.current.click();
         } else {
-            // Fallback to file input
+            // Standard browser file input
             fileInputRef.current.click();
         }
     };

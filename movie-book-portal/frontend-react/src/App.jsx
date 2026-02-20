@@ -12,6 +12,7 @@ import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
 import Dashboard from './pages/Dashboard';
 import ServerStatus from './pages/ServerStatus';
+import VideoGalleryPage from './pages/VideoGallery';
 import Player from './components/Player';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
@@ -33,6 +34,7 @@ const MainContentWithTransition = () => {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/server-status" element={<ServerStatus />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/video-gallery" element={<VideoGalleryPage />} />
         <Route path="*" element={<Dashboard />} />
       </Routes>
     </main>
@@ -115,6 +117,7 @@ function App() {
     { to: "/movies", icon: <Film size={24} />, label: "Фильмы" },
     { to: "/tvshows", icon: <Tv size={24} />, label: "Сериалы" },
     { to: "/gallery", icon: <Image size={24} />, label: "Галерея" },
+    { to: "/video-gallery", icon: <Film size={24} />, label: "Видеогалерея" },
     { to: "/books", icon: <Book size={24} />, label: "Книги" },
     { to: "/audiobooks", icon: <Music size={24} />, label: "Аудиокниги" },
     { to: "/admin", icon: <Settings size={24} />, label: "Админ" },

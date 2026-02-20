@@ -246,6 +246,21 @@ export const renameFolder = (folderPath, newName) => request('/gallery/rename_fo
     body: JSON.stringify({ folder_path: folderPath, new_name: newName })
 });
 
+// --- VIDEOGALLERY ---
+export const fetchVideos = (folder = "") => request(`/videogallery/?folder=${encodeURIComponent(folder)}`);
+export const createVideoFolder = (data) => request('/videogallery/folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+});
+export const deleteVideo = (path) => request(`/videogallery/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+export const deleteVideoFolder = (folderPath) => request(`/videogallery/folder?path=${encodeURIComponent(folderPath)}`, { method: 'DELETE' });
+export const renameVideoFolder = (folderPath, newName) => request('/videogallery/rename_folder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: folderPath, newName: newName })
+});
+
 // --- KALEIDOSCOPES ---
 export const fetchKaleidoscopes = () => request('/kaleidoscopes/');
 export const fetchKaleidoscope = (id) => request(`/kaleidoscopes/${id}`);
@@ -331,6 +346,26 @@ export const moveFolder = (folderPath, targetFolder) => {
     formData.append('folder_path', folderPathValue);
     formData.append('target_folder', targetFolderValue);
     return fetch(`${API_BASE}/gallery/move_folder`, { method: 'POST', body: formData }).then(r => r.json());
+};
+
+export const uploadVideoToFolder = (folder, file, onProgress) =>
+    uploadFile(`/videogallery/upload`, file, 'file', { folder }, onProgress);
+
+export const moveVideo = (videoPath, targetFolder) => {
+    const formData = new FormData();
+    const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
+    formData.append('video_path', videoPath || '');
+    formData.append('target_folder', targetFolderValue);
+    return fetch(`${API_BASE}/videogallery/move`, { method: 'POST', body: formData }).then(r => r.json());
+};
+
+export const moveVideoFolder = (folderPath, targetFolder) => {
+    const formData = new FormData();
+    const folderPathValue = typeof folderPath === 'object' ? (folderPath.path || '') : (folderPath || '');
+    const targetFolderValue = typeof targetFolder === 'object' ? (targetFolder.path || '') : (targetFolder || '');
+    formData.append('folder_path', folderPathValue);
+    formData.append('target_folder', targetFolderValue);
+    return fetch(`${API_BASE}/videogallery/move_folder`, { method: 'POST', body: formData }).then(r => r.json());
 };
 
 // --- SETTINGS / THEME ---

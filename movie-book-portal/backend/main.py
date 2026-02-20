@@ -13,8 +13,9 @@ from database_tvshows import create_tvshows_tables
 from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 from database_kaleidoscope import create_kaleidoscope_tables
+from database_videogallery import create_videogallery_tables
 
-from routers import movies, books, audiobooks, admin, gallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, audiobooks_source, discovery, system
+from routers import movies, books, audiobooks, admin, gallery, videogallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, audiobooks_source, discovery, system
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -101,6 +102,7 @@ os.makedirs(os.path.join(UPLOADS_PATH, "movies"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "tvshows"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "tvshows"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "gallery"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_PATH, "videogallery"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_PATH, "kaleidoscopes_music"), exist_ok=True)
 
 # Mount static files only if dist directory exists (production mode)
@@ -123,6 +125,7 @@ create_books_tables()
 create_audiobooks_tables()
 create_tvshows_tables()
 create_gallery_tables()
+create_videogallery_tables()
 create_progress_tables()
 create_kaleidoscope_tables()
 
@@ -132,6 +135,7 @@ app.include_router(books.router, prefix="/api")
 app.include_router(audiobooks.router, prefix="/api")
 app.include_router(tvshows.router, prefix="/api")
 app.include_router(gallery.router, prefix="/api")
+app.include_router(videogallery.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(progress.router, prefix="/api")
 app.include_router(kaleidoscopes.router, prefix="/api")

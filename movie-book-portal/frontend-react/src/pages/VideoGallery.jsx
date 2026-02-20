@@ -261,11 +261,8 @@ export default function VideoGalleryPage() {
     const handleUploadClick = () => {
         if (window.AndroidApp && typeof window.AndroidApp.pickVideos === 'function') {
             // Native Android upload — no page reload!
-            // Android uploads directly to the backend and calls these JS callbacks
-
             window.onVideoUploadProgress = (filename, percent, current, total) => {
                 if (percent === -1) {
-                    // Error for this file
                     setUploadStatus(prev => ({
                         ...(prev || { active: true, total, failures: [] }),
                         failures: [...(prev?.failures || []), { name: filename, error: 'Upload failed' }]
@@ -282,7 +279,7 @@ export default function VideoGalleryPage() {
                 }
             };
 
-            window.onVideoUploadComplete = (success) => {
+            window.onVideoUploadComplete = () => {
                 delete window.onVideoUploadProgress;
                 delete window.onVideoUploadComplete;
                 setRefreshTrigger(prev => prev + 1);
@@ -290,8 +287,13 @@ export default function VideoGalleryPage() {
             };
 
             window.AndroidApp.pickVideos(currentPath || '');
+
+        } else if (window.AndroidApp) {
+            // Old APK without pickVideos — warn user to update
+            alert('Для загрузки видео обновите приложение xWV2 до последней версии.');
+
         } else {
-            // Browser fallback — clicks <input accept="video/*">
+            // Browser — standard file input
             fileInputRef.current.click();
         }
     };

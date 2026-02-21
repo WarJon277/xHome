@@ -2,7 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchVideos, deleteVideoFolder, deleteVideo, createVideoFolder, uploadVideoToFolder, moveVideo, moveVideoFolder, renameVideoFolder } from '../api';
 import {
-    PlayCircle, Play, Edit, Move, Share, Film, ArrowUpDown
+    PlayCircle, Play, Edit, Move, Share, Film, ArrowUpDown,
+    Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
+    ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon
 } from 'lucide-react';
 import VideoModal from '../components/VideoModal';
 import ContextMenu from '../components/ContextMenu';

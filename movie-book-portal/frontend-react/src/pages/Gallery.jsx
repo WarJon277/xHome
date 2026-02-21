@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, fetchKaleidoscopes } from '../api';
 import {
     ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
-    PlayCircle, Edit, Move, Share, ArrowUpDown
+    PlayCircle, Edit, Move, Share, ArrowUpDown, Folder, MoreVertical,
+    Download, Share2, CornerUpRight, Trash2
 } from 'lucide-react';
 import KaleidoscopeViewer from '../components/KaleidoscopeViewer';
 import PhotoModal from '../components/PhotoModal';

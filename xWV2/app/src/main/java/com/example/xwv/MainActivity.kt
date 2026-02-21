@@ -570,6 +570,7 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         webView.saveState(outState)
+        outState.putString("UPLOAD_FOLDER", currentVideoUploadFolder)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
@@ -649,10 +650,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString("UPLOAD_FOLDER", currentVideoUploadFolder)
-    }
+
 
     private fun showExitDialog() {
         AlertDialog.Builder(this)

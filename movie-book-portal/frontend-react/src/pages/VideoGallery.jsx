@@ -559,13 +559,18 @@ export default function VideoGalleryPage() {
                                                     <span className="text-gray-400 text-xs text-center truncate w-full px-1">{item.title || item.name}</span>
                                                 </div>
                                             )}
-                                            {/* Play icon overlay */}
-                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <PlayCircle size={40} className="text-white drop-shadow-lg" />
+                                            {/* Permanent Small Play Icon in Corner */}
+                                            <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-sm p-1 rounded-md border border-white/20 z-10 pointer-events-none">
+                                                <Play size={14} className="text-white fill-current" />
+                                            </div>
+
+                                            {/* Hover Large Play icon overlay */}
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                                <PlayCircle size={48} className="text-white drop-shadow-2xl" />
                                             </div>
                                             {/* Hover Info */}
-                                            <div className="absolute inset-x-0 bottom-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                                                <span className="text-white text-xs truncate w-full block">{item.title || item.name}</span>
+                                            <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2">
+                                                <span className="text-white text-xs font-medium truncate w-full block">{item.title || item.name}</span>
                                             </div>
                                         </>
                                     )}

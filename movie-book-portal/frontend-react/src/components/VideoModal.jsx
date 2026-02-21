@@ -176,8 +176,17 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
             <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end pointer-events-none">
                 <div className="text-white truncate pr-4 pointer-events-auto">
                     <h2 className="text-lg sm:text-xl font-bold truncate">{item.title || item.name}</h2>
-                    <p className="text-xs sm:text-sm text-gray-400">
-                        {item.modified ? new Date(item.modified * 1000).toLocaleString() : ''}
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1 flex items-center gap-2">
+                        <span className="opacity-60">Дата съёмки:</span>
+                        <span className="font-medium text-gray-200">
+                            {item.modified ? new Date(item.modified * 1000).toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }) : 'Неизвестно'}
+                        </span>
                     </p>
                 </div>
 

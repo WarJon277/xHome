@@ -8,12 +8,26 @@ import '../custom-grid.css';
 import { Music } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
 
+// In-memory cache to persist between navigations
+let cachedAudiobooksData = null;
+let cachedScrollPosition = 0;
+
 export default function AudiobooksPage() {
-    const [audiobooks, setAudiobooks] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [audiobooks, setAudiobooks] = useState(cachedAudiobooksData || []);
+    const [loading, setLoading] = useState(!cachedAudiobooksData);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [selectedAudiobook, setSelectedAudiobook] = useState(null);
     const [latestAudiobook, setLatestAudiobook] = useState(null);
+
+    // Restore scroll position
+    useEffect(() => {
+        if (cachedScrollPosition > 0 && !selectedAudiobook) {
+            const timer = setTimeout(() => {
+                window.scrollTo({ top: cachedScrollPosition, behavior: 'instant' });
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [audiobooks, selectedAudiobook]);
     const navigate = useNavigate();
 
     const location = useLocation();
@@ -48,6 +62,7 @@ export default function AudiobooksPage() {
             const data = await fetchAudiobooks();
             console.log("Audiobooks data fetched:", data);
             setAudiobooks(data);
+            cachedAudiobooksData = data;
         } catch (err) {
             console.error("Failed to fetch audiobooks:", err);
         } finally {
@@ -75,6 +90,9 @@ export default function AudiobooksPage() {
     }, [audiobooks, selectedGenre]);
 
     const handleSelectAudiobook = (audiobook) => {
+        if (!selectedAudiobook) {
+            cachedScrollPosition = window.scrollY;
+        }
         setSelectedAudiobook(audiobook);
     };
 

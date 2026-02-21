@@ -6,12 +6,26 @@ import { Play } from 'lucide-react';
 import Player from '../components/Player';
 import GenreFilter from '../components/GenreFilter';
 
+// In-memory cache to persist between navigations
+let cachedMoviesData = null;
+let cachedScrollPosition = 0;
+
 export default function MoviesPage() {
-    const [movies, setMovies] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [movies, setMovies] = useState(cachedMoviesData || []);
+    const [loading, setLoading] = useState(!cachedMoviesData);
     const [error, setError] = useState(null);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestMovie, setLatestMovie] = useState(null);
+
+    // Restore scroll position
+    useEffect(() => {
+        if (cachedScrollPosition > 0) {
+            const timer = setTimeout(() => {
+                window.scrollTo({ top: cachedScrollPosition, behavior: 'instant' });
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [movies]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -24,6 +38,7 @@ export default function MoviesPage() {
 
                 if (moviesResult.status === 'fulfilled') {
                     setMovies(moviesResult.value);
+                    cachedMoviesData = moviesResult.value;
                 } else {
                     console.error("Failed to load movies:", moviesResult.reason);
                     setError("Не удалось загрузить фильмы");
@@ -66,6 +81,7 @@ export default function MoviesPage() {
     }, [movies, selectedGenre]);
 
     const handlePlay = (movie) => {
+        cachedScrollPosition = window.scrollY;
         window.dispatchEvent(new CustomEvent('app:play', { detail: movie }));
     };
 

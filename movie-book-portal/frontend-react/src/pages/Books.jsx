@@ -10,9 +10,13 @@ import '../custom-grid.css';
 import { Book, Search, Download, Trash2, Loader2 } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
 
+// In-memory cache to persist between navigations
+let cachedBooksData = null;
+let cachedScrollPosition = 0;
+
 export default function BooksPage() {
-    const [books, setBooks] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [books, setBooks] = useState(cachedBooksData || []);
+    const [loading, setLoading] = useState(!cachedBooksData);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestBook, setLatestBook] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +24,17 @@ export default function BooksPage() {
     const [showOnlyCached, setShowOnlyCached] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
     const navigate = useNavigate();
+
+    // Restore scroll position
+    useEffect(() => {
+        if (cachedScrollPosition > 0) {
+            // Small delay to ensure content is rendered
+            const timer = setTimeout(() => {
+                window.scrollTo({ top: cachedScrollPosition, behavior: 'instant' });
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [books]);
 
     useEffect(() => {
         loadBooks();
@@ -95,6 +110,7 @@ export default function BooksPage() {
             const data = await fetchBooks();
             console.log("Books data fetched:", data);
             setBooks(data);
+            cachedBooksData = data;
         } catch (err) {
             console.error("Failed to fetch books:", err);
 
@@ -166,6 +182,7 @@ export default function BooksPage() {
 
 
     const handleOpenBook = (book) => {
+        cachedScrollPosition = window.scrollY;
         navigate(`/books/${book.id}`);
     };
 

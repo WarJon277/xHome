@@ -22,7 +22,7 @@ const MainContentWithTransition = () => {
   const location = useLocation();
 
   return (
-    <main key={location.pathname} className="main-content page-enter">
+    <main className="main-content page-enter">
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/movies" element={<MoviesPage />} />

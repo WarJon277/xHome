@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchVideos, deleteVideoFolder, deleteVideo, createVideoFolder, uploadVideoToFolder, moveVideo, moveVideoFolder, renameVideoFolder } from '../api';
 import {
     Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
@@ -15,7 +16,10 @@ import InputModal from '../components/InputModal';
 export default function VideoGalleryPage() {
     // State
     const [items, setItems] = useState([]);
-    const [currentPath, setCurrentPath] = useState(''); // Empty string = root
+    const [currentPath, setCurrentPath] = useState(() => {
+        // Initialize from localStorage to survive refreshes
+        return localStorage.getItem('video_gallery_path') || '';
+    });
     const [viewMode] = useState('photos'); // 'photos' or 'kaleidoscopes'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -91,6 +95,8 @@ export default function VideoGalleryPage() {
         if (viewMode === 'photos') {
             loadItems(currentPath);
         }
+        // Save path to localStorage
+        localStorage.setItem('video_gallery_path', currentPath);
     }, [currentPath, viewMode, refreshTrigger]); // Added viewMode and refreshTrigger
 
     const handleFolderClick = (folderName) => {
@@ -638,68 +644,77 @@ export default function VideoGalleryPage() {
             }
 
             {/* Floating Action Buttons (FABs) */}
-            <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-3 sm:gap-4">
-                {/* UPLOAD STATUS OVERLAY */}
-                {uploadStatus && (
-                    <div className="fixed bottom-24 right-6 sm:right-8 bg-gray-900 border border-gray-700 p-4 rounded-lg shadow-xl z-50 w-80 max-w-[calc(100vw-3rem)]">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-white text-sm">
-                                {uploadStatus.active ? 'Загрузка...' : 'Загрузка завершена'}
-                            </h3>
-                            {!uploadStatus.active && (
-                                <button
-                                    onClick={() => setUploadStatus(null)}
-                                    className="text-gray-400 hover:text-white"
-                                >
-                                    ✕
-                                </button>
+            {createPortal(
+                <div
+                    className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 flex flex-col gap-4 z-[9999]"
+                    style={{ pointerEvents: 'none' }}
+                >
+                    {/* UPLOAD STATUS OVERLAY */}
+                    {uploadStatus && (
+                        <div className="bg-gray-900 border border-gray-700 p-4 rounded-xl shadow-2xl w-80 max-w-[calc(100vw-3rem)] pointer-events-auto mb-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-white text-sm">
+                                    {uploadStatus.active ? 'Загрузка...' : 'Загрузка завершена'}
+                                </h3>
+                                {!uploadStatus.active && (
+                                    <button
+                                        onClick={() => setUploadStatus(null)}
+                                        className="text-gray-400 hover:text-white"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="text-xs text-gray-300 mb-2 truncate">
+                                {uploadStatus.active
+                                    ? `Uploading ${uploadStatus.current}/${uploadStatus.total}: ${uploadStatus.currentFile}`
+                                    : `Uploaded ${uploadStatus.total - uploadStatus.failures.length} of ${uploadStatus.total} files`
+                                }
+                            </div>
+
+                            {uploadStatus.active && (
+                                <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+                                    <div
+                                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${uploadStatus.progress}%` }}
+                                    ></div>
+                                </div>
+                            )}
+
+                            {uploadStatus.failures.length > 0 && (
+                                <div className="mt-2 max-h-32 overflow-y-auto">
+                                    <p className="text-red-400 text-xs font-bold mb-1">Errors:</p>
+                                    {uploadStatus.failures.map((fail, idx) => (
+                                        <div key={idx} className="text-red-400 text-xs truncate">
+                                            • {fail.name}: {fail.error}
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                         </div>
+                    )}
 
-                        <div className="text-xs text-gray-300 mb-2 truncate">
-                            {uploadStatus.active
-                                ? `Uploading ${uploadStatus.current}/${uploadStatus.total}: ${uploadStatus.currentFile}`
-                                : `Uploaded ${uploadStatus.total - uploadStatus.failures.length} of ${uploadStatus.total} files`
-                            }
-                        </div>
-
-                        {uploadStatus.active && (
-                            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-                                <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${uploadStatus.progress}%` }}
-                                ></div>
-                            </div>
-                        )}
-
-                        {uploadStatus.failures.length > 0 && (
-                            <div className="mt-2 max-h-32 overflow-y-auto">
-                                <p className="text-red-400 text-xs font-bold mb-1">Errors:</p>
-                                {uploadStatus.failures.map((fail, idx) => (
-                                    <div key={idx} className="text-red-400 text-xs truncate">
-                                        • {fail.name}: {fail.error}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                    <div className="flex flex-col gap-4 pointer-events-auto items-end">
+                        <button
+                            onClick={handleCreateFolder}
+                            className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl text-white transition-all hover:scale-110 active:scale-95 border border-gray-700 hover:border-gray-600 group"
+                            title="Создать папку"
+                        >
+                            <FolderPlus size={24} className="group-hover:text-blue-400 transition-colors" />
+                        </button>
+                        <button
+                            onClick={handleUploadClick}
+                            className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-blue-600 hover:bg-blue-700 rounded-full shadow-2xl text-white transition-all hover:scale-110 active:scale-95 border border-blue-500 hover:border-blue-400 group relative"
+                            title="Загрузить видео"
+                        >
+                            <Upload size={28} className="group-hover:translate-y-[-2px] transition-transform" />
+                            <div className="absolute inset-0 rounded-full bg-blue-400 opacity-0 group-hover:animate-ping pointer-events-none"></div>
+                        </button>
                     </div>
-                )}
-
-                <button
-                    onClick={handleCreateFolder}
-                    className="p-3 sm:p-4 bg-gray-700 hover:bg-gray-600 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
-                    title="Создать папку"
-                >
-                    <Folder size={20} className="sm:w-6 sm:h-6" />
-                </button>
-                <button
-                    onClick={handleUploadClick}
-                    className="p-3 sm:p-4 bg-primary hover:bg-red-700 rounded-full shadow-lg text-white transition-all hover:scale-110 active:scale-95"
-                    title="Загрузить видео"
-                >
-                    <Upload size={20} className="sm:w-6 sm:h-6" />
-                </button>
-            </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

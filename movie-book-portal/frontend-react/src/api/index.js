@@ -4,7 +4,7 @@
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Configuration
-export const API_TIMEOUT = 2000; // 2 seconds timeout for fast offline detection
+export const API_TIMEOUT = 5000; // 5 seconds default timeout
 
 // Helper to get or create a unique Device ID
 function getDeviceId() {
@@ -230,7 +230,7 @@ export const fetchBookPage = async (bookId, page) => {
 
 
 // --- GALLERY ---
-export const fetchPhotos = (folder = "") => request(`/gallery?folder=${encodeURIComponent(folder)}`);
+export const fetchPhotos = (folder = "") => request(`/gallery?folder=${encodeURIComponent(folder)}`, { timeout: 15000 });
 export const fetchPhoto = (id) => request(`/gallery/${id}`);
 export const createPhotoFolder = (data) => request('/gallery', {
     method: 'POST',
@@ -247,7 +247,7 @@ export const renameFolder = (folderPath, newName) => request('/gallery/rename_fo
 });
 
 // --- VIDEOGALLERY ---
-export const fetchVideos = (folder = "") => request(`/videogallery/?folder=${encodeURIComponent(folder)}`);
+export const fetchVideos = (folder = "") => request(`/videogallery/?folder=${encodeURIComponent(folder)}`, { timeout: 15000 });
 export const createVideoFolder = (data) => request('/videogallery/folder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -414,7 +414,7 @@ export async function fetchBrowse(ctype, genre, provider = 'flibusta', options =
         if (options.refresh) {
             url += '&refresh=true';
         }
-        return await request(url, options);
+        return await request(url, { timeout: 15000, ...options });
     } catch (e) {
         console.error("Browse error", e);
         throw e;
@@ -425,7 +425,7 @@ export async function fetchSearch(query, provider = 'flibusta', options = {}) {
     try {
         const url = `/discovery/search?query=${encodeURIComponent(query)}&provider=${provider}`;
         console.log("fetchSearch calling:", { url, query, provider });
-        const result = await request(url, options);
+        const result = await request(url, { timeout: 15000, ...options });
         console.log("fetchSearch result:", result);
         return result;
     } catch (e) {

@@ -2,7 +2,7 @@
 // Stores book metadata and page content for offline reading
 
 const DB_NAME = 'xHomePortal';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const BOOKS_STORE = 'books';
 const PAGES_STORE = 'pages';
 const PROGRESS_STORE = 'progress';

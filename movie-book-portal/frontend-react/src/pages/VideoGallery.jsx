@@ -4,7 +4,7 @@ import { fetchVideos, deleteVideoFolder, deleteVideo, createVideoFolder, uploadV
 import {
     Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
     ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
-    PlayCircle, Edit, Move, Share, Film
+    PlayCircle, Play, Edit, Move, Share, Film
 } from 'lucide-react';
 import VideoModal from '../components/VideoModal';
 import ContextMenu from '../components/ContextMenu';

@@ -67,6 +67,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Restore saved state if any
+        if (savedInstanceState != null) {
+            currentVideoUploadFolder = savedInstanceState.getString("UPLOAD_FOLDER", "")
+        }
+
         // Initialize the ActivityResultLauncher
         fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (fileChooserCallback != null) {
@@ -642,6 +647,11 @@ class MainActivity : AppCompatActivity() {
             Log.e("uriToBase64", "Error converting URI to Base64", e)
             null
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("UPLOAD_FOLDER", currentVideoUploadFolder)
     }
 
     private fun showExitDialog() {

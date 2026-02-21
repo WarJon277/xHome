@@ -97,6 +97,40 @@ export default function VideoGalleryPage() {
         }
         // Save path to localStorage
         localStorage.setItem('video_gallery_path', currentPath);
+
+        // Define global callbacks for Android upload
+        // These need to be always available in case the page reloads during upload
+        window.onVideoUploadProgress = (filename, percent, current, total) => {
+            if (percent === -1) {
+                setUploadStatus(prev => ({
+                    ...(prev || { active: true, total, failures: [] }),
+                    failures: [...(prev?.failures || []), { name: filename, error: 'Upload failed' }]
+                }));
+            } else {
+                setUploadStatus({
+                    active: true,
+                    total,
+                    current,
+                    progress: percent,
+                    failures: [],
+                    currentFile: filename
+                });
+            }
+        };
+
+        window.onVideoUploadComplete = () => {
+            // Refresh list to show new files
+            setRefreshTrigger(prev => prev + 1);
+            // Show success for 1.5s then clear
+            setUploadStatus(prev => prev ? { ...prev, active: false, progress: 100 } : null);
+            setTimeout(() => setUploadStatus(null), 2000);
+        };
+
+        return () => {
+            // Optional: clean up, but we want them to stay if page reloads
+            // delete window.onVideoUploadProgress;
+            // delete window.onVideoUploadComplete;
+        };
     }, [currentPath, viewMode, refreshTrigger]); // Added viewMode and refreshTrigger
 
     const handleFolderClick = (folderName) => {
@@ -266,32 +300,7 @@ export default function VideoGalleryPage() {
 
     const handleUploadClick = () => {
         if (window.AndroidApp && typeof window.AndroidApp.pickVideos === 'function') {
-            // Native Android upload — no page reload!
-            window.onVideoUploadProgress = (filename, percent, current, total) => {
-                if (percent === -1) {
-                    setUploadStatus(prev => ({
-                        ...(prev || { active: true, total, failures: [] }),
-                        failures: [...(prev?.failures || []), { name: filename, error: 'Upload failed' }]
-                    }));
-                } else {
-                    setUploadStatus({
-                        active: true,
-                        total,
-                        current,
-                        progress: percent,
-                        failures: [],
-                        currentFile: filename
-                    });
-                }
-            };
-
-            window.onVideoUploadComplete = () => {
-                delete window.onVideoUploadProgress;
-                delete window.onVideoUploadComplete;
-                setRefreshTrigger(prev => prev + 1);
-                setTimeout(() => setUploadStatus(null), 1500);
-            };
-
+            // Call native picker. Progress will be handled by global callbacks defined in useEffect
             window.AndroidApp.pickVideos(currentPath || '');
 
         } else if (window.AndroidApp) {

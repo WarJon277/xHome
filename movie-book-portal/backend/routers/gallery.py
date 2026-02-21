@@ -3,8 +3,28 @@ import shutil
 import hashlib
 import re
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from PIL import Image
+from PIL import Image, ExifTags
+import datetime
 from utils import apply_image_filter
+
+def get_exif_date(path):
+    try:
+        with Image.open(path) as img:
+            exif_data = img._getexif()
+            if not exif_data:
+                return None
+            for tag, value in exif_data.items():
+                tag_name = ExifTags.TAGS.get(tag, tag)
+                if tag_name == "DateTimeOriginal":
+                    # Format is usually "YYYY:MM:DD HH:MM:SS"
+                    try:
+                        dt = datetime.datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
+                        return dt.timestamp()
+                    except (ValueError, TypeError):
+                        continue
+    except Exception as e:
+        print(f"Error reading EXIF for {path}: {e}")
+    return None
 
 router = APIRouter(prefix="/gallery", tags=["gallery"])
 
@@ -73,13 +93,17 @@ def get_gallery_contents(folder: str = ""):
                         else:
                             thumb_filename = thumb_name
                         
+                        # Get real filming date from EXIF
+                        exif_date = get_exif_date(item_path)
+                        modified_time = exif_date if exif_date else os.path.getmtime(item_path)
+
                         contents.append({
                             "id": file_id,
                             "name": item,
                             "type": "photo",
                             "path": os.path.join(folder, item).replace('\\', '/'),
                             "size": os.path.getsize(item_path),
-                            "modified": os.path.getmtime(item_path),
+                            "modified": modified_time,
                             "thumbnail_path": f"/uploads/gallery/{os.path.join(folder, thumb_filename).replace('\\', '/')}",
                             "file_path": f"/uploads/gallery/{os.path.join(folder, item).replace('\\', '/')}"
                         })
@@ -115,13 +139,17 @@ def search_photos(query: str):
                         
                         relative_thumb_path = os.path.relpath(thumb_path, BASE_DIR).replace('\\', '/')
                         
+                        # Get real filming date from EXIF
+                        exif_date = get_exif_date(file_path)
+                        modified_time = exif_date if exif_date else os.path.getmtime(file_path)
+
                         results.append({
                             "id": file_id,
                             "name": file,
                             "type": "photo",
                             "path": relative_path,
                             "size": os.path.getsize(file_path),
-                            "modified": os.path.getmtime(file_path),
+                            "modified": modified_time,
                             "thumbnail_path": f"/{relative_thumb_path}",
                             "file_path": f"/{relative_path}"
                         })
@@ -148,13 +176,17 @@ def get_photo(photo_id: int):
                         
                         relative_thumb_path = os.path.relpath(thumb_path, BASE_DIR).replace('\\', '/')
                         
+                        # Get real filming date from EXIF
+                        exif_date = get_exif_date(file_path)
+                        modified_time = exif_date if exif_date else os.path.getmtime(file_path)
+
                         return {
                             "id": file_id,
                             "title": os.path.splitext(file)[0],
                             "description": "",
                             "file_path": f"/{relative_path}",
                             "thumbnail_path": f"/{relative_thumb_path}",
-                            "upload_date": os.path.getmtime(file_path)
+                            "upload_date": modified_time
                         }
         
         raise HTTPException(status_code=404, detail="Photo not found")

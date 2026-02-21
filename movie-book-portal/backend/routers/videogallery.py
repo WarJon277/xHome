@@ -3,6 +3,7 @@ import shutil
 import hashlib
 import time
 import subprocess
+import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from database_videogallery import SessionLocalVideoGallery, Video, get_db_videogallery
 from sqlalchemy.orm import Session
@@ -22,6 +23,26 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_video_creation_date(path):
+    try:
+        command = [
+            'ffprobe',
+            '-v', 'quiet',
+            '-show_entries', 'format_tags=creation_time',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            path
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        creation_time_str = result.stdout.strip()
+        if creation_time_str:
+            # ISO format 2024-02-21T11:30:00.000000Z
+            ts_str = creation_time_str.split('.')[0].replace('Z', '')
+            dt = datetime.datetime.fromisoformat(ts_str)
+            return dt.timestamp()
+    except Exception:
+        pass
+    return None
 
 def search_directory_for_videos(directory: str, relative_path: str = ""):
     items = []
@@ -51,6 +72,10 @@ def search_directory_for_videos(directory: str, relative_path: str = ""):
                 
                 has_thumbnail = os.path.exists(thumb_path)
                 
+                # Get real creation date
+                v_date = get_video_creation_date(full_path)
+                modified_time = v_date if v_date else (os.path.getmtime(full_path) if os.path.exists(full_path) else None)
+
                 items.append({
                     "id": hashlib.md5(rel_path.encode()).hexdigest()[:8],
                     "type": "video",
@@ -59,7 +84,7 @@ def search_directory_for_videos(directory: str, relative_path: str = ""):
                     "path": rel_path,
                     "thumbnail_path": f"/uploads/videogallery/thumbnails/{thumb_name}" if has_thumbnail else None,
                     "file_path": f"/uploads/videogallery/{rel_path}",
-                    "modified": os.path.getmtime(full_path) if os.path.exists(full_path) else None
+                    "modified": modified_time
                 })
     return items
 

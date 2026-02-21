@@ -2,9 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchPhotos, deleteFolder, deletePhoto, createPhotoFolder, uploadPhotoToFolder, movePhoto, fetchKaleidoscopes } from '../api';
 import {
-    Folder, MoreVertical, Download, Share2, CornerUpRight, Trash2,
     ChevronRight, Home, Upload, FolderPlus, ArrowLeft, Image as ImageIcon,
-    PlayCircle, Edit, Move, Share
+    PlayCircle, Edit, Move, Share, ArrowUpDown
 } from 'lucide-react';
 import KaleidoscopeViewer from '../components/KaleidoscopeViewer';
 import PhotoModal from '../components/PhotoModal';
@@ -22,6 +21,10 @@ export default function GalleryPage() {
         return localStorage.getItem('photo_gallery_path') || '';
     });
     const [viewMode, setViewMode] = useState('photos'); // 'photos' or 'kaleidoscopes'
+    const [sortConfig, setSortConfig] = useState(() => {
+        const saved = localStorage.getItem('gallery_sort_config');
+        return saved ? JSON.parse(saved) : { key: 'name', direction: 'asc' };
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -77,9 +80,23 @@ export default function GalleryPage() {
 
             // Client-side sorting: Folders first, then files
             const sorted = data.sort((a, b) => {
+                // Always folders first
                 if (a.type === 'folder' && b.type !== 'folder') return -1;
                 if (a.type !== 'folder' && b.type === 'folder') return 1;
-                return (a.name || a.title || '').localeCompare(b.name || b.title || '');
+
+                // Sort by config
+                const { key, direction } = sortConfig;
+                let comparison = 0;
+
+                if (key === 'name') {
+                    comparison = (a.name || a.title || '').localeCompare(b.name || b.title || '');
+                } else if (key === 'date') {
+                    const dateA = a.modified || 0;
+                    const dateB = b.modified || 0;
+                    comparison = dateA - dateB;
+                }
+
+                return direction === 'asc' ? comparison : -comparison;
             });
 
             setItems(sorted);
@@ -98,7 +115,8 @@ export default function GalleryPage() {
         }
         // Save path to localStorage
         localStorage.setItem('photo_gallery_path', currentPath);
-    }, [currentPath, viewMode, refreshTrigger]); // Added viewMode and refreshTrigger
+        localStorage.setItem('gallery_sort_config', JSON.stringify(sortConfig));
+    }, [currentPath, viewMode, refreshTrigger, sortConfig]); // Added viewMode and refreshTrigger
 
     const handleFolderClick = (folderName) => {
         const newPath = currentPath ? `${currentPath}/${folderName}` : folderName;
@@ -489,30 +507,82 @@ export default function GalleryPage() {
                                     </button>
                                 </div>
                             </div>
-
-                            {/* Breadcrumbs */}
-                            <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
-                                <span
-                                    className={`cursor-pointer hover:opacity-80 ${!currentPath ? 'font-bold' : ''}`}
-                                    style={{ color: !currentPath ? 'var(--text-primary)' : 'var(--text-secondary)' }}
-                                    onClick={() => setCurrentPath("")}
-                                >
-                                    Root
-                                </span>
-                                {currentPath.split('/').filter(Boolean).map((part, index, arr) => {
-                                    const path = arr.slice(0, index + 1).join('/');
-                                    return (
-                                        <span key={path} className="flex items-center gap-2">
-                                            <span>/</span>
-                                            <span
-                                                className={`cursor-pointer hover:text-white ${index === arr.length - 1 ? 'text-white font-semibold' : ''}`}
-                                                onClick={() => setCurrentPath(path)}
-                                            >
-                                                {part}
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                {/* Breadcrumbs */}
+                                <div className="text-sm flex flex-wrap items-center gap-2 p-2 rounded px-4 inline-flex max-w-full" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-secondary)' }}>
+                                    <span
+                                        className={`cursor-pointer hover:opacity-80 ${!currentPath ? 'font-bold' : ''}`}
+                                        style={{ color: !currentPath ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                                        onClick={() => setCurrentPath("")}
+                                    >
+                                        Root
+                                    </span>
+                                    {currentPath.split('/').filter(Boolean).map((part, index, arr) => {
+                                        const path = arr.slice(0, index + 1).join('/');
+                                        return (
+                                            <span key={path} className="flex items-center gap-2">
+                                                <ChevronRight size={14} className="opacity-50" />
+                                                <span
+                                                    className={`cursor-pointer hover:opacity-80 ${index === arr.length - 1 ? 'font-bold' : ''}`}
+                                                    style={{ color: index === arr.length - 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                                                    onClick={() => setCurrentPath(path)}
+                                                >
+                                                    {part}
+                                                </span>
                                             </span>
-                                        </span>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Sorting UI */}
+                                <div className="flex items-center gap-2">
+                                    <div className="relative group">
+                                        <button
+                                            className="p-2.5 bg-gray-800/40 hover:bg-gray-800 rounded-xl text-white/70 hover:text-white transition-all flex items-center gap-2 text-sm border border-white/5 backdrop-blur-sm shadow-lg pointer-events-auto"
+                                        >
+                                            <ArrowUpDown size={16} />
+                                            <span className="hidden sm:inline font-medium">
+                                                {sortConfig.key === 'name' ? 'По имени' : 'По дате'}
+                                                <span className="ml-1 opacity-50 font-normal">
+                                                    ({sortConfig.direction === 'asc' ? (sortConfig.key === 'name' ? 'А-Я' : 'Старые') : (sortConfig.key === 'name' ? 'Я-А' : 'Новые')})
+                                                </span>
+                                            </span>
+                                        </button>
+
+                                        {/* Dropdown */}
+                                        <div className="absolute right-0 top-full mt-2 w-52 bg-gray-900/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] backdrop-blur-xl">
+                                            <button
+                                                onClick={() => setSortConfig({ key: 'name', direction: 'asc' })}
+                                                className={`w-full text-left px-5 py-3.5 text-sm hover:bg-white/5 transition-colors flex justify-between items-center ${sortConfig.key === 'name' && sortConfig.direction === 'asc' ? 'text-blue-400 bg-blue-400/5' : 'text-gray-300'}`}
+                                            >
+                                                Имя (А - Я)
+                                                {sortConfig.key === 'name' && sortConfig.direction === 'asc' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                            </button>
+                                            <button
+                                                onClick={() => setSortConfig({ key: 'name', direction: 'desc' })}
+                                                className={`w-full text-left px-5 py-3.5 text-sm hover:bg-white/5 transition-colors flex justify-between items-center ${sortConfig.key === 'name' && sortConfig.direction === 'desc' ? 'text-blue-400 bg-blue-400/5' : 'text-gray-300'}`}
+                                            >
+                                                Имя (Я - А)
+                                                {sortConfig.key === 'name' && sortConfig.direction === 'desc' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                            </button>
+                                            <div className="border-t border-white/5 my-1 mx-2"></div>
+                                            <button
+                                                onClick={() => setSortConfig({ key: 'date', direction: 'desc' })}
+                                                className={`w-full text-left px-5 py-3.5 text-sm hover:bg-white/5 transition-colors flex justify-between items-center ${sortConfig.key === 'date' && sortConfig.direction === 'desc' ? 'text-blue-400 bg-blue-400/5' : 'text-gray-300'}`}
+                                            >
+                                                Дата (Сначала новые)
+                                                {sortConfig.key === 'date' && sortConfig.direction === 'desc' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                            </button>
+                                            <button
+                                                onClick={() => setSortConfig({ key: 'date', direction: 'asc' })}
+                                                className={`w-full text-left px-5 py-3.5 text-sm hover:bg-white/5 transition-colors flex justify-between items-center ${sortConfig.key === 'date' && sortConfig.direction === 'asc' ? 'text-blue-400 bg-blue-400/5' : 'text-gray-300'}`}
+                                            >
+                                                Дата (Сначала старые)
+                                                {sortConfig.key === 'date' && sortConfig.direction === 'asc' && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </header>
 

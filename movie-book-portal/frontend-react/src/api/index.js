@@ -452,3 +452,21 @@ export async function fetchCover(bookId, options = {}) {
         return null;
     }
 }
+
+// --- REQUESTS (Предложка) ---
+export const searchRequests = (query, type = 'all', options = {}) =>
+    request(`/requests/search?query=${encodeURIComponent(query)}&type=${type}`, { timeout: 20000, ...options });
+
+export const fetchRequestDetails = (id, type, options = {}) =>
+    request(`/requests/details?id=${encodeURIComponent(id)}&type=${type}`, { timeout: 15000, ...options });
+
+export const downloadRequest = (data) => request('/requests/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    timeout: 10000
+});
+
+export const fetchDownloadStatus = (options = {}) =>
+    request('/requests/status', { timeout: 5000, ...options });
+

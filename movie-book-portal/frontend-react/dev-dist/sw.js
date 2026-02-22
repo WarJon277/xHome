@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-ececd706'], (function (workbox) { 'use strict';
+define(['./workbox-237f2c1f'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,15 +82,39 @@ define(['./workbox-ececd706'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.knatrr3ttt8"
+    "revision": "0.0vssp3sfv48"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
-    allowlist: [/^\/$/]
+    allowlist: [/^\/$/],
+    denylist: [/^\/api/, /^\/uploads/, /^\/thumbnails/]
   }));
-  workbox.registerRoute(/^https?:\/\/.*\/api\/.*/i, new workbox.NetworkFirst({
+  workbox.registerRoute(/\/api\/books\/.*\/page\/.*/i, new workbox.NetworkFirst({
+    "cacheName": "book-pages-cache",
+    "networkTimeoutSeconds": 2,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 2000,
+      maxAgeSeconds: 2592000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/api\/books\/.*\/file_resource\/.*/i, new workbox.CacheFirst({
+    "cacheName": "book-resources-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 5000,
+      maxAgeSeconds: 5184000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/\/api\/books\/.*\/download/i, new workbox.NetworkFirst({
+    "cacheName": "book-downloads",
+    "networkTimeoutSeconds": 60,
+    plugins: []
+  }), 'GET');
+  workbox.registerRoute(/^https?:\/\/.*\/api\/.*/i, new workbox.StaleWhileRevalidate({
     "cacheName": "api-cache",
-    "networkTimeoutSeconds": 10,
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 100,
       maxAgeSeconds: 3600
@@ -110,7 +134,7 @@ define(['./workbox-ececd706'], (function (workbox) { 'use strict';
       maxAgeSeconds: 2592000
     })]
   }), 'GET');
-  workbox.registerRoute(/\.(js|css|woff2?)$/, new workbox.StaleWhileRevalidate({
+  workbox.registerRoute(/\.(js|css|woff2?)$/, new workbox.CacheFirst({
     "cacheName": "static-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 60,

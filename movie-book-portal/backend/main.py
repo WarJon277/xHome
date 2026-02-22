@@ -16,6 +16,7 @@ from database_kaleidoscope import create_kaleidoscope_tables
 from database_videogallery import create_videogallery_tables
 
 from routers import movies, books, audiobooks, admin, gallery, videogallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, audiobooks_source, discovery, system
+from routers import requests_router
 
 app = FastAPI(title="Медиа-портал: Фильмы и Книги")
 
@@ -145,6 +146,7 @@ app.include_router(audiobooks_source.router, prefix="/api")
 # Register discovery with explicit sub-prefix
 app.include_router(discovery.router, prefix="/api/discovery")
 app.include_router(system.router, prefix="/api")
+app.include_router(requests_router.router, prefix="/api")
 
 # IMPORTANT: React SPA routing - MUST be registered LAST (catch-all route)
 # This serves index.html for all non-API routes to support React Router

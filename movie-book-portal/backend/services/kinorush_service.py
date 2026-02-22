@@ -51,6 +51,11 @@ def get_session():
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
         'Connection': 'keep-alive',
     })
+    # Initial visit to trigger cookies/session
+    try:
+        session.get(BASE_URL, timeout=10, verify=False)
+    except Exception as e:
+        print(f"Warning: could not initialize session cookies: {e}")
     return session
 
 def is_series(url: str, title: str) -> bool:
@@ -76,6 +81,139 @@ def is_series(url: str, title: str) -> bool:
             return True
     
     return False
+
+def _extract_movie_info(item) -> Optional[MovieInfo]:
+    """Helper to extract MovieInfo from a result item (article or div)"""
+    try:
+        # Title and URL
+        # Look for title link in card__desc or card__title
+        title_link = None
+        
+        # Priority 1: card__title a (Standard for this site's theme)
+        title_elem = item.find(['h1', 'h2', 'div'], class_='card__title')
+        if title_elem:
+            title_link = title_elem.find('a', href=True)
+            
+        # Priority 2: first link in card__desc that isn't a badge/category
+        if not title_link:
+            desc = item.find('div', class_=re.compile(r'card__(desc|content)'))
+            if desc:
+                # Try finding in header tag first
+                header = desc.find(['h1', 'h2', 'h3'])
+                title_link = header.find('a', href=True) if header else desc.find('a', href=True)
+
+        # Fallback: any link in the item that doesn't have card__img class
+        if not title_link:
+            title_link = item.find('a', class_=lambda c: not c or 'card__img' not in c, href=True)
+
+        if not title_link:
+            return None
+        
+        title = title_link.get_text(strip=True)
+        url = title_link.get('href', '').strip()
+        if not url or url == '#':
+            return None
+            
+        if not url.startswith('http'):
+            # Ensure proper absolute URL construction
+            path = url if url.startswith("/") else f"/{url}"
+            url = BASE_URL + path
+            
+        # Skip navigation links or categories
+        if url.endswith(('/films/', '/serials/', '/multfilmy/')) or '/xfsearch/' in url:
+            return None
+        
+        # Skip Series
+        if is_series(url, title):
+            return None
+        
+        # Extract Year
+        year = None
+        year_link = item.find('a', href=re.compile(r'/xfsearch/year/'))
+        if year_link:
+            yt = year_link.get_text(strip=True)
+            ym = re.search(r'(\d{4})', yt)
+            if ym: year = int(ym.group(1))
+        
+        if not year:
+            ym = re.search(r'\((\d{4})\)', title) or re.search(r'(\d{4})', title)
+            if ym: year = int(ym.group(1))
+        
+        # Extract Rating
+        rating = None
+        rating_tags = item.find_all(['span', 'div', 'b'], string=re.compile(r'KP|IMDB', re.I))
+        if not rating_tags:
+            rating_tags = item.find_all(['span', 'div', 'b'], text=re.compile(r'KP|IMDB', re.I))
+            
+        if not rating_tags:
+            rate_elem = item.find(['div', 'span'], class_=re.compile(r'(card__rating|rate-kp|rating)'))
+            if rate_elem:
+                rating_tags = [rate_elem]
+
+        for tag in rating_tags:
+            rt = tag.get_text(strip=True)
+            rm = re.search(r'(\d+\.?\d*)', rt)
+            if rm:
+                rating = float(rm.group(1))
+                break 
+            
+        return MovieInfo(title=title, url=url, year=year, rating=rating)
+    except Exception as e:
+        print(f"Error extracting movie info: {e}")
+        return None
+
+def _extract_movies_from_soup(soup, limit: int = 20) -> List[MovieInfo]:
+    """Extract list of movies from a BeautifulSoup object"""
+    movies = []
+    
+    # Check for "nothing found"
+    if soup.find('div', class_='berrors') or soup.find(string=re.compile(r"ничего не найдено|не дал никаких результатов", re.I)):
+        return []
+
+    # Get items: prioritize div.card (or article.card)
+    movie_items = soup.find_all(['div', 'article'], class_='card')
+    
+    if not movie_items:
+        movie_items = soup.find_all('div', class_='movie-item') or soup.find_all('article', class_='short') or soup.find_all('div', class_='short')
+    
+    seen_urls = set()
+    for item in movie_items:
+        movie = _extract_movie_info(item)
+        if movie and movie.url not in seen_urls:
+            seen_urls.add(movie.url)
+            movies.append(movie)
+            if len(movies) >= limit:
+                break
+            
+    return movies
+    
+    # Final fallback: only if no container-based items found at all
+    if not movies:
+        # Scanning for links fallback - be very restrictive to avoid navigation
+        links = soup.find_all('a', href=re.compile(r'/(films|multfilmy)/\d+-[^/]+\.html$'))
+        seen_urls = set()
+        for link in links:
+            title = link.get_text(strip=True)
+            url = link.get('href', '')
+            if not title or len(title) < 2 or not url: continue
+            if not url.startswith('http'): url = BASE_URL + url
+            if url in seen_urls: continue
+            
+            # Skip navigation
+            if url.endswith('/films/') or url.endswith('/multfilmy/'): continue
+            
+            seen_urls.add(url)
+            if is_series(url, title): continue
+            
+            year = None
+            ym = re.search(r'\((\d{4})\)', title) or re.search(r'(\d{4})', title)
+            if ym: year = int(ym.group(1))
+            
+            movies.append(MovieInfo(title=title, url=url, year=year))
+            if len(movies) >= limit: break
+            
+    return movies
+
 
 def parse_size_to_gb(size_str: str) -> float:
     """
@@ -126,22 +264,10 @@ def filter_by_size(torrents: List[TorrentInfo], min_gb: float = 3.0) -> List[Tor
 def search_movies_by_genre(genre: str, min_year: int = None, min_rating: float = None, page: int = 1) -> List[MovieInfo]:
     """
     Search for movies by genre
-    
-    Args:
-        genre: Genre name in Russian (e.g., "Фантастика", "Боевик")
-        min_year: Minimum year filter (optional)
-        min_rating: Minimum rating filter (optional)
-        page: Page number for pagination
-        
-    Returns:
-        List of MovieInfo objects
     """
     session = get_session()
-    movies = []
     
     try:
-        # Construct search URL
-        # For genre search: /xfsearch/zhanr/{genre}/
         genre_url = f"{BASE_URL}/xfsearch/zhanr/{genre.lower()}/"
         if page > 1:
             genre_url += f"page/{page}/"
@@ -150,71 +276,20 @@ def search_movies_by_genre(genre: str, min_year: int = None, min_rating: float =
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
+        all_movies = _extract_movies_from_soup(soup, limit=100) # Get more to filter
         
-        # Find movie items (adjust selectors based on actual HTML structure)
-        # Looking for movie cards/items
-        movie_items = soup.find_all('div', class_='movie-item') or soup.find_all('article', class_='short')
-        
-        if not movie_items:
-            # Try alternative selectors
-            movie_items = soup.find_all('div', class_='short')
-        
-        for item in movie_items:
-            try:
-                # Extract title and URL
-                title_link = item.find('a', class_='short-title') or item.find('h2').find('a') or item.find('a')
-                if not title_link:
-                    continue
-                
-                title = title_link.get_text(strip=True)
-                url = title_link.get('href', '')
-                
-                # Make URL absolute
-                if url and not url.startswith('http'):
-                    url = BASE_URL + url
-                
-                # Skip series
-                if is_series(url, title):
-                    continue
-                
-                # Extract year if available
-                year = None
-                year_match = re.search(r'(\d{4})', title)
-                if year_match:
-                    year = int(year_match.group(1))
-                
-                # Apply year filter
-                if min_year and year and year < min_year:
-                    continue
-                
-                # Extract rating if available (will be more accurate from detail page)
-                rating = None
-                rating_elem = item.find('div', class_='rate-kp') or item.find('span', class_='rating')
-                if rating_elem:
-                    rating_text = rating_elem.get_text(strip=True)
-                    rating_match = re.search(r'(\d+\.?\d*)', rating_text)
-                    if rating_match:
-                        rating = float(rating_match.group(1))
-                
-                # Apply rating filter
-                if min_rating and rating and rating < min_rating:
-                    continue
-                
-                movies.append(MovieInfo(
-                    title=title,
-                    url=url,
-                    year=year,
-                    rating=rating
-                ))
-                
-            except Exception as e:
-                print(f"Error parsing movie item: {e}")
-                continue
+        # Apply filters
+        filtered = []
+        for m in all_movies:
+            if min_year and m.year and m.year < min_year: continue
+            if min_rating and m.rating and m.rating < min_rating: continue
+            filtered.append(m)
+            
+        return filtered
         
     except Exception as e:
-        print(f"Error searching movies: {e}")
-    
-    return movies
+        print(f"Error searching movies by genre: {e}")
+        return []
 
 def get_movie_details(movie_url: str) -> Optional[MovieDetails]:
     """
@@ -376,18 +451,44 @@ def get_movie_details(movie_url: str) -> Optional[MovieDetails]:
         print(f"Error getting movie details from {movie_url}: {e}")
         return None
 
+def search_movies_by_name(query: str, limit: int = 20) -> List[MovieInfo]:
+    """
+    Search for movies by name/title using POST
+    """
+    session = get_session()
+    
+    try:
+        search_url = f"{BASE_URL}/index.php?do=search"
+        data = {
+            'do': 'search',
+            'subaction': 'search',
+            'search_start': '0',
+            'full_search': '0',
+            'story': query
+        }
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            'Referer': f"{BASE_URL}/",
+            'Origin': BASE_URL,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        
+        response = session.post(search_url, data=data, headers=headers, timeout=15, verify=False)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        return _extract_movies_from_soup(soup, limit=limit)
+                
+    except Exception as e:
+        print(f"Error searching movies by name: {e}")
+        return []
+
 def search_films_page(page: int = 1) -> List[MovieInfo]:
     """
     Browse films page directly
-    
-    Args:
-        page: Page number
-        
-    Returns:
-        List of MovieInfo objects
     """
     session = get_session()
-    movies = []
     
     try:
         url = f"{BASE_URL}/films/"
@@ -398,42 +499,8 @@ def search_films_page(page: int = 1) -> List[MovieInfo]:
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Find all links in films section
-        links = soup.find_all('a', href=re.compile(r'/films/\d+'))
-        
-        for link in links:
-            try:
-                title = link.get_text(strip=True)
-                url = link.get('href', '')
-                
-                if not title or not url:
-                    continue
-                
-                # Make URL absolute
-                if not url.startswith('http'):
-                    url = BASE_URL + url
-                
-                # Skip if already added
-                if any(m.url == url for m in movies):
-                    continue
-                
-                # Extract year from title
-                year = None
-                year_match = re.search(r'(\d{4})', title)
-                if year_match:
-                    year = int(year_match.group(1))
-                
-                movies.append(MovieInfo(
-                    title=title,
-                    url=url,
-                    year=year
-                ))
-                
-            except Exception:
-                continue
+        return _extract_movies_from_soup(soup)
         
     except Exception as e:
         print(f"Error browsing films page: {e}")
-    
-    return movies
+        return []

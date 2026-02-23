@@ -305,7 +305,7 @@ def _download_book(download_id: str, req: DownloadRequest):
             file_content = resp.content
 
         # Create book record
-        from database_books import SessionLocal as BooksSession, Book as BooksBook
+        from database_books import SessionLocalBooks as BooksSession, Book as BooksBook
         db = BooksSession()
         try:
             new_book = BooksBook(

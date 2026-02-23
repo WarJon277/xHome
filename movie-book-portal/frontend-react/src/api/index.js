@@ -94,7 +94,7 @@ export const updateMovie = (id, data) => request(`/movies/${id}`, {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
 });
-export const deleteMovie = (id) => fetch(`${API_BASE}/movies/${id}`, { method: 'DELETE' });
+export const deleteMovie = (id) => request(`/movies/${id}`, { method: 'DELETE' });
 export const searchMovies = (query) => request(`/movies/search?query=${encodeURIComponent(query)}`);
 
 // --- TV SHOWS ---
@@ -145,7 +145,7 @@ export const updateBook = (id, data) => request(`/books/${id}`, {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
 });
-export const deleteBook = (id) => fetch(`${API_BASE}/books/${id}`, { method: 'DELETE' });
+export const deleteBook = (id) => request(`/books/${id}`, { method: 'DELETE' });
 export const searchBooks = (query) => request(`/books/search?query=${encodeURIComponent(query)}`);
 
 // --- AUDIOBOOKS ---

@@ -1,13 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchBooks, fetchLatestProgress, searchBooks, saveProgress } from '../api';
+import { fetchBooks, fetchLatestProgress, searchBooks, saveProgress, updateBook, deleteBook } from '../api';
 import { MediaCard } from '../components/MediaCard';
 import ResumeBanner from '../components/ResumeBanner';
 import OfflineBanner from '../components/OfflineBanner';
+import ContextMenu from '../components/ContextMenu';
+import EditMediaModal from '../components/EditMediaModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import { resetOfflineData } from '../utils/offlineUtils';
 import '../custom-grid.css';
-import { Book, Search, Download, Trash2, Loader2 } from 'lucide-react';
+import { Book, Search, Download, Trash2, Loader2, Edit, Trash } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
 
 // In-memory cache to persist between navigations
@@ -23,6 +26,14 @@ export default function BooksPage() {
     const [isOffline, setIsOffline] = useState(false);
     const [showOnlyCached, setShowOnlyCached] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, item: null });
+    // Edit Modal State
+    const [editModal, setEditModal] = useState({ visible: false, item: null });
+    // Confirmation Modal State
+    const [deleteConfirm, setDeleteConfirm] = useState({ visible: false, item: null });
+
     const navigate = useNavigate();
 
     // Restore scroll position
@@ -186,6 +197,44 @@ export default function BooksPage() {
         navigate(`/books/${book.id}`);
     };
 
+    const handleContextMenu = (item, x, y) => {
+        setContextMenu({ visible: true, x, y, item });
+    };
+
+    const handleEditClick = () => {
+        if (contextMenu.item) {
+            setEditModal({ visible: true, item: contextMenu.item });
+        }
+    };
+
+    const handleDeleteClick = () => {
+        if (contextMenu.item) {
+            setDeleteConfirm({ visible: true, item: contextMenu.item });
+        }
+    };
+
+    const handleSaveEdit = async (updatedData) => {
+        try {
+            await updateBook(editModal.item.id, updatedData);
+            setEditModal({ visible: false, item: null });
+            loadBooks(); // Refresh list
+        } catch (err) {
+            console.error('Failed to update book:', err);
+            alert('Ошибка при обновлении книги: ' + err.message);
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            await deleteBook(deleteConfirm.item.id);
+            setDeleteConfirm({ visible: false, item: null });
+            loadBooks(); // Refresh list
+        } catch (err) {
+            console.error('Failed to delete book:', err);
+            alert('Ошибка при удалении книги: ' + err.message);
+        }
+    };
+
     const handleResetCache = async () => {
         if (!window.confirm('Вы уверены, что хотите полностью очистить кэш всех книг? Все загруженные данные будут удалены.')) {
             return;
@@ -273,9 +322,10 @@ export default function BooksPage() {
                                 item={book}
                                 type="book"
                                 onClick={() => handleOpenBook(book)}
+                                onContextMenu={handleContextMenu}
                             />
                             {book.isCached && (
-                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1 pointer-events-none">
                                     <Download size={12} />
                                     <span>Оффлайн</span>
                                 </div>
@@ -283,6 +333,41 @@ export default function BooksPage() {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Context Menu */}
+            {contextMenu.visible && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+                    options={[
+                        { label: 'Редактировать', icon: <Edit size={16} />, onClick: handleEditClick },
+                        { label: 'Удалить', icon: <Trash size={16} />, onClick: handleDeleteClick, className: 'text-red-500 hover:bg-red-500 hover:text-white' },
+                    ]}
+                />
+            )}
+
+            {/* Edit Modal */}
+            {editModal.visible && (
+                <EditMediaModal
+                    item={editModal.item}
+                    type="book"
+                    onClose={() => setEditModal({ visible: false, item: null })}
+                    onSave={handleSaveEdit}
+                />
+            )}
+
+            {/* Delete Confirmation */}
+            {deleteConfirm.visible && (
+                <ConfirmationModal
+                    title="Удалить книгу?"
+                    message={`Вы уверены, что хотите удалить книгу "${deleteConfirm.item.title}"? Это действие нельзя отменить.`}
+                    confirmLabel="Удалить"
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteConfirm({ visible: false, item: null })}
+                    isDestructive={true}
+                />
             )}
         </div>
     );

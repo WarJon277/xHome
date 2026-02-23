@@ -1,10 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
-import { fetchMovies, fetchLatestProgress, fetchMovie } from '../api';
+import { fetchMovies, fetchLatestProgress, fetchMovie, updateMovie, deleteMovie } from '../api';
 import ResumeBanner from '../components/ResumeBanner';
 import { MediaCard } from '../components/MediaCard';
-import { Play } from 'lucide-react';
+import { Play, Edit, Trash } from 'lucide-react';
 import Player from '../components/Player';
 import GenreFilter from '../components/GenreFilter';
+import ContextMenu from '../components/ContextMenu';
+import EditMediaModal from '../components/EditMediaModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // In-memory cache to persist between navigations
 let cachedMoviesData = null;
@@ -16,6 +19,13 @@ export default function MoviesPage() {
     const [error, setError] = useState(null);
     const [selectedGenre, setSelectedGenre] = useState('Все');
     const [latestMovie, setLatestMovie] = useState(null);
+
+    // Context Menu State
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, item: null });
+    // Edit Modal State
+    const [editModal, setEditModal] = useState({ visible: false, item: null });
+    // Confirmation Modal State
+    const [deleteConfirm, setDeleteConfirm] = useState({ visible: false, item: null });
 
     // Restore scroll position
     useEffect(() => {
@@ -80,9 +90,58 @@ export default function MoviesPage() {
         });
     }, [movies, selectedGenre]);
 
+    const loadMovies = async () => {
+        try {
+            const data = await fetchMovies();
+            setMovies(data);
+            cachedMoviesData = data;
+        } catch (err) {
+            console.error("Failed to load movies:", err);
+            setError("Не удалось загрузить фильмы");
+        }
+    };
+
     const handlePlay = (movie) => {
         cachedScrollPosition = window.scrollY;
         window.dispatchEvent(new CustomEvent('app:play', { detail: movie }));
+    };
+
+    const handleContextMenu = (item, x, y) => {
+        setContextMenu({ visible: true, x, y, item });
+    };
+
+    const handleEditClick = () => {
+        if (contextMenu.item) {
+            setEditModal({ visible: true, item: contextMenu.item });
+        }
+    };
+
+    const handleDeleteClick = () => {
+        if (contextMenu.item) {
+            setDeleteConfirm({ visible: true, item: contextMenu.item });
+        }
+    };
+
+    const handleSaveEdit = async (updatedData) => {
+        try {
+            await updateMovie(editModal.item.id, updatedData);
+            setEditModal({ visible: false, item: null });
+            loadMovies(); // Refresh list
+        } catch (err) {
+            console.error('Failed to update movie:', err);
+            alert('Ошибка при обновлении фильма: ' + err.message);
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            await deleteMovie(deleteConfirm.item.id);
+            setDeleteConfirm({ visible: false, item: null });
+            loadMovies(); // Refresh list
+        } catch (err) {
+            console.error('Failed to delete movie:', err);
+            alert('Ошибка при удалении фильма: ' + err.message);
+        }
     };
 
     if (loading) return <div className="p-8 text-center text-gray-400">Loading movies...</div>;
@@ -123,9 +182,45 @@ export default function MoviesPage() {
                         item={movie}
                         onPlay={() => handlePlay(movie)}
                         onClick={() => handlePlay(movie)}
+                        onContextMenu={handleContextMenu}
                     />
                 ))}
             </div>
+
+            {/* Context Menu */}
+            {contextMenu.visible && (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+                    options={[
+                        { label: 'Редактировать', icon: <Edit size={16} />, onClick: handleEditClick },
+                        { label: 'Удалить', icon: <Trash size={16} />, onClick: handleDeleteClick, className: 'text-red-500 hover:bg-red-500 hover:text-white' },
+                    ]}
+                />
+            )}
+
+            {/* Edit Modal */}
+            {editModal.visible && (
+                <EditMediaModal
+                    item={editModal.item}
+                    type="movie"
+                    onClose={() => setEditModal({ visible: false, item: null })}
+                    onSave={handleSaveEdit}
+                />
+            )}
+
+            {/* Delete Confirmation */}
+            {deleteConfirm.visible && (
+                <ConfirmationModal
+                    title="Удалить фильм?"
+                    message={`Вы уверены, что хотите удалить фильм "${deleteConfirm.item.title}"? Это действие нельзя отменить.`}
+                    confirmLabel="Удалить"
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteConfirm({ visible: false, item: null })}
+                    isDestructive={true}
+                />
+            )}
         </div>
     );
 }

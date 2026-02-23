@@ -1,12 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play, Download, Check, Loader2 } from 'lucide-react';
 import { downloadBookForOffline, checkIfDownloaded } from '../utils/offlineUtils';
 import { fetchBook } from '../api';
 
-export function MediaCard({ item, onClick, onPlay, type }) {
+export function MediaCard({ item, onClick, onPlay, onContextMenu, type }) {
     const [isDownloaded, setIsDownloaded] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
+    const longPressTimer = useRef(null);
+
+    // Context Menu logic: Right click or Long Press
+    const handleContextMenu = (e) => {
+        if (onContextMenu) {
+            e.preventDefault();
+            e.stopPropagation();
+            onContextMenu(item, e.clientX || e.touches?.[0]?.clientX, e.clientY || e.touches?.[0]?.clientY);
+        }
+    };
+
+    const handleTouchStart = (e) => {
+        // Start timer for long press
+        longPressTimer.current = setTimeout(() => {
+            handleContextMenu(e);
+        }, 700); // 700ms for long press
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     // Check if book is already downloaded (for books only)
     useEffect(() => {
@@ -69,6 +93,10 @@ export function MediaCard({ item, onClick, onPlay, type }) {
         <div
             className="media-card tv-focusable flex flex-col bg-card rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] focus-within:ring-2 ring-primary focus:ring-4 focus:ring-blue-500"
             onClick={onClick}
+            onContextMenu={handleContextMenu}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchEnd}
             tabIndex={0}
             data-tv-clickable="true"
             onKeyDown={(e) => {

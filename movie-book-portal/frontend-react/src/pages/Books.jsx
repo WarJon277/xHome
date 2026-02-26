@@ -252,7 +252,7 @@ export default function BooksPage() {
     };
 
     return (
-        <div className="p-2 sm:p-4 md:p-6 pb-24">{/* Reduced mobile padding from p-4 to p-2 */}
+        <div className="p-4 sm:p-6 pb-24">
             <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                     <Book className="text-green-500" /> Книги
@@ -308,27 +308,18 @@ export default function BooksPage() {
                 onResume={(item) => navigate(`/books/${item.item_id}`)}
             />
 
-
-
             {loading ? (
                 <div className="text-center text-gray-500 mt-10">Загрузка...</div>
             ) : (
                 <div className="media-grid">
                     {filteredBooks.map(book => (
-                        <div key={book.id} className="relative">
-                            <MediaCard
-                                item={book}
-                                type="book"
-                                onClick={() => handleOpenBook(book)}
-                                onContextMenu={handleContextMenu}
-                            />
-                            {book.isCached && (
-                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1 pointer-events-none">
-                                    <Download size={12} />
-                                    <span>Оффлайн</span>
-                                </div>
-                            )}
-                        </div>
+                        <MediaCard
+                            key={book.id}
+                            item={book}
+                            type="book"
+                            onClick={() => handleOpenBook(book)}
+                            onContextMenu={handleContextMenu}
+                        />
                     ))}
                 </div>
             )}

@@ -5,6 +5,7 @@ import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
 import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
+import PWACacheStatus from '../components/PWACacheStatus';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
@@ -256,6 +257,13 @@ export default function Dashboard() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h2 className="flex items-center gap-3 text-2xl font-bold">
+                            <RefreshCw className="text-cyan-500" size={24} /> Оффлайн режим
+                        </h2>
+                        <PWACacheStatus />
                     </div>
 
                     {/* 3. Random Recommendation inside stats column */}

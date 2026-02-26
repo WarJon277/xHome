@@ -123,15 +123,13 @@ export default function BooksPage() {
             setBooks(data);
             cachedBooksData = data;
         } catch (err) {
-            console.error("Failed to fetch books:", err);
+            console.error("Failed to fetch books, falling back to cache:", err);
 
-            // Check if it's a network error or timeout
-            if (err.isNetworkError || err.isTimeout) {
-                console.log('[Books] Network error detected, switching to offline mode');
-                setIsOffline(true);
-
-                // Load cached books
-                const cachedBooks = await getCachedBooks();
+            // ANY error here (Network, Timeout, or even Server Error 500)
+            // should trigger offline fallback if we have cached books
+            setIsOffline(true);
+            const cachedBooks = await getCachedBooks();
+            if (cachedBooks && cachedBooks.length > 0) {
                 setBooks(cachedBooks);
                 setShowOnlyCached(true);
             }

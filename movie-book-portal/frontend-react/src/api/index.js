@@ -4,7 +4,7 @@
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Configuration
-export const API_TIMEOUT = 5000; // 5 seconds default timeout
+export const API_TIMEOUT = 3000; // 3 seconds default timeout for faster offline fallback
 
 // Helper to get or create a unique Device ID
 function getDeviceId() {
@@ -73,8 +73,12 @@ async function request(endpoint, options = {}) {
             throw timeoutError;
         }
 
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        if (error.message.includes('Failed to fetch') ||
+            error.message.includes('NetworkError') ||
+            error.message.includes('content-length mismatch') ||
+            error.name === 'TypeError') {
             error.isNetworkError = true;
+            console.warn('[API] Treated as network/fetch error:', error.message);
         }
 
         throw error;

@@ -449,6 +449,9 @@ class MainActivity : AppCompatActivity() {
                 loadingLayout.visibility = View.VISIBLE
                 startLoadingAnimation()
                 
+                // Stop any existing timeout before starting a new one
+                timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                
                 // Start timeout timer for local server
                 val currentUrl = url ?: ""
                 // Check if it's our primary server (could be 192.168... or a custom one)
@@ -464,8 +467,8 @@ class MainActivity : AppCompatActivity() {
                         triggerOfflineFallback()
                     }
                 }
-                // Increase timeout to 5 seconds for more reliable loading
-                timeoutHandler.postDelayed(timeoutRunnable!!, 5000) 
+                // Shorter timeout for faster offline transition (3 seconds)
+                timeoutHandler.postDelayed(timeoutRunnable!!, 3000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -625,15 +628,17 @@ class MainActivity : AppCompatActivity() {
                 return@runOnUiThread
             }
 
-            Log.i("WebView", "Falling back to LOAD_CACHE_ELSE_NETWORK")
+            // Force cache mode for offline attempt
             webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
-            isOfflineAttempt = true
             
             val urlToLoad = if (currentServerUrl.isNotEmpty()) currentServerUrl else getLastServerUrl()
-            webView.loadUrl(urlToLoad)
             
-            // Shorter toast for less intrusive feel
-            Toast.makeText(this, "Оффлайн режим", Toast.LENGTH_SHORT).show()
+            // Only trigger reload if not already trying to load something or if it's the same URL
+            if (webView.url != urlToLoad || !isOfflineAttempt) {
+                isOfflineAttempt = true
+                webView.loadUrl(urlToLoad)
+                Toast.makeText(this, "Переход в оффлайн режим (кэш)...", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

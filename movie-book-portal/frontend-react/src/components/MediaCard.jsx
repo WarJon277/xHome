@@ -175,17 +175,17 @@ export function MediaCard({ item, onClick, onPlay, onContextMenu, type }) {
                 {/* Info: Director / Year */}
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {item.director && (
-                        <div className="mb-1 truncate">
+                        <div className="mb-1 truncate hidden sm:block">
                             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Режиссёр:</span> {item.director}
                         </div>
                     )}
                     {item.author && (
-                        <div className="mb-1 truncate">
+                        <div className="mb-1 truncate hidden sm:block">
                             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Автор:</span> {item.author}
                         </div>
                     )}
                     {item.genre && (
-                        <div className="mb-1 truncate opacity-90">
+                        <div className="mb-1 truncate opacity-90 hidden sm:block">
                             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Жанр:</span> {item.genre}
                         </div>
                     )}

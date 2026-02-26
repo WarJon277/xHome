@@ -3,11 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ShieldCheck, ShieldAlert, RefreshCw, Smartphone } from 'lucide-react';
 
 export default function PWACacheStatus() {
-    const {
-        offlineReady: [offlineReady, setOfflineReady],
-        needUpdate: [needUpdate, setNeedUpdate],
-        updateServiceWorker,
-    } = useRegisterSW({
+    const swResult = useRegisterSW({
         onRegistered(r) {
             console.log('SW Registered: ', r);
         },
@@ -15,6 +11,23 @@ export default function PWACacheStatus() {
             console.error('SW Registration error', error);
         },
     });
+
+    // Handle case where vite-plugin-pwa hook is not available or returns undefined
+    if (!swResult) {
+        console.warn('PWACacheStatus: useRegisterSW returned undefined. PWA features may be disabled.');
+        return (
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center gap-2 text-gray-500">
+                <Smartphone size={20} />
+                <span className="text-sm">Оффлайн режим недоступен</span>
+            </div>
+        );
+    }
+
+    const {
+        offlineReady: [offlineReady, setOfflineReady] = [false, () => { }],
+        needUpdate: [needUpdate, setNeedUpdate] = [false, () => { }],
+        updateServiceWorker,
+    } = swResult;
 
     const [isChecking, setIsChecking] = useState(false);
     const [swActive, setSwActive] = useState(false);

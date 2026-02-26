@@ -179,6 +179,16 @@ export function MediaCard({ item, onClick, onPlay, onContextMenu, type }) {
                             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Режиссёр:</span> {item.director}
                         </div>
                     )}
+                    {item.author && (
+                        <div className="mb-1 truncate">
+                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Автор:</span> {item.author}
+                        </div>
+                    )}
+                    {item.genre && (
+                        <div className="mb-1 truncate opacity-90">
+                            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Жанр:</span> {item.genre}
+                        </div>
+                    )}
                     <div className="flex flex-wrap gap-1 mt-1">
                         {item.year && <span className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">{item.year}</span>}
                         {item.total_pages && <span className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">{item.total_pages} стр.</span>}

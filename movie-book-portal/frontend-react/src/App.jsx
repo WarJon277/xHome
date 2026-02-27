@@ -172,20 +172,23 @@ function App() {
               </NavLink>
             ))}
 
-            {/* Native Android Settings Button */}
-            {window.AndroidApp && (
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
+            {/* App Settings Button - Always visible to ensure it shows up regardless of timing */}
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                if (window.AndroidApp && window.AndroidApp.openSettings) {
                   window.AndroidApp.openSettings();
-                }}
-                className="flex items-center gap-4 p-3 rounded-lg transition-all hover:opacity-80"
-                style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
-              >
-                <Settings size={24} />
-                <span>Настройки приложения</span>
-              </button>
-            )}
+                } else {
+                  // Fallback for browser testing or if bridge isn't ready
+                  alert('Настройки доступны только в Android-приложении. Если вы в приложении, попробуйте перезапустить его.');
+                }
+              }}
+              className="flex items-center gap-4 p-3 rounded-lg transition-all hover:opacity-80"
+              style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
+            >
+              <Settings size={24} />
+              <span>Настройки приложения</span>
+            </button>
           </div>
         </nav>
 

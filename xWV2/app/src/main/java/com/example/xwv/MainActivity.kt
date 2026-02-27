@@ -262,6 +262,7 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = true
             allowContentAccess = true
             userAgentString = userAgentString + " xWV2-App-Identifier"
+            Log.d("xWV-Native", "Final User-Agent: $userAgentString")
         }
 
         webView.addJavascriptInterface(object : Any() {
@@ -582,6 +583,13 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
                 return super.shouldOverrideUrlLoading(view, request)
+            }
+
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                Log.w("WebViewSSL", "SSL Error: ${error?.toString()}")
+                // For now, allow SSL errors to bypass possible cert issues during dev
+                // In production, this should be handled more carefully
+                handler?.proceed() 
             }
         }
     }

@@ -58,22 +58,23 @@
                 android:indeterminate="true"
                 android:indeterminateTint="#FF9800" />
 
-            <!-- New Settings Button -->
-            <ImageButton
-                android:id="@+id/settingsButton"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerHorizontal="true"
-                android:layout_marginBottom="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_manage"
-                android:scaleType="fitCenter"
-                android:padding="8dp"
-                app:tint="#FF9800"
-                android:contentDescription="Настройки серверов" />
-
         </RelativeLayout>
+
+        <!-- Persistent Settings Button Overlay -->
+        <ImageButton
+            android:id="@+id/settingsButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="16dp"
+            android:background="@android:drawable/btn_default_small"
+            android:backgroundTint="#AA000000"
+            android:src="@android:drawable/ic_menu_manage"
+            android:scaleType="centerInside"
+            android:padding="12dp"
+            app:tint="#FF9800"
+            android:contentDescription="Настройки серверов"
+            android:elevation="8dp" />
 
     </FrameLayout>
 

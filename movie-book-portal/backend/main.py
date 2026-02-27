@@ -55,6 +55,10 @@ async def security_middleware(request: Request, call_next):
     is_app = "xwv2-app-identifier" in user_agent
 
     # 4. Правила блокировки
+    # Логируем для отладки, если запрос идет не из локальной сети
+    if not is_local:
+        print(f"External access attempt: IP={real_ip}, App={is_app}, UA={user_agent}")
+
     # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем.
     if not is_local and not is_app:
         # Разрешаем favicon, чтобы браузеры не спамили в консоль
@@ -83,6 +87,11 @@ async def security_middleware(request: Request, call_next):
                     </ul>
                 </div>
                 <p style="color: #999; font-size: 0.9em;">Ваш IP: {real_ip}</p>
+                <script>
+                    if (window.AndroidApp && window.AndroidApp.hideLoadingScreen) {{
+                        window.AndroidApp.hideLoadingScreen();
+                    }}
+                </script>
             </div>
             """
         )

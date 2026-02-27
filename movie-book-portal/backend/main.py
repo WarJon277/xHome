@@ -61,8 +61,8 @@ async def security_middleware(request: Request, call_next):
 
     # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем.
     if not is_local and not is_app:
-        # Разрешаем favicon, чтобы браузеры не спамили в консоль
-        if request.url.path == "/favicon.ico":
+        # Разрешаем favicon, Service Worker и манифест, так как они делают запросы без кастомного User-Agent
+        if request.url.path in ("/favicon.ico", "/sw.js", "/manifest.webmanifest") or request.url.path.startswith("/workbox-"):
             return await call_next(request)
 
         # Если это запрос к API, возвращаем JSON

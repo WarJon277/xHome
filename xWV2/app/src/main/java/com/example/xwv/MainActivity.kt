@@ -13,12 +13,14 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.webkit.JavascriptInterface
+import android.webkit.SslErrorHandler
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.net.http.SslError
 import android.widget.ProgressBar
 import android.widget.Toast
 import android.widget.ImageButton
@@ -585,7 +587,7 @@ class MainActivity : AppCompatActivity() {
                 return super.shouldOverrideUrlLoading(view, request)
             }
 
-            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
                 Log.w("WebViewSSL", "SSL Error: ${error?.toString()}")
                 // For now, allow SSL errors to bypass possible cert issues during dev
                 // In production, this should be handled more carefully

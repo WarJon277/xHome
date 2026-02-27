@@ -14,6 +14,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+import java.security.cert.X509Certificate
 import kotlin.concurrent.thread
 
 class SettingsActivity : AppCompatActivity() {
@@ -111,12 +116,28 @@ class SettingsActivity : AppCompatActivity() {
             
             thread {
                 val success = try {
-                    val connection = URL(url).openConnection() as HttpURLConnection
+                    val urlObj = URL(url)
+                    val connection = urlObj.openConnection() as HttpURLConnection
+                    
+                    if (connection is HttpsURLConnection) {
+                        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                            override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) {}
+                            override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) {}
+                        })
+                        val sc = SSLContext.getInstance("SSL")
+                        sc.init(null, trustAllCerts, java.security.SecureRandom())
+                        connection.sslSocketFactory = sc.socketFactory
+                        connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    }
+
                     connection.connectTimeout = 3000
                     connection.connect()
                     val code = connection.responseCode
                     connection.disconnect()
-                    code in 200..399
+                    
+                    // Consider it "successful ping" if we get 200..399 OR 403 (since our backend uses 403 for unauthorized app access)
+                    code in 200..399 || code == HttpURLConnection.HTTP_FORBIDDEN
                 } catch (e: Exception) {
                     false
                 }

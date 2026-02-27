@@ -1,13 +1,16 @@
 package com.example.xwv
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
+import android.webkit.*
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.net.HttpURLConnection
 import java.net.URL
@@ -30,6 +33,37 @@ class SettingsActivity : AppCompatActivity() {
         btnAddServer = findViewById(R.id.btnAddServer)
         serverListContainer = findViewById(R.id.serverListContainer)
         btnBack = findViewById(R.id.btnBack)
+        val btnClearCache = findViewById<Button>(R.id.btnClearCache)
+
+        btnClearCache.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Очистка кэша")
+                .setMessage("Приложение будет полностью очищено от временных файлов и перезагружено. Продолжить?")
+                .setPositiveButton("Да") { _, _ ->
+                    // 1. Clear WebStorage (IndexedDB, LocalStorage, etc.)
+                    WebStorage.getInstance().deleteAllData()
+                    
+                    // 2. Clear Cookies
+                    CookieManager.getInstance().removeAllCookies(null)
+                    CookieManager.getInstance().flush()
+                    
+                    // 3. Clear WebView Cache (requires a dummy instance or handled in MainActivity)
+                    val dummyWebView = WebView(this)
+                    dummyWebView.clearCache(true)
+                    dummyWebView.destroy()
+
+                    Toast.makeText(this, "Кэш очищен. Перезапуск...", Toast.LENGTH_SHORT).show()
+                    
+                    // 4. Restart the app
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    finishAffinity()
+                }
+                .setNegativeButton("Нет", null)
+                .show()
+        }
 
         btnAddServer.setOnClickListener {
             val url = editServerUrl.text.toString().trim()

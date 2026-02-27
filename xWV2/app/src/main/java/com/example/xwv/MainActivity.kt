@@ -21,6 +21,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.Toast
+import android.widget.ImageButton
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.app.DownloadManager
@@ -42,7 +43,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingLayout: RelativeLayout
     private lateinit var loadingImage: ImageView
     private lateinit var loadingText: TextView
+    private lateinit var settingsButton: ImageButton
     private var currentServerUrl: String = "" // Track currently attempted server
+    private var enabledServerUrls: List<String> = emptyList()
+    private var currentServerIndex: Int = -1
     
     private var doubleBackToExitPressedOnce = false
     private val handler = Handler(Looper.getMainLooper())
@@ -146,6 +150,12 @@ class MainActivity : AppCompatActivity() {
         loadingLayout = findViewById(R.id.loadingLayout)
         loadingImage = findViewById(R.id.loadingImage)
         loadingText = findViewById(R.id.loadingText)
+        settingsButton = findViewById(R.id.settingsButton)
+
+        settingsButton.setOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+        }
 
         setupWebView()
 
@@ -188,9 +198,11 @@ class MainActivity : AppCompatActivity() {
         // webView.clearCache(false)
 
 
-        // Use saved server URL or default
-        val savedUrl = getLastServerUrl()
-        val primaryUrl = if (savedUrl.isNotEmpty()) savedUrl else "http://192.168.0.239:5055/"
+        // Use saved server URLs
+        val enabledServers = getEnabledServerList()
+        enabledServerUrls = if (enabledServers.isNotEmpty()) enabledServers.toList() else listOf("http://192.168.0.239:5055/")
+        currentServerIndex = 0
+        val primaryUrl = enabledServerUrls[0]
 
         if (isNetworkAvailable()) {
             isPrimaryUrlLoaded = false
@@ -404,6 +416,14 @@ class MainActivity : AppCompatActivity() {
                     null
                 }
             }
+
+            @JavascriptInterface
+            fun openSettings() {
+                runOnUiThread {
+                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                    startActivity(intent)
+                }
+            }
         }, "AndroidApp")
 
 
@@ -461,10 +481,8 @@ class MainActivity : AppCompatActivity() {
                 
                 timeoutRunnable = Runnable {
                     if (!isPrimaryUrlLoaded && url?.startsWith("file://") == false) {
-                        Log.w("WebView", "Timeout reached for $url - Triggering Auto-Offline")
-                        loadingLayout.visibility = View.GONE
-                        stopLoadingAnimation()
-                        triggerOfflineFallback()
+                        Log.w("WebView", "Timeout reached for $url - Skipping to next server")
+                        tryNextServer()
                     }
                 }
                 // Shorter timeout for faster offline transition (3 seconds)
@@ -541,8 +559,8 @@ class MainActivity : AppCompatActivity() {
                              return
                          }
                          
-                         // Show dialog
-                         triggerOfflineFallback()
+                          // Try next server if available
+                          tryNextServer()
                     }
                 }
                 
@@ -589,6 +607,17 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        
+        // If we are still in the loading process, refresh the server list 
+        // in case the user just changed it in Settings
+        if (!isPrimaryUrlLoaded && !isOfflineAttempt) {
+            val enabledServers = getEnabledServerList()
+            if (enabledServers.isNotEmpty()) {
+                enabledServerUrls = enabledServers.toList()
+                // We don't necessarily restart from index 0 here to avoid loops,
+                // but at least the list is fresh for the next tryNextServer call.
+            }
+        }
     }
 
 
@@ -611,6 +640,34 @@ class MainActivity : AppCompatActivity() {
     private fun getServerList(): Set<String> {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         return prefs.getStringSet("server_list", emptySet()) ?: emptySet()
+    }
+
+    private fun getEnabledServerList(): Set<String> {
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        return prefs.getStringSet("enabled_server_list", emptySet()) ?: emptySet()
+    }
+
+    private fun tryNextServer() {
+        if (isFinishing || isDestroyed) return
+        
+        runOnUiThread {
+            // Cancel current timeout
+            timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+            
+            currentServerIndex++
+            if (currentServerIndex < enabledServerUrls.size) {
+                val nextUrl = enabledServerUrls[currentServerIndex]
+                Log.i("MainActivity", "Trying next server ($currentServerIndex/${enabledServerUrls.size}): $nextUrl")
+                currentServerUrl = nextUrl
+                webView.loadUrl(nextUrl)
+                
+                // Restart timeout for the next server
+                timeoutRunnable?.let { timeoutHandler.postDelayed(it, 3000) }
+            } else {
+                Log.w("MainActivity", "All servers failed. Triggering offline fallback.")
+                triggerOfflineFallback()
+            }
+        }
     }
 
     private fun triggerOfflineFallback() {

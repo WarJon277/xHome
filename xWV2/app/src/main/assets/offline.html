@@ -151,12 +151,20 @@
         </div>
 
         <button onclick="retryConnection()">🔄 Повторить подключение</button>
+        <button class="secondary" onclick="openSettings()">⚙️ Настройки серверов</button>
         <button class="secondary" onclick="useCloud()">☁️ Использовать облачную версию</button>
     </div>
 
     <script>
         function retryConnection() { window.location.reload(); }
         function useCloud() { window.location.href = 'https://lightly-shipshape-stonefish.cloudpub.ru/'; }
+        function openSettings() {
+            if (window.AndroidApp && window.AndroidApp.openSettings) {
+                window.AndroidApp.openSettings();
+            } else {
+                alert('Настройки недоступны в этом режиме');
+            }
+        }
 
         // Auto-refresh every 30 seconds if network becomes available
         let checkCount = 0;

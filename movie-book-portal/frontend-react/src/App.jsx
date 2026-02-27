@@ -171,6 +171,21 @@ function App() {
                 <span>{item.label}</span>
               </NavLink>
             ))}
+
+            {/* Native Android Settings Button */}
+            {window.AndroidApp && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  window.AndroidApp.openSettings();
+                }}
+                className="flex items-center gap-4 p-3 rounded-lg transition-all hover:opacity-80"
+                style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
+              >
+                <Settings size={24} />
+                <span>Настройки приложения</span>
+              </button>
+            )}
           </div>
         </nav>
 

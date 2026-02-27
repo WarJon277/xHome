@@ -4,7 +4,7 @@
 const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 
 // Configuration
-export const API_TIMEOUT = 3000; // 3 seconds default timeout for faster offline fallback
+export const API_TIMEOUT = 10000; // 10 seconds default timeout to accommodate slower mobile networks
 
 // Helper to get or create a unique Device ID
 function getDeviceId() {

@@ -59,23 +59,25 @@ async def security_middleware(request: Request, call_next):
     if not is_local:
         print(f"External access attempt: IP={real_ip}, App={is_app}, UA={user_agent}")
 
-    # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем.
+    # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем ТОЛЬКО API и загрузки.
+    # Статические файлы фронтенда (JS, CSS, HTML, изображения, шрифты, SW) пропускаем свободно —
+    # в них нет конфиденциальных данных. Данные защищены на уровне API.
     if not is_local and not is_app:
-        # Разрешаем favicon, Service Worker и манифест, так как они делают запросы без кастомного User-Agent
-        if request.url.path in ("/favicon.ico", "/sw.js", "/manifest.webmanifest") or request.url.path.startswith("/workbox-"):
-            return await call_next(request)
-
-        # Если это запрос к API, возвращаем JSON
-        if request.url.path.startswith("/api"):
-            return JSONResponse(
-                status_code=403,
-                content={"detail": "Access Denied. Only authorized app connections allowed outside local network."}
-            )
+        # Определяем, является ли запрос к защищённым ресурсам (API или загрузки)
+        path = request.url.path
+        is_protected = path.startswith("/api") or path.startswith("/uploads")
         
-        # Для остальных запросов возвращаем красивый HTML
-        return HTMLResponse(
-            status_code=403,
-            content=f"""
+        if is_protected:
+            # Для API-запросов возвращаем JSON-ошибку
+            if path.startswith("/api"):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Access Denied. Only authorized app connections allowed outside local network."}
+                )
+            # Для загрузок (картинки обложек, файлы книг и т.д.) тоже блокируем
+            return HTMLResponse(
+                status_code=403,
+                content=f"""
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin-top: 100px; padding: 20px;">
                 <h1 style="color: #e50914; font-size: 3em;">Вход заблокирован</h1>
                 <p style="font-size: 1.2em; color: #333;">Этот сервер — частная территория.</p>
@@ -94,7 +96,8 @@ async def security_middleware(request: Request, call_next):
                 </script>
             </div>
             """
-        )
+            )
+        # Все остальные запросы (статические файлы фронтенда) — пропускаем свободно
             
     response = await call_next(request)
     return response

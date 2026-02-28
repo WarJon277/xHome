@@ -15,6 +15,8 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const [isMuted, setIsMuted] = useState(false);
     // showResumePrompt is replaced by the Start Screen UI logic
     const [playbackRate, setPlaybackRate] = useState(1);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showDoubleTapIndicator, setShowDoubleTapIndicator] = useState(null); // 'left' or 'right'
     const controlsTimeoutRef = useRef(null);
     const progressRef = useRef(null);
@@ -22,24 +24,29 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
     // Normalize path
     const getVideoUrl = () => {
-        if (src) {
-            let path = src;
-            path = path.replace(/\\/g, '/');
-            return path;
-        }
-
-        if (!item) return '';
-
-        let path = item.file_path || item.path;
+        let path = src || (item?.file_path || item?.path);
         if (!path) return '';
 
         path = path.replace(/\\/g, '/');
+
+        // If it's already an absolute URL, return it
         if (path.startsWith('http')) return path;
 
-        if (path.startsWith('/uploads/')) return path;
-        if (path.startsWith('uploads/')) return `/${path}`;
+        // Ensure we have a leading slash for relative paths
+        if (!path.startsWith('/') && !path.startsWith('uploads/')) {
+            path = `/uploads/${path}`;
+        } else if (path.startsWith('uploads/')) {
+            path = `/${path}`;
+        }
 
-        return `/uploads/${path}`;
+        // If running in Android app, we MUST use absolute URLs because the 
+        // base URL might be file:/// or something else that breaks relative paths
+        const isAndroidApp = navigator.userAgent.includes('xWV2-App-Identifier');
+        if (isAndroidApp && !path.startsWith('http')) {
+            return `${window.location.origin}${path}`;
+        }
+
+        return path;
     };
 
     const videoUrl = getVideoUrl();
@@ -62,32 +69,6 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
 
 
     const handleResume = () => {
-        // Check for Android native player
-        if (window.AndroidApp && typeof window.AndroidApp.playVideo === 'function') {
-            console.log('Resuming with Android native player');
-            try {
-                const fullVideoUrl = videoUrl.startsWith('http')
-                    ? videoUrl
-                    : `${window.location.origin}${videoUrl}`;
-
-                window.AndroidApp.playVideo(
-                    fullVideoUrl,
-                    title,
-                    itemId || 0,
-                    itemType,
-                    savedProgress || 0
-                );
-
-                setTimeout(() => {
-                    onClose();
-                }, 500);
-
-                return;
-            } catch (error) {
-                console.error('Failed to launch native player:', error);
-            }
-        }
-
         // Fallback to HTML5
         if (videoRef.current) {
             videoRef.current.currentTime = savedProgress;
@@ -107,34 +88,6 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     };
 
     const handlePlayStart = () => {
-        // Check if running in Android app with native player support
-        if (window.AndroidApp && typeof window.AndroidApp.playVideo === 'function') {
-            console.log('Using Android native player');
-            try {
-                const fullVideoUrl = videoUrl.startsWith('http')
-                    ? videoUrl
-                    : `${window.location.origin}${videoUrl}`;
-
-                window.AndroidApp.playVideo(
-                    fullVideoUrl,
-                    title,
-                    itemId || 0,
-                    itemType,
-                    savedProgress || 0
-                );
-
-                // Close the web player since native player will take over
-                setTimeout(() => {
-                    onClose();
-                }, 500);
-
-                return;
-            } catch (error) {
-                console.error('Failed to launch native player:', error);
-                // Fall through to HTML5 player
-            }
-        }
-
         // Fallback to HTML5 video player
         if (videoRef.current) {
             videoRef.current.play();
@@ -457,7 +410,18 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                     setCurrentTime(time);
                     handleSaveProgress(time);
                 }}
-                onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+                onLoadedMetadata={() => {
+                    setDuration(videoRef.current?.duration || 0);
+                    setIsLoading(false);
+                }}
+                onWaiting={() => setIsLoading(true)}
+                onPlaying={() => setIsLoading(false)}
+                onCanPlay={() => setIsLoading(false)}
+                onError={(e) => {
+                    console.error("Video error:", e);
+                    setError("Ошибка загрузки видео. Проверьте подключение к серверу.");
+                    setIsLoading(false);
+                }}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => {
                     setIsPlaying(false);
@@ -465,20 +429,48 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                 }}
             />
 
+            {/* Loading Indicator */}
+            {hasStarted && isLoading && !error && (
+                <div className="absolute inset-0 z-[10004] flex flex-col items-center justify-center bg-black/20 backdrop-blur-[2px] pointer-events-none">
+                    <div className="w-16 h-16 border-4 border-white/20 border-t-red-600 rounded-full animate-spin" />
+                    <span className="mt-4 text-white font-medium drop-shadow-lg">Загрузка...</span>
+                </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+                <div className="absolute inset-0 z-[10010] bg-black flex flex-col items-center justify-center p-6 text-center">
+                    <div className="bg-red-600/20 p-8 rounded-3xl border border-red-600/50 max-w-md backdrop-blur-md">
+                        <h2 className="text-2xl font-bold text-white mb-4">Упс!</h2>
+                        <p className="text-gray-300 mb-8">{error}</p>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-4 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors tv-focusable"
+                        >
+                            Вернуться назад
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Double Tap Seek Zones (Mobile-first) */}
-            {hasStarted && (
-                <div className="absolute inset-0 z-[10001] flex pointer-events-none sm:pointer-events-auto">
+            {hasStarted && !error && (
+                <div className="absolute inset-0 z-[10001] flex">
                     <div
-                        className="flex-1 pointer-events-auto h-full"
+                        className="flex-1 cursor-pointer"
+                        onClick={togglePlay}
                         onDoubleClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             seek(-10);
                         }}
                     />
                     <div
-                        className="flex-1 pointer-events-auto h-full"
+                        className="flex-1 cursor-pointer"
+                        onClick={togglePlay}
                         onDoubleClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             seek(10);
                         }}
                     />

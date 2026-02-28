@@ -53,14 +53,26 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
         }
     }, [item?.id, item?.file_path]);
 
-    // Better URL logic matching Gallery.jsx
+    // Better URL logic matching Player.jsx
     const safeUrl = (path) => {
-        if (!path) return null; // Return null instead of empty string for React src prop
+        if (!path) return null;
         path = path.replace(/\\/g, '/');
         if (path.startsWith('http')) return path;
-        if (path.startsWith('/uploads/')) return path;
-        if (path.startsWith('uploads/')) return `/${path}`;
-        return `/uploads/${path}`;
+
+        // Ensure we have a leading slash for relative paths
+        if (!path.startsWith('/') && !path.startsWith('uploads/')) {
+            path = `/uploads/${path}`;
+        } else if (path.startsWith('uploads/')) {
+            path = `/${path}`;
+        }
+
+        // If running in Android app, we MUST use absolute URLs
+        const isAndroidApp = navigator.userAgent.includes('xWV2-App-Identifier');
+        if (isAndroidApp && !path.startsWith('http')) {
+            return `${window.location.origin}${path}`;
+        }
+
+        return path;
     };
 
     const handleShare = async () => {
@@ -164,7 +176,13 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
                         playsInline
                         className={`max-h-full max-w-full shadow-2xl transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
                         onLoadedData={() => setIsLoading(false)}
-                        onError={() => setIsLoading(false)}
+                        onLoadedMetadata={() => setIsLoading(false)}
+                        onWaiting={() => setIsLoading(true)}
+                        onPlaying={() => setIsLoading(false)}
+                        onError={() => {
+                            setIsLoading(false);
+                            console.error('Video load error');
+                        }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         Ваш браузер не поддерживает тег video.

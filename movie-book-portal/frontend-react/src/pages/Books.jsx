@@ -12,6 +12,7 @@ import { resetOfflineData } from '../utils/offlineUtils';
 import '../custom-grid.css';
 import { Book, Search, Download, Trash2, Loader2, Edit, Trash } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
+import { SkeletonMediaGrid } from '../components/Skeleton';
 
 // In-memory cache to persist between navigations
 let cachedBooksData = null;
@@ -309,7 +310,7 @@ export default function BooksPage() {
             />
 
             {loading ? (
-                <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+                <SkeletonMediaGrid />
             ) : (
                 <div className="media-grid">
                     {filteredBooks.map(book => (

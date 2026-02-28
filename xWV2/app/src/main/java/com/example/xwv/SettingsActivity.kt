@@ -179,7 +179,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun loadServers() {
-        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5050/")) ?: emptySet()
+        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5055")) ?: emptySet()
         val enabledServers = prefs.getStringSet("enabled_server_list", servers) ?: emptySet()
 
         serverListContainer.removeAllViews()

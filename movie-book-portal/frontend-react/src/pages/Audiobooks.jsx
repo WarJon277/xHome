@@ -7,6 +7,7 @@ import AudiobookPlayer from '../components/AudiobookPlayer';
 import '../custom-grid.css';
 import { Music } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
+import { SkeletonMediaGrid } from '../components/Skeleton';
 
 // In-memory cache to persist between navigations
 let cachedAudiobooksData = null;
@@ -142,7 +143,7 @@ export default function AudiobooksPage() {
             )}
 
             {loading ? (
-                <div className="text-center text-gray-500 mt-10">Загрузка аудиокниг...</div>
+                <SkeletonMediaGrid />
             ) : filteredAudiobooks.length === 0 ? (
                 <div className="no-items text-center text-gray-400 mt-10">
                     <p>Аудиокниг не найдено</p>

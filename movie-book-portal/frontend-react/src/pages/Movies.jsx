@@ -8,6 +8,7 @@ import GenreFilter from '../components/GenreFilter';
 import ContextMenu from '../components/ContextMenu';
 import EditMediaModal from '../components/EditMediaModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { SkeletonMediaGrid } from '../components/Skeleton';
 
 // In-memory cache to persist between navigations
 let cachedMoviesData = null;
@@ -144,7 +145,16 @@ export default function MoviesPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-400">Loading movies...</div>;
+    if (loading) return (
+        <div className="p-4 sm:p-6 pb-24">
+            <header className="mb-6 flex items-center justify-between">
+                <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <Play className="text-red-500" /> Фильмы
+                </h1>
+            </header>
+            <SkeletonMediaGrid />
+        </div>
+    );
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
     return (

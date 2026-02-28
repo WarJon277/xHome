@@ -13,6 +13,7 @@ import MoveModal from '../components/MoveModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
 import { isNativeAppAvailable, pickPhotosNative } from '../utils/nativePhotoPicker';
+import { SkeletonGalleryGrid } from '../components/Skeleton';
 
 export default function GalleryPage() {
     // State
@@ -588,7 +589,7 @@ export default function GalleryPage() {
                         </header>
 
                         {loading ? (
-                            <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+                            <SkeletonGalleryGrid count={18} />
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-2 sm:gap-3">
                                 {items.map(item => {

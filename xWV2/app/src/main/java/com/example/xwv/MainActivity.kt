@@ -673,7 +673,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getLastServerUrl(): String {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        return prefs.getString("last_server_url", "http://192.168.0.239:5050/") ?: "http://192.168.0.239:5050/"
+        return prefs.getString("last_server_url", "http://192.168.0.239:5055") ?: "http://192.168.0.239:5055"
     }
     
     private fun getServerList(): Set<String> {

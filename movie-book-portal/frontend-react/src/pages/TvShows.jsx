@@ -6,6 +6,7 @@ import { MediaCard } from '../components/MediaCard';
 import '../custom-grid.css';
 import { Tv } from 'lucide-react';
 import GenreFilter from '../components/GenreFilter';
+import { SkeletonMediaGrid } from '../components/Skeleton';
 
 export default function TvShowsPage() {
     const [shows, setShows] = useState([]);
@@ -85,7 +86,7 @@ export default function TvShowsPage() {
             />
 
             {loading ? (
-                <div className="text-center text-gray-500 mt-10">Загрузка...</div>
+                <SkeletonMediaGrid />
             ) : (
                 <div className="media-grid">
                     {filteredShows.map(show => (

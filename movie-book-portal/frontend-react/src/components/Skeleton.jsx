@@ -81,7 +81,7 @@ export function SkeletonMasonryGrid({ count = 15 }) {
             {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
-                    className="masonry-item rounded-lg overflow-hidden"
+                    className="masonry-item overflow-hidden"
                     style={{ backgroundColor: 'var(--card-bg)', height: `${heights[i % heights.length]}px` }}
                 >
                     <SkeletonBlock className="w-full h-full rounded-none" />

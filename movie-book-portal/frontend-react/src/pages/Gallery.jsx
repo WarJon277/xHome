@@ -600,10 +600,10 @@ export default function GalleryPage() {
                                         <div
                                             key={item.id || item.name}
                                             className={`
-                                            masonry-item relative rounded-lg overflow-hidden cursor-pointer
+                                            masonry-item relative overflow-hidden cursor-pointer
                                             hover:scale-[1.02] transition-transform border border-gray-800
                                             flex flex-col items-center justify-center group tv-focusable
-                                            select-none ${isFolder ? 'aspect-square p-4' : ''}
+                                            select-none ${isFolder ? 'aspect-square p-4 rounded-lg' : ''}
                                         `}
                                             style={{ backgroundColor: 'var(--card-bg)', WebkitTouchCallout: 'none' }}
                                             tabIndex={0}

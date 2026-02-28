@@ -356,13 +356,13 @@ html {
 /* Masonry Layout */
 .masonry-grid {
   column-count: 2;
-  column-gap: 0.75rem;
+  column-gap: 4px;
 }
 
 @media (min-width: 640px) {
   .masonry-grid {
     column-count: 3;
-    column-gap: 1rem;
+    column-gap: 4px;
   }
 }
 
@@ -392,11 +392,11 @@ html {
 
 .masonry-item {
   break-inside: avoid;
-  margin-bottom: 0.75rem;
+  margin-bottom: 4px;
 }
 
 @media (min-width: 640px) {
   .masonry-item {
-    margin-bottom: 1rem;
+    margin-bottom: 4px;
   }
 }

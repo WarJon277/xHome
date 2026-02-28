@@ -359,6 +359,8 @@ class MainActivity : AppCompatActivity() {
             @JavascriptInterface
             fun playVideo(url: String, title: String, itemId: Int, itemType: String, savedPosition: Long) {
                 Log.d("MainActivity", "playVideo called: $title (ID: $itemId, Type: $itemType)")
+                Log.d("MainActivity", "playVideo URL: $url")
+                Log.d("MainActivity", "playVideo serverUrl: $currentServerUrl")
                 runOnUiThread {
                     val intent = Intent(this@MainActivity, VideoPlayerActivity::class.java).apply {
                         putExtra("VIDEO_URL", url)
@@ -366,6 +368,7 @@ class MainActivity : AppCompatActivity() {
                         putExtra("ITEM_ID", itemId)
                         putExtra("ITEM_TYPE", itemType)
                         putExtra("SAVED_POSITION", savedPosition) // Already in seconds
+                        putExtra("SERVER_URL", currentServerUrl) // Pass current server for progress saving
                     }
                     startActivity(intent)
                 }

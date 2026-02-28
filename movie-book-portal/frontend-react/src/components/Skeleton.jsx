@@ -71,6 +71,26 @@ export function SkeletonGalleryGrid({ count = 18 }) {
     );
 }
 
+// Masonry grid of Gallery skeletons
+export function SkeletonMasonryGrid({ count = 15 }) {
+    // Generate an array of random heights between 100px and 250px to simulate masonry
+    const heights = [150, 200, 120, 250, 180, 140, 220, 160, 190, 130, 210, 170, 240, 110, 230];
+
+    return (
+        <div className="masonry-grid">
+            {Array.from({ length: count }).map((_, i) => (
+                <div
+                    key={i}
+                    className="masonry-item rounded-lg overflow-hidden"
+                    style={{ backgroundColor: 'var(--card-bg)', height: `${heights[i % heights.length]}px` }}
+                >
+                    <SkeletonBlock className="w-full h-full rounded-none" />
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // Skeleton for Dashboard page
 export function SkeletonDashboard() {
     return (

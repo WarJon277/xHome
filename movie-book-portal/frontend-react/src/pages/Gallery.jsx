@@ -13,7 +13,7 @@ import MoveModal from '../components/MoveModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
 import { isNativeAppAvailable, pickPhotosNative } from '../utils/nativePhotoPicker';
-import { SkeletonGalleryGrid } from '../components/Skeleton';
+import { SkeletonMasonryGrid } from '../components/Skeleton';
 
 export default function GalleryPage() {
     // State
@@ -589,9 +589,9 @@ export default function GalleryPage() {
                         </header>
 
                         {loading ? (
-                            <SkeletonGalleryGrid count={18} />
+                            <SkeletonMasonryGrid count={15} />
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-2 sm:gap-3">
+                            <div className="masonry-grid">
                                 {items.map(item => {
                                     const isFolder = item.type === 'folder';
                                     const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
@@ -600,10 +600,10 @@ export default function GalleryPage() {
                                         <div
                                             key={item.id || item.name}
                                             className={`
-                                            relative aspect-square rounded-lg overflow-hidden cursor-pointer
-                                            hover:scale-105 transition-transform border border-gray-800
-                                            flex flex-col items-center justify-center p-4 group tv-focusable
-                                            select-none
+                                            masonry-item relative rounded-lg overflow-hidden cursor-pointer
+                                            hover:scale-[1.02] transition-transform border border-gray-800
+                                            flex flex-col items-center justify-center group tv-focusable
+                                            select-none ${isFolder ? 'aspect-square p-4' : ''}
                                         `}
                                             style={{ backgroundColor: 'var(--card-bg)', WebkitTouchCallout: 'none' }}
                                             tabIndex={0}
@@ -632,15 +632,16 @@ export default function GalleryPage() {
                                                     {imageUrl ? (
                                                         <img
                                                             src={imageUrl}
-                                                            className="absolute inset-0 w-full h-full object-cover"
+                                                            className="w-full h-auto block"
+                                                            style={{ minHeight: '100px' }}
                                                             alt={item.title}
                                                             loading="lazy"
                                                         />
                                                     ) : (
-                                                        <div className="text-gray-600">No Image</div>
+                                                        <div className="text-gray-600 aspect-square flex items-center justify-center">No Image</div>
                                                     )}
                                                     {/* Hover Info */}
-                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2 pointer-events-none">
                                                         <span className="text-white text-xs truncate w-full">{item.title}</span>
                                                     </div>
                                                 </>

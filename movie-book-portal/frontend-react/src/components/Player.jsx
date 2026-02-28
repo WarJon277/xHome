@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Play, Pause, ChevronLeft, Maximize, Minimize, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { X, Play, Pause, ChevronLeft, Maximize, Minimize, RotateCcw, Volume2, VolumeX, FastForward, Rewind, PictureInPicture, Gauge } from 'lucide-react';
 import { fetchProgress, saveProgress } from '../api';
 
 export default function Player({ item, src, onClose, onNext, onPrev }) {
@@ -14,6 +14,8 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
     const [volume, setVolume] = useState(() => Number(localStorage.getItem('player-volume')) || 1);
     const [isMuted, setIsMuted] = useState(false);
     // showResumePrompt is replaced by the Start Screen UI logic
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [showDoubleTapIndicator, setShowDoubleTapIndicator] = useState(null); // 'left' or 'right'
     const controlsTimeoutRef = useRef(null);
     const progressRef = useRef(null);
     const lastSavedTimeRef = useRef(0);
@@ -162,6 +164,57 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         }
     }, [hasStarted]);
 
+    // Media Session API
+    useEffect(() => {
+        if ('mediaSession' in navigator && item) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: item.tvshow_title || 'Фильм',
+                album: item.tvshow_title || '',
+                artwork: [
+                    { src: item.image || '', sizes: '512x512', type: 'image/jpeg' }
+                ]
+            });
+
+            navigator.mediaSession.setActionHandler('play', () => {
+                videoRef.current?.play();
+                setIsPlaying(true);
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+                videoRef.current?.pause();
+                setIsPlaying(false);
+            });
+            navigator.mediaSession.setActionHandler('seekbackward', () => seek(-10));
+            navigator.mediaSession.setActionHandler('seekforward', () => seek(10));
+            navigator.mediaSession.setActionHandler('previoustrack', onPrev ? onPrev : null);
+            navigator.mediaSession.setActionHandler('nexttrack', onNext ? onNext : null);
+
+            return () => {
+                navigator.mediaSession.setActionHandler('play', null);
+                navigator.mediaSession.setActionHandler('pause', null);
+                navigator.mediaSession.setActionHandler('seekbackward', null);
+                navigator.mediaSession.setActionHandler('seekforward', null);
+                navigator.mediaSession.setActionHandler('previoustrack', null);
+                navigator.mediaSession.setActionHandler('nexttrack', null);
+            };
+        }
+    }, [item, onNext, onPrev]);
+
+    // Update Media Session Position State
+    useEffect(() => {
+        if ('mediaSession' in navigator && videoRef.current) {
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: duration || 0,
+                    playbackRate: playbackRate,
+                    position: currentTime || 0
+                });
+            } catch (e) {
+                // Some browsers might fail if time is not finite
+            }
+        }
+    }, [currentTime, duration, playbackRate]);
+
     useEffect(() => {
         const handleKeyDown = (e) => {
             // Normalize key for some devices
@@ -291,12 +344,47 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
         }
     };
 
+    const togglePiP = async () => {
+        if (videoRef.current && document.pictureInPictureEnabled) {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await videoRef.current.requestPictureInPicture();
+                }
+            } catch (error) {
+                console.error('PiP failed:', error);
+            }
+        }
+    };
+
+    const cyclePlaybackRate = () => {
+        const rates = [1, 1.25, 1.5, 2];
+        const nextIndex = (rates.indexOf(playbackRate) + 1) % rates.length;
+        const newRate = rates[nextIndex];
+        setPlaybackRate(newRate);
+        if (videoRef.current) {
+            videoRef.current.playbackRate = newRate;
+        }
+    };
+
     const seek = (amount) => {
         if (videoRef.current) {
             videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration, videoRef.current.currentTime + amount));
             setCurrentTime(videoRef.current.currentTime);
             showControlsTemporarily();
+
+            // Show indicator
+            setShowDoubleTapIndicator(amount > 0 ? 'right' : 'left');
+            setTimeout(() => setShowDoubleTapIndicator(null), 500);
         }
+    };
+
+    const handleDoubleTap = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const isRight = x > rect.width / 2;
+        seek(isRight ? 10 : -10);
     };
 
     const handleProgressClick = (e) => {
@@ -376,6 +464,34 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                     handleSaveProgress(videoRef.current?.currentTime || 0);
                 }}
             />
+
+            {/* Double Tap Seek Zones (Mobile-first) */}
+            {hasStarted && (
+                <div className="absolute inset-0 z-[10001] flex pointer-events-none sm:pointer-events-auto">
+                    <div
+                        className="flex-1 pointer-events-auto h-full"
+                        onDoubleClick={(e) => {
+                            e.preventDefault();
+                            seek(-10);
+                        }}
+                    />
+                    <div
+                        className="flex-1 pointer-events-auto h-full"
+                        onDoubleClick={(e) => {
+                            e.preventDefault();
+                            seek(10);
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Double Tap Indicators */}
+            {showDoubleTapIndicator && (
+                <div className={`absolute z-[10005] top-1/2 -translate-y-1/2 ${showDoubleTapIndicator === 'left' ? 'left-[15%]' : 'right-[15%]'} flex flex-col items-center gap-2 text-white bg-black/40 p-6 rounded-full animate-ping-once`}>
+                    {showDoubleTapIndicator === 'left' ? <Rewind size={48} fill="currentColor" /> : <FastForward size={48} fill="currentColor" />}
+                    <span className="font-bold text-xl">{showDoubleTapIndicator === 'left' ? '-10с' : '+10с'}</span>
+                </div>
+            )}
 
             {/* Start Screen Overlay */}
             {!hasStarted && (
@@ -549,10 +665,33 @@ export default function Player({ item, src, onClose, onNext, onPrev }) {
                                 />
                             </div>
 
+                            {/* PLAYBACK SPEED: Order 5.5 */}
+                            <button
+                                onClick={cyclePlaybackRate}
+                                className="order-5 sm:order-6 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable flex items-center gap-1"
+                                data-tv-clickable="true"
+                                tabIndex={0}
+                            >
+                                <Gauge size={24} />
+                                <span className="text-sm font-bold min-w-[2.5rem]">{playbackRate}x</span>
+                            </button>
+
+                            {/* PICTURE IN PICTURE: Order 5.6 */}
+                            {document.pictureInPictureEnabled && (
+                                <button
+                                    onClick={togglePiP}
+                                    className="order-5 sm:order-7 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                    data-tv-clickable="true"
+                                    tabIndex={0}
+                                >
+                                    <PictureInPicture size={24} />
+                                </button>
+                            )}
+
                             {/* FULLSCREEN: Order 6 */}
                             <button
                                 onClick={toggleFullscreen}
-                                className="order-6 sm:order-6 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
+                                className="order-6 sm:order-8 p-2 text-white hover:bg-white/20 rounded-lg transition-colors tv-focusable"
                                 data-tv-clickable="true"
                                 tabIndex={0}
                             >

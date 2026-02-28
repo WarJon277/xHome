@@ -202,9 +202,25 @@ class MainActivity : AppCompatActivity() {
 
         // Use saved server URLs
         val enabledServers = getEnabledServerList()
-        enabledServerUrls = if (enabledServers.isNotEmpty()) enabledServers.toList() else listOf("http://192.168.0.239:5055/")
+        enabledServerUrls = enabledServers.toList()
         currentServerIndex = 0
+        
+        Log.i("MainActivity", "=== SERVER STARTUP ===")
+        Log.i("MainActivity", "Enabled servers from prefs: $enabledServers")
+        Log.i("MainActivity", "Final server list: $enabledServerUrls")
+        
+        if (enabledServerUrls.isEmpty()) {
+            // No servers enabled — show settings
+            Log.w("MainActivity", "No servers enabled! Opening settings.")
+            loadingLayout.visibility = View.GONE
+            Toast.makeText(this, "Нет выбранных серверов. Добавьте сервер в настройках.", Toast.LENGTH_LONG).show()
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            return
+        }
+        
         val primaryUrl = enabledServerUrls[0]
+        Log.i("MainActivity", "Loading primary URL: $primaryUrl")
 
         if (isNetworkAvailable()) {
             isPrimaryUrlLoaded = false
@@ -488,8 +504,8 @@ class MainActivity : AppCompatActivity() {
                         tryNextServer()
                     }
                 }
-                // Shorter timeout for faster offline transition (3 seconds)
-                timeoutHandler.postDelayed(timeoutRunnable!!, 3000) 
+                // Timeout for page load (15 seconds for external servers)
+                timeoutHandler.postDelayed(timeoutRunnable!!, 15000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -618,14 +634,24 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         webView.onResume()
         
-        // If we are still in the loading process, refresh the server list 
-        // in case the user just changed it in Settings
-        if (!isPrimaryUrlLoaded && !isOfflineAttempt) {
-            val enabledServers = getEnabledServerList()
-            if (enabledServers.isNotEmpty()) {
-                enabledServerUrls = enabledServers.toList()
-                // We don't necessarily restart from index 0 here to avoid loops,
-                // but at least the list is fresh for the next tryNextServer call.
+        // Refresh the server list in case the user just changed it in Settings
+        val enabledServers = getEnabledServerList()
+        val newList = enabledServers.toList()
+        
+        Log.d("MainActivity", "onResume: enabledServerUrls was: $enabledServerUrls, new: $newList, isPrimaryUrlLoaded=$isPrimaryUrlLoaded")
+        
+        // If the server list changed AND we haven't loaded successfully yet, restart from index 0
+        if (newList != enabledServerUrls) {
+            enabledServerUrls = newList
+            
+            if (!isPrimaryUrlLoaded) {
+                // Reset and try from the beginning with the new list
+                currentServerIndex = 0
+                timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
+                val primaryUrl = enabledServerUrls[0]
+                currentServerUrl = primaryUrl
+                Log.i("MainActivity", "Server list changed, reloading from: $primaryUrl")
+                webView.loadUrl(primaryUrl)
             }
         }
     }
@@ -671,8 +697,8 @@ class MainActivity : AppCompatActivity() {
                 currentServerUrl = nextUrl
                 webView.loadUrl(nextUrl)
                 
-                // Restart timeout for the next server
-                timeoutRunnable?.let { timeoutHandler.postDelayed(it, 3000) }
+                // Restart timeout for the next server (15 seconds for external servers)
+                timeoutRunnable?.let { timeoutHandler.postDelayed(it, 15000) }
             } else {
                 Log.w("MainActivity", "All servers failed. Triggering offline fallback.")
                 triggerOfflineFallback()

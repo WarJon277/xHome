@@ -6,6 +6,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
 import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import PWACacheStatus from '../components/PWACacheStatus';
+import { SkeletonDashboard } from '../components/Skeleton';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);

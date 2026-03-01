@@ -2,6 +2,7 @@
  * Skeleton loading components for the portal.
  * Provides shimmer-animated placeholders that match the real content layout.
  */
+import MasonryLayout from './MasonryLayout';
 
 // Base shimmer block
 export function SkeletonBlock({ className = '', style = {} }) {
@@ -77,17 +78,17 @@ export function SkeletonMasonryGrid({ count = 15 }) {
     const heights = [150, 200, 120, 250, 180, 140, 220, 160, 190, 130, 210, 170, 240, 110, 230];
 
     return (
-        <div className="masonry-grid">
+        <MasonryLayout gap={4}>
             {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
-                    className="masonry-item overflow-hidden"
+                    className="overflow-hidden"
                     style={{ backgroundColor: 'var(--card-bg)', height: `${heights[i % heights.length]}px` }}
                 >
                     <SkeletonBlock className="w-full h-full rounded-none" />
                 </div>
             ))}
-        </div>
+        </MasonryLayout>
     );
 }
 

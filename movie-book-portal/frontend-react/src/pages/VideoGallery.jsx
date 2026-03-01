@@ -11,6 +11,7 @@ import ContextMenu from '../components/ContextMenu';
 import MoveModal from '../components/MoveModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import InputModal from '../components/InputModal';
+import MasonryLayout from '../components/MasonryLayout';
 import { SkeletonMasonryGrid } from '../components/Skeleton';
 
 export default function VideoGalleryPage() {
@@ -580,7 +581,7 @@ export default function VideoGalleryPage() {
                 loading ? (
                     <SkeletonMasonryGrid count={15} />
                 ) : (
-                    <div className="masonry-grid">
+                    <MasonryLayout gap={4}>
                         {items.map(item => {
                             const isFolder = item.type === 'folder';
                             const imageUrl = !isFolder ? getImageUrl(item.thumbnail_path || item.file_path) : null;
@@ -589,7 +590,7 @@ export default function VideoGalleryPage() {
                                 <div
                                     key={item.id || item.name}
                                     className={`
-                                            masonry-item relative overflow-hidden cursor-pointer
+                                            relative overflow-hidden cursor-pointer
                                             hover:scale-[1.02] transition-transform border border-gray-800
                                             flex flex-col items-center justify-center group tv-focusable
                                             select-none ${isFolder ? 'aspect-square p-4 rounded-lg' : ''}
@@ -650,7 +651,7 @@ export default function VideoGalleryPage() {
                                 </div>
                             );
                         })}
-                    </div>
+                    </MasonryLayout>
                 )
             }
 

@@ -191,9 +191,10 @@ export const fetchBookPage = async (bookId, page) => {
     const url = `${API_BASE}/books/${bookId}/page/${page}`;
     const headers = { 'X-User-Id': getDeviceId() };
 
-    // Create AbortController for timeout
+    // Create AbortController for timeout - use shorter timeout for book pages
+    // so that blocked networks fall through to SW cache faster
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
     try {
         const response = await fetch(url, {

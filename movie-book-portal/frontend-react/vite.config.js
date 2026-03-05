@@ -7,8 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      registerType: 'prompt',
+      injectRegister: false,
       devOptions: {
         enabled: true // Enable SW in development
       },
@@ -24,7 +24,7 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'book-pages-cache',
-              networkTimeoutSeconds: 2,
+              networkTimeoutSeconds: 1,
               expiration: {
                 maxEntries: 2000, // Large Enough for multiple books
                 maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days

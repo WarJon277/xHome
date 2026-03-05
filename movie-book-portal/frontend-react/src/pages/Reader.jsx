@@ -58,6 +58,7 @@ export default function Reader() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [immersiveMode, setImmersiveMode] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+    const isOnlineRef = useRef(navigator.onLine); // Ref for loadPage to avoid re-render on network toggle
     const [cachedPages, setCachedPages] = useState([]);
 
     const contentRef = useRef(null);
@@ -165,12 +166,14 @@ export default function Reader() {
     useEffect(() => {
         const handleOnline = () => {
             console.log('[Reader] Network online. Syncing local progress to server...');
+            isOnlineRef.current = true;
             setIsOnline(true);
             // Push local progress to server immediately on reconnect
             handleSaveProgress();
         };
         const handleOffline = () => {
             console.log('[Reader] Network offline');
+            isOnlineRef.current = false;
             setIsOnline(false);
         };
 
@@ -326,8 +329,11 @@ export default function Reader() {
                 let fromCache = false;
 
                 try {
+                    // Use ref to read current network state without causing re-renders
+                    const currentlyOnline = isOnlineRef.current;
+
                     // IF OFFLINE: Try local storage FIRST (immediate load)
-                    if (!isOnline) {
+                    if (!currentlyOnline) {
                         console.log(`[Reader] App is OFFLINE, checking local storage for page ${currentPage}...`);
                         const cachedContent = await getBookPage(id, currentPage);
                         if (cachedContent) {
@@ -359,6 +365,7 @@ export default function Reader() {
                                 console.log('✓ Loaded page from cache after server error');
                                 data = { content: cachedContent };
                                 fromCache = true;
+                                isOnlineRef.current = false;
                                 setIsOnline(false); // Mark as offline if server fails
                             } else {
                                 throw err; // Re-throw if no cache either
@@ -447,13 +454,13 @@ export default function Reader() {
                 setPageContent(`<div style="text-align:center; padding:40px; color:#ef4444;">
                         <h3>Ошибка загрузки страницы</h3>
                         <p>${e.message}</p>
-                        ${!isOnline ? '<p style="margin-top:20px; font-size:14px; opacity:0.8;">💡 Эта страница не была кэширована. Подключитесь к интернету для загрузки.</p>' : ''}
+                        ${!isOnlineRef.current ? '<p style="margin-top:20px; font-size:14px; opacity:0.8;">💡 Эта страница не была кэширована. Подключитесь к интернету для загрузки.</p>' : ''}
                     </div>`);
             }
         };
 
         loadPage();
-    }, [id, currentPage, book, savedProgress, isInitialLoad, isOnline]);
+    }, [id, currentPage, book, savedProgress, isInitialLoad]);
 
     // Global error handler for broken images (capture phase)
     useEffect(() => {

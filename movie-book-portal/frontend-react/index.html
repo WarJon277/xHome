@@ -14,7 +14,11 @@
     window.onerror = function (message, source, lineno, colno, error) {
       if (message.includes('ChunkLoadError') || message.includes('Loading chunk')) {
         console.warn('Chunk load error detected, reloading...');
-        window.location.reload();
+        if (navigator.onLine) {
+          window.location.reload();
+        } else {
+          document.body.innerHTML = '<div style="color:white;text-align:center;padding:50px;font-family:sans-serif;background:#1a1a1a;height:100vh;"><h1>Ошибка кэша</h1><p>Оффлайн версия повреждена или не загружена полностью. Подключитесь к интернету.</p></div>';
+        }
       }
     };
     window.addEventListener('error', function (e) {
@@ -22,7 +26,11 @@
         console.warn('Script failed to load:', e.target.src);
         // Only reload if it's a chunk from our assets
         if (e.target.src.includes('/assets/')) {
-          window.location.reload();
+          if (navigator.onLine) {
+            window.location.reload();
+          } else {
+            document.body.innerHTML = '<div style="color:white;text-align:center;padding:50px;font-family:sans-serif;background:#1a1a1a;height:100vh;"><h1>Ошибка кэша</h1><p>Оффлайн версия повреждена или не загружена полностью. Подключитесь к интернету.</p></div>';
+          }
         }
       }
     }, true);

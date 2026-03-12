@@ -4,6 +4,8 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
 // Register SW in prompt mode — do NOT auto-reload the page
 // Updates will be applied on next app restart/navigation
 const updateSW = registerSW({
@@ -18,6 +20,8 @@ const updateSW = registerSW({
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )

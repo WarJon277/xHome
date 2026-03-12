@@ -95,7 +95,7 @@ export async function downloadBookForOffline(bookId, metadata, onProgress) {
         const store = tx.objectStore(STORE_NAME);
 
         await requestToPromise(store.put({
-            bookId,
+            bookId: parseInt(bookId),
             bookData,
             metadata,
             lastAccessed: Date.now(),
@@ -173,7 +173,7 @@ export async function checkIfDownloaded(bookId) {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readonly');
         const store = tx.objectStore(STORE_NAME);
-        const book = await requestToPromise(store.get(bookId));
+        const book = await requestToPromise(store.get(parseInt(bookId)));
         return book !== undefined;
     } catch (error) {
         console.error(`[Offline] Error checking if book ${bookId} is downloaded:`, error);
@@ -189,7 +189,7 @@ export async function getCachedBook(bookId) {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-        const book = await requestToPromise(store.get(bookId));
+        const book = await requestToPromise(store.get(parseInt(bookId)));
 
         if (book) {
             // Update last accessed time
@@ -211,7 +211,7 @@ export async function removeBookFromCache(bookId) {
     try {
         const db = await openDB();
         const tx = db.transaction([STORE_NAME], 'readwrite');
-        await requestToPromise(tx.objectStore(STORE_NAME).delete(bookId));
+        await requestToPromise(tx.objectStore(STORE_NAME).delete(parseInt(bookId)));
         console.log(`[Offline] Removed book ${bookId} from cache`);
         return true;
     } catch (error) {

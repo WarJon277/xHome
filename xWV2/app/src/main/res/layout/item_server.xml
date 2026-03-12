@@ -53,6 +53,15 @@
         android:contentDescription="Проверить"/>
 
     <ImageButton
+        android:id="@+id/btnEditServer"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_menu_edit"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="#4CAF50"
+        android:contentDescription="Изменить"/>
+
+    <ImageButton
         android:id="@+id/btnDeleteServer"
         android:layout_width="40dp"
         android:layout_height="40dp"

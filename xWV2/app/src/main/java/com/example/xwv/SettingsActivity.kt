@@ -98,12 +98,35 @@ class SettingsActivity : AppCompatActivity() {
         val urlText = itemView.findViewById<TextView>(R.id.serverUrlText)
         val statusText = itemView.findViewById<TextView>(R.id.serverStatusText)
         val btnTest = itemView.findViewById<ImageButton>(R.id.btnTestServer)
+        val btnEdit = itemView.findViewById<ImageButton>(R.id.btnEditServer)
         val btnDelete = itemView.findViewById<ImageButton>(R.id.btnDeleteServer)
 
         urlText.text = url
         checkbox.isChecked = enabled
 
         checkbox.setOnCheckedChangeListener { _, _ -> saveServers() }
+
+        btnEdit.setOnClickListener {
+            val editText = EditText(this).apply {
+                setText(urlText.text.toString())
+                setPadding(50, 20, 50, 20)
+            }
+            
+            AlertDialog.Builder(this)
+                .setTitle("Изменить сервер")
+                .setView(editText)
+                .setPositiveButton("Сохранить") { _, _ ->
+                    val newUrl = editText.text.toString().trim()
+                    if (newUrl.isNotEmpty() && newUrl.startsWith("http")) {
+                        urlText.text = newUrl
+                        saveServers()
+                    } else {
+                        Toast.makeText(this, "URL должен начинаться с http:// или https://", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
+        }
 
         btnDelete.setOnClickListener {
             serverListContainer.removeView(itemView)

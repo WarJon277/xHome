@@ -240,7 +240,9 @@ class MainActivity : AppCompatActivity() {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        // VALIDATED ensures actual internet reachability, not just network presence
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
 
@@ -279,7 +281,10 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             allowFileAccess = true
             allowContentAccess = true
-            userAgentString = userAgentString + " xWV2-App-Identifier"
+            
+            // Fix User-Agent setting: explicitly get default and append
+            val defaultUa = android.webkit.WebSettings.getDefaultUserAgent(this@MainActivity)
+            userAgentString = "$defaultUa xWV2-App-Identifier"
             Log.d("xWV-Native", "Final User-Agent: $userAgentString")
         }
 
@@ -507,8 +512,8 @@ class MainActivity : AppCompatActivity() {
                         tryNextServer()
                     }
                 }
-                // Timeout for page load (15 seconds for external servers)
-                timeoutHandler.postDelayed(timeoutRunnable!!, 15000) 
+                // Timeout for page load (5 seconds)
+                timeoutHandler.postDelayed(timeoutRunnable!!, 5000) 
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -700,8 +705,8 @@ class MainActivity : AppCompatActivity() {
                 currentServerUrl = nextUrl
                 webView.loadUrl(nextUrl)
                 
-                // Restart timeout for the next server (15 seconds for external servers)
-                timeoutRunnable?.let { timeoutHandler.postDelayed(it, 15000) }
+                // Restart timeout for the next server (5 seconds)
+                timeoutRunnable?.let { timeoutHandler.postDelayed(it, 5000) }
             } else {
                 Log.w("MainActivity", "All servers failed. Triggering offline fallback.")
                 triggerOfflineFallback()

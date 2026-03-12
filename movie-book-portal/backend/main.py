@@ -52,7 +52,12 @@ async def security_middleware(request: Request, call_next):
     # 3. Проверка: является ли подключение из нашего приложения
     user_agent = request.headers.get("user-agent", "").lower()
     # Рекомендуется использовать поиск в нижнем регистре для надежности
-    is_app = "xwv2-app-identifier" in user_agent
+    is_app_by_ua = "xwv2-app-identifier" in user_agent
+    # Также проверяем кастомный заголовок или куки (на случай, если WebView обрежет User-Agent в XHR/Fetch)
+    is_app_by_header = request.headers.get("X-App-Identifier") == "true"
+    is_app_by_cookie = "xwv2-app-identifier" in request.cookies.get("app_id", "").lower()
+    
+    is_app = is_app_by_ua or is_app_by_header or is_app_by_cookie
 
     # 4. Правила блокировки
     # Логируем для отладки, если запрос идет не из локальной сети

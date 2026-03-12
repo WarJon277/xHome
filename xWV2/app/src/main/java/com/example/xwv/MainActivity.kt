@@ -288,6 +288,23 @@ class MainActivity : AppCompatActivity() {
             Log.d("xWV-Native", "Final User-Agent: $userAgentString")
         }
 
+        // Add a cookie as an extra layer of identification (WebView sometimes strips custom UA on XHR/fetch)
+        val cookieManager = android.webkit.CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setCookie("http://192.168.0.239:5055", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
+        
+        // Ensure cookie is available to all domains used by the app to prevent 403s on different hosts
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5055")) ?: emptySet()
+        for (serverUrl in servers) {
+            try {
+                cookieManager.setCookie(serverUrl, "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
+            } catch (e: Exception) {
+                Log.e("xWV-Native", "Failed to set cookie for $serverUrl", e)
+            }
+        }
+        cookieManager.flush()
+
         webView.addJavascriptInterface(object : Any() {
             @JavascriptInterface
             fun closeApp() {

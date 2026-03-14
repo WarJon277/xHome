@@ -144,6 +144,9 @@ export default defineConfig({
       // Static Files and Uploads (keep as is if they don't clash)
       '/uploads': { target: 'http://localhost:5055', changeOrigin: true },
       '/thumbnails': { target: 'http://localhost:5055', changeOrigin: true },
+
+      // WebSocket for online counter
+      '/ws': { target: 'http://localhost:5055', changeOrigin: true, ws: true },
     }
   }
 })

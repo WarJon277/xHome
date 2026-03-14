@@ -128,15 +128,35 @@ def restore_movies():
                         thumb_name = f"{movie_id}_thumb.webp" if movie_id else f"{os.path.splitext(filename)[0]}_thumb.webp"
                         thumb_path = os.path.join(upload_dir, thumb_name)
                         rel_thumb = None
+                        
                         if os.path.exists(thumb_path):
                             rel_thumb = os.path.relpath(thumb_path, BACKEND_DIR).replace(os.sep, '/')
-                        elif movie_id:
-                            # Try just thumb.webp or other extensions
-                            for ext in ['.webp', '.jpg', '.png']:
-                                t = os.path.join(upload_dir, f"{movie_id}_thumb{ext}")
-                                if os.path.exists(t):
-                                    rel_thumb = os.path.relpath(t, BACKEND_DIR).replace(os.sep, '/')
-                                    break
+                        else:
+                            # Try other extensions locally
+                            found_local = False
+                            if movie_id:
+                                for ext in ['.webp', '.jpg', '.jpeg', '.png']:
+                                    t = os.path.join(upload_dir, f"{movie_id}_thumb{ext}")
+                                    if os.path.exists(t):
+                                        rel_thumb = os.path.relpath(t, BACKEND_DIR).replace(os.sep, '/')
+                                        found_local = True
+                                        break
+                            
+                            if not found_local and details.poster_url:
+                                log(f"    - Thumbnail not found locally, attempting to download: {details.poster_url}")
+                                try:
+                                    import requests
+                                    resp = requests.get(details.poster_url, timeout=10)
+                                    if resp.status_code == 200:
+                                        # Use the original suggested thumb_path (webp) or from URL
+                                        ext = os.path.splitext(details.poster_url.split('?')[0])[1] or ".webp"
+                                        target_thumb = os.path.join(upload_dir, f"{movie_id}_thumb{ext}" if movie_id else f"{os.path.splitext(filename)[0]}_thumb{ext}")
+                                        with open(target_thumb, "wb") as f:
+                                            f.write(resp.content)
+                                        rel_thumb = os.path.relpath(target_thumb, BACKEND_DIR).replace(os.sep, '/')
+                                        log(f"    + Downloaded thumbnail to {rel_thumb}")
+                                except Exception as te:
+                                    log(f"    ! Failed to download thumbnail: {te}")
 
                         new_movie = Movie(
                             title=details.title or title_for_search,
@@ -164,7 +184,7 @@ def restore_movies():
                     log(f"    - Skipping: Missing or too short description for '{new_movie.title}'")
                     continue
                 if not new_movie.thumbnail_path:
-                    log(f"    - Skipping: No local thumbnail found for '{new_movie.title}'")
+                    log(f"    - Skipping: No local or downloadable thumbnail found for '{new_movie.title}'")
                     continue
 
                 try:

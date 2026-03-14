@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode, saveProgress } from '../api';
-import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music } from 'lucide-react';
+import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music, Users } from 'lucide-react';
 import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
 import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import PWACacheStatus from '../components/PWACacheStatus';
 import { SkeletonDashboard } from '../components/Skeleton';
+import useOnlineCount from '../hooks/useOnlineCount';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
@@ -14,6 +15,7 @@ export default function Dashboard() {
     const [error, setError] = useState(null);
     const [showClearModal, setShowClearModal] = useState(false);
     const navigate = useNavigate();
+    const onlineCount = useOnlineCount();
 
     const loadData = async () => {
         try {
@@ -234,6 +236,20 @@ export default function Dashboard() {
 
                 {/* 5. Daily Stats & Recommendation - Right Column */}
                 <section className="lg:w-1/3 min-w-0 space-y-8">
+                    {/* Online Counter */}
+                    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(5,150,105,0.05) 100%)' }}>
+                        <div className="relative">
+                            <Users className="text-emerald-400" size={28} />
+                            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                        </div>
+                        <div>
+                            <span className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>{onlineCount}</span>
+                            <p className="text-xs font-bold uppercase tracking-wider text-emerald-400/80">
+                                {onlineCount === 1 ? 'человек онлайн' : onlineCount >= 2 && onlineCount <= 4 ? 'человека онлайн' : 'человек онлайн'}
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="space-y-4">
                         <h2 className="flex items-center gap-3 text-2xl font-bold">
                             <BarChart2 className="text-purple-500" size={24} /> Статистика

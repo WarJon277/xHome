@@ -1,7 +1,7 @@
 # main.py - Entry point for the Media Portal
 import os
 import ipaddress
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -164,6 +164,31 @@ app.include_router(audiobooks_source.router, prefix="/api")
 app.include_router(discovery.router, prefix="/api/discovery")
 app.include_router(system.router, prefix="/api")
 app.include_router(requests_router.router, prefix="/api")
+
+# --- WebSocket: Онлайн-счётчик ---
+online_connections: set = set()
+
+async def broadcast_online_count():
+    count = len(online_connections)
+    for ws in list(online_connections):
+        try:
+            await ws.send_json({"online": count})
+        except Exception:
+            online_connections.discard(ws)
+
+@app.websocket("/ws/online")
+async def ws_online(websocket: WebSocket):
+    await websocket.accept()
+    online_connections.add(websocket)
+    await broadcast_online_count()
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        online_connections.discard(websocket)
+        await broadcast_online_count()
 
 # IMPORTANT: React SPA routing - MUST be registered LAST (catch-all route)
 # This serves index.html for all non-API routes to support React Router

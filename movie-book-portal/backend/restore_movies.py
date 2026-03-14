@@ -144,6 +144,17 @@ def restore_movies():
                         )
                         if movie_id: new_movie.id = movie_id
                 
+                # Validation: Only add if rating, description, and thumbnail are present
+                if not new_movie.rating or new_movie.rating == 0:
+                    log(f"    - Skipping: No rating found for '{new_movie.title}'")
+                    continue
+                if not new_movie.description or len(new_movie.description) < 10:
+                    log(f"    - Skipping: Missing or too short description for '{new_movie.title}'")
+                    continue
+                if not new_movie.thumbnail_path:
+                    log(f"    - Skipping: No local thumbnail found for '{new_movie.title}'")
+                    continue
+
                 try:
                     # Check if ID exists (could be if name search was redundant)
                     if movie_id:
@@ -158,10 +169,10 @@ def restore_movies():
                             existing.description = new_movie.description
                             existing.file_path = new_movie.file_path
                             existing.thumbnail_path = new_movie.thumbnail_path
-                            log(f"    + Updated record with ID {movie_id}")
+                            log(f"    + Updated record with ID {movie_id}: {new_movie.title}")
                         else:
                             db.add(new_movie)
-                            log(f"    + Added new record with ID {movie_id}")
+                            log(f"    + Added new record with ID {movie_id}: {new_movie.title}")
                     else:
                         db.add(new_movie)
                         log(f"    + Added new record: {new_movie.title}")

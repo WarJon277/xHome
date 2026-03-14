@@ -77,21 +77,27 @@ def restore_movies():
                 full_path = os.path.join(upload_dir, filename)
                 rel_path = os.path.relpath(full_path, BACKEND_DIR).replace(os.sep, '/')
                 
-                # Check if already in DB
-                if rel_path in existing_paths:
-                    log(f"  - Already exists: {filename}")
-                    continue
+                # Check if already in DB and if it's complete
+                existing_movie = db.query(Movie).filter(Movie.file_path == rel_path).first()
+                if not existing_movie and movie_id:
+                    existing_movie = db.query(Movie).filter(Movie.id == movie_id).first()
                 
-                # Extract ID from filename if possible
-                movie_id = None
-                id_match = re.match(r'^(\d+)_', filename)
-                if id_match:
-                    movie_id = int(id_match.group(1))
-                    # Check if ID already exists
-                    existing_by_id = db.query(Movie).filter(Movie.id == movie_id).first()
-                    if existing_by_id and existing_by_id.file_path:
-                        log(f"  - ID {movie_id} already exists with file path: {existing_by_id.file_path}")
+                if existing_movie:
+                    is_complete = (
+                        existing_movie.rating and 
+                        existing_movie.rating > 0 and 
+                        existing_movie.description and 
+                        len(existing_movie.description) > 10 and 
+                        existing_movie.thumbnail_path and 
+                        os.path.exists(os.path.join(BACKEND_DIR, existing_movie.thumbnail_path))
+                    )
+                    if is_complete:
+                        log(f"  - Record exists and is complete: {filename}")
                         continue
+                    else:
+                        log(f"  * Record exists but is INCOMPLETE: {filename}")
+                        # If it has an ID, we'll use that
+                        if not movie_id: movie_id = existing_movie.id
                 
                 title_for_search = clean_title(filename)
                 log(f"  * Processing: {filename} (Searching for: {title_for_search})")

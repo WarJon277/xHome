@@ -166,20 +166,31 @@ app.include_router(system.router, prefix="/api")
 app.include_router(requests_router.router, prefix="/api")
 
 # --- WebSocket: Онлайн-счётчик ---
-online_connections: set = set()
+online_connections: dict = {}  # WebSocket -> IP
+
+def _get_ws_ip(websocket: WebSocket) -> str:
+    """Extract real IP from WebSocket connection."""
+    forwarded = websocket.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if websocket.client:
+        return websocket.client.host
+    return "unknown"
 
 async def broadcast_online_count():
     count = len(online_connections)
-    for ws in list(online_connections):
+    ips = list(online_connections.values())
+    for ws in list(online_connections.keys()):
         try:
-            await ws.send_json({"online": count})
+            await ws.send_json({"online": count, "ips": ips})
         except Exception:
-            online_connections.discard(ws)
+            online_connections.pop(ws, None)
 
 @app.websocket("/ws/online")
 async def ws_online(websocket: WebSocket):
     await websocket.accept()
-    online_connections.add(websocket)
+    ip = _get_ws_ip(websocket)
+    online_connections[websocket] = ip
     await broadcast_online_count()
     try:
         while True:
@@ -187,7 +198,7 @@ async def ws_online(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        online_connections.discard(websocket)
+        online_connections.pop(websocket, None)
         await broadcast_online_count()
 
 # IMPORTANT: React SPA routing - MUST be registered LAST (catch-all route)

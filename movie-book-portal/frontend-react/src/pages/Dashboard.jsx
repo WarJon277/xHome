@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode, saveProgress } from '../api';
-import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music, Users } from 'lucide-react';
+import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music, Users, X } from 'lucide-react';
 import Player from '../components/Player';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
@@ -14,8 +14,9 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showClearModal, setShowClearModal] = useState(false);
+    const [showOnlineModal, setShowOnlineModal] = useState(false);
     const navigate = useNavigate();
-    const onlineCount = useOnlineCount();
+    const { onlineCount, onlineIps } = useOnlineCount();
 
     const loadData = async () => {
         try {
@@ -237,7 +238,12 @@ export default function Dashboard() {
                 {/* 5. Daily Stats & Recommendation - Right Column */}
                 <section className="lg:w-1/3 min-w-0 space-y-8">
                     {/* Online Counter */}
-                    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(5,150,105,0.05) 100%)' }}>
+                    <div
+                        onClick={() => setShowOnlineModal(true)}
+                        className="relative overflow-hidden rounded-2xl border border-emerald-500/30 p-4 flex items-center gap-4 cursor-pointer hover:border-emerald-400/50 hover:bg-white/5 transition-all active:scale-[0.98]"
+                        style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(5,150,105,0.05) 100%)' }}
+                        title="Показать подключённых"
+                    >
                         <div className="relative">
                             <Users className="text-emerald-400" size={28} />
                             <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
@@ -249,6 +255,43 @@ export default function Dashboard() {
                             </p>
                         </div>
                     </div>
+
+                    {/* Online Users Modal */}
+                    {showOnlineModal && (
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={() => setShowOnlineModal(false)}>
+                            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+                            <div
+                                className="relative bg-[#1f1f1f] border border-white/10 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="flex items-center justify-between mb-5">
+                                    <h3 className="text-lg font-bold flex items-center gap-2">
+                                        <Users className="text-emerald-400" size={20} />
+                                        Сейчас на портале
+                                    </h3>
+                                    <button
+                                        onClick={() => setShowOnlineModal(false)}
+                                        className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                    {onlineIps.length > 0 ? onlineIps.map((ip, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                                            <span className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>{ip}</span>
+                                        </div>
+                                    )) : (
+                                        <p className="text-gray-500 text-center py-4">Нет подключений</p>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-4 text-center">
+                                    Всего: {onlineIps.length}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         <h2 className="flex items-center gap-3 text-2xl font-bold">

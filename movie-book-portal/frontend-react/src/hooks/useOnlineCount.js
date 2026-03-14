@@ -2,13 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 
 export default function useOnlineCount() {
     const [onlineCount, setOnlineCount] = useState(0);
+    const [onlineIps, setOnlineIps] = useState([]);
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
     const retryDelay = useRef(2000);
 
     useEffect(() => {
         function connect() {
-            // Build WS URL from current page location
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws/online`;
 
@@ -17,7 +17,7 @@ export default function useOnlineCount() {
                 wsRef.current = ws;
 
                 ws.onopen = () => {
-                    retryDelay.current = 2000; // reset on success
+                    retryDelay.current = 2000;
                 };
 
                 ws.onmessage = (event) => {
@@ -26,8 +26,11 @@ export default function useOnlineCount() {
                         if (typeof data.online === 'number') {
                             setOnlineCount(data.online);
                         }
+                        if (Array.isArray(data.ips)) {
+                            setOnlineIps(data.ips);
+                        }
                     } catch (e) {
-                        // ignore parse errors
+                        // ignore
                     }
                 };
 
@@ -66,5 +69,5 @@ export default function useOnlineCount() {
         };
     }, []);
 
-    return onlineCount;
+    return { onlineCount, onlineIps };
 }

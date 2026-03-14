@@ -77,6 +77,12 @@ def restore_movies():
                 full_path = os.path.join(upload_dir, filename)
                 rel_path = os.path.relpath(full_path, BACKEND_DIR).replace(os.sep, '/')
                 
+                # Extract ID from filename if possible
+                movie_id = None
+                id_match = re.match(r'^(\d+)_', filename)
+                if id_match:
+                    movie_id = int(id_match.group(1))
+
                 # Check if already in DB and if it's complete
                 existing_movie = db.query(Movie).filter(Movie.file_path == rel_path).first()
                 if not existing_movie and movie_id:

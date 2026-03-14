@@ -178,11 +178,11 @@ def _get_ws_ip(websocket: WebSocket) -> str:
     return "unknown"
 
 async def broadcast_online_count():
-    count = len(online_connections)
-    ips = list(online_connections.values())
+    unique_ips = list(set(online_connections.values()))
+    count = len(unique_ips)
     for ws in list(online_connections.keys()):
         try:
-            await ws.send_json({"online": count, "ips": ips})
+            await ws.send_json({"online": count, "ips": unique_ips})
         except Exception:
             online_connections.pop(ws, None)
 

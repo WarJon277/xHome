@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Home, Film, Tv, Image, Book, Settings, Menu, X, Music, Sparkles } from 'lucide-react';
+import { Home, Film, Tv, Image, Book, Settings, Menu, X, Music, Sparkles, MessageSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTvNavigation } from './hooks/useTvNavigation';
 import MoviesPage from './pages/Movies';
@@ -11,6 +11,7 @@ import AudiobooksPage from './pages/Audiobooks';
 import Reader from './pages/Reader';
 import AdminPage from './pages/Admin';
 import Dashboard from './pages/Dashboard';
+import Chat from './pages/Chat';
 import ServerStatus from './pages/ServerStatus';
 import RequestsPage from './pages/Requests';
 import VideoGalleryPage from './pages/VideoGallery';
@@ -28,6 +29,7 @@ const MainContentWithTransition = () => {
     <main className="main-content page-enter">
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/chat" element={<Chat />} />
         <Route path="/movies" element={<MoviesPage />} />
         <Route path="/tvshows" element={<TvShowsPage />} />
         <Route path="/tvshows/:id" element={<TvShowDetails />} />
@@ -126,6 +128,7 @@ function App() {
     { to: "/video-gallery", icon: <Film size={24} />, label: "Видеогалерея" },
     { to: "/books", icon: <Book size={24} />, label: "Книги" },
     { to: "/audiobooks", icon: <Music size={24} />, label: "Аудиокниги" },
+    { to: "/chat", icon: <MessageSquare size={24} />, label: "Чат" },
     { to: "/requests", icon: <Sparkles size={24} />, label: "Предложка" },
   ];
 

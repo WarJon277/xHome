@@ -5,8 +5,8 @@ import { useUser } from '../contexts/UserContext';
 
 const EMOJIS = ['👍', '😂', '🔥', '❤️', '🎉', '👋', '🎬', '🍿', '💡', '🤔'];
 
-export default function ChatWidget() {
-    const { chatMessages, sendChatMessage } = useOnlineCount();
+export default function ChatWidget({ isFullHeight = false }) {
+    const { chatMessages = [], sendChatMessage } = useOnlineCount();
     const { username } = useUser();
     const [inputValue, setInputValue] = useState('');
     const [showEmojis, setShowEmojis] = useState(false);
@@ -42,7 +42,7 @@ export default function ChatWidget() {
     };
 
     return (
-        <div className="flex flex-col h-[400px] bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+        <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'h-[400px]'} bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative`}>
             {/* Header */}
             <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -124,9 +124,10 @@ export default function ChatWidget() {
                     <button
                         type="submit"
                         disabled={!inputValue.trim()}
-                        className="p-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-600 text-white rounded-full transition-colors flex items-center justify-center"
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-600 text-white rounded-full transition-colors flex items-center justify-center gap-2 font-medium"
                     >
-                        <Send size={18} className="translate-x-[-1px] translate-y-[1px]" />
+                        <span>Отправить</span>
+                        <Send size={16} className="translate-x-[-1px] translate-y-[1px]" />
                     </button>
                 </form>
             </div>

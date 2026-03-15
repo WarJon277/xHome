@@ -50,7 +50,12 @@ export default function useOnlineCount() {
                         } else if (data.type === 'new_chat_message') {
                             if (data.message) {
                                 setChatMessages(prev => {
-                                    const newMsgs = [...prev, data.message];
+                                    const safePrev = Array.isArray(prev) ? prev : [];
+                                    // Prevent duplicate messages by checking ID
+                                    if (safePrev.some(m => m.id === data.message.id)) {
+                                        return safePrev;
+                                    }
+                                    const newMsgs = [...safePrev, data.message];
                                     // Keep only last 20 messages
                                     return newMsgs.length > 20 ? newMsgs.slice(-20) : newMsgs;
                                 });

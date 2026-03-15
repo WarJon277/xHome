@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchDashboardData, fetchMovie, fetchBook, fetchTvshow, clearProgress, fetchEpisode, saveProgress } from '../api';
 import { Play, Book, Film, Tv, Image, BarChart2, Zap, Clock, RefreshCw, Trash2, Music, Users, X } from 'lucide-react';
 import Player from '../components/Player';
@@ -259,11 +260,11 @@ export default function Dashboard() {
                     </div>
 
                     {/* Online Users Modal */}
-                    {showOnlineModal && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={() => setShowOnlineModal(false)}>
+                    {showOnlineModal && createPortal(
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setShowOnlineModal(false)}>
                             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                             <div
-                                className="relative bg-[#1f1f1f] border border-white/10 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+                                className="relative bg-[#1f1f1f] border border-white/10 rounded-2xl p-6 w-full max-w-sm mx-auto shadow-2xl"
                                 onClick={e => e.stopPropagation()}
                             >
                                 <div className="flex items-center justify-between mb-5">
@@ -294,7 +295,8 @@ export default function Dashboard() {
                                     Всего: {onlineUsers ? onlineUsers.length : 0}
                                 </p>
                             </div>
-                        </div>
+                        </div>,
+                        document.body
                     )}
 
                     <div className="space-y-4">

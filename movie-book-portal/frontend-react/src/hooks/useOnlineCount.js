@@ -33,6 +33,8 @@ export default function useOnlineCount() {
                         }
                         if (Array.isArray(data.users)) {
                             setOnlineUsers(data.users);
+                        } else if (Array.isArray(data.ips)) {
+                            setOnlineUsers(data.ips.map(ip => ({ ip, name: null })));
                         }
                     } catch (e) {
                         // ignore

@@ -48,6 +48,15 @@ class ChatMessage(Base):
     message = Column(String)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
+class AccessLog(Base):
+    __tablename__ = "access_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    ip_address = Column(String, index=True)
+    client_name = Column(String, nullable=True)
+    connect_time = Column(DateTime, default=datetime.datetime.utcnow)
+    disconnect_time = Column(DateTime, nullable=True)
+    duration = Column(Integer, nullable=True)
+
 def get_db():
     db = SessionLocal()
     try:

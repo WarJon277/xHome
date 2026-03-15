@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Music, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Wand2, Search, Loader2, RefreshCw, Music, Activity, BarChart3, Clock } from 'lucide-react';
 import {
     fetchMovies, fetchBooks, fetchTvshows, fetchAudiobooks,
     createMovie, createBook, createTvshow, createAudiobook,
@@ -9,7 +9,7 @@ import {
     uploadMovieFile, uploadTvshowFile, uploadEpisodeFile, uploadAudiobookFile, uploadAudiobookThumbnail,
     createEpisode,
     fetchTheme, updateTheme, resetTheme, fetchStats, uploadBookFile,
-    fetchSuggestion, fetchBrowse, fetchDetails, fetchSearch, searchAudioboo, fetchAudiobooDetails, downloadFromAudioboo
+    fetchSuggestion, fetchBrowse, fetchDetails, fetchSearch, searchAudioboo, fetchAudiobooDetails, downloadFromAudioboo, fetchAccessLogs
 } from '../api';
 import { X, Download, BookOpen } from 'lucide-react';
 import KaleidoscopeManager from '../components/KaleidoscopeManager';
@@ -128,6 +128,8 @@ export default function AdminPage() {
     const [editingId, setEditingId] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
+    const [accessLogs, setAccessLogs] = useState([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -387,8 +389,22 @@ export default function AdminPage() {
     useEffect(() => {
         if (activeTab === 'content') {
             loadContent();
+        } else if (activeTab === 'statistics') {
+            loadAccessLogs();
         }
     }, [contentType, activeTab]);
+
+    const loadAccessLogs = async () => {
+        setIsLoadingLogs(true);
+        try {
+            const data = await fetchAccessLogs();
+            setAccessLogs(data);
+        } catch (e) {
+            console.error('Failed to load access logs:', e);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
 
     const loadStats = async () => {
         try {
@@ -1034,6 +1050,15 @@ export default function AdminPage() {
                 >
                     Калейдоскопы
                 </button>
+                <button
+                    onClick={() => setActiveTab('statistics')}
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'statistics'
+                        ? 'border-b-2 border-primary text-primary'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                >
+                    Статистика
+                </button>
             </div>
 
             {/* Dashboard Tab */}
@@ -1188,6 +1213,74 @@ export default function AdminPage() {
                             setBrowseProvider={setBrowseProvider}
                         />
                     )}
+                </div>
+            )}
+
+            {/* Statistics Tab */}
+            {activeTab === 'statistics' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <BarChart3 className="text-primary" /> История посещений
+                        </h2>
+                        <button
+                            onClick={loadAccessLogs}
+                            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors"
+                            disabled={isLoadingLogs}
+                        >
+                            <RefreshCw size={20} className={isLoadingLogs ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+
+                    <div className="rounded-lg overflow-hidden border border-gray-700" style={{ backgroundColor: 'var(--card-bg)' }}>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-800 text-gray-300">
+                                    <tr>
+                                        <th className="p-4 whitespace-nowrap">IP Адрес</th>
+                                        <th className="p-4 whitespace-nowrap">Имя</th>
+                                        <th className="p-4 whitespace-nowrap">Подключение</th>
+                                        <th className="p-4 whitespace-nowrap">Отключение</th>
+                                        <th className="p-4 whitespace-nowrap">Длительность</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-[var(--text-primary)]">
+                                    {!isLoadingLogs && accessLogs.length === 0 ? (
+                                        <tr><td colSpan="5" className="p-8 text-center text-gray-500">История пуста</td></tr>
+                                    ) : (
+                                        accessLogs.map(log => (
+                                            <tr key={log.id} className="border-b border-gray-700 hover:bg-white/5 transition-colors">
+                                                <td className="p-4 font-mono text-sm">{log.ip_address}</td>
+                                                <td className="p-4">
+                                                    {log.client_name ? (
+                                                        <span className="bg-green-600/20 text-green-400 px-2 py-0.5 rounded text-xs font-bold ring-1 ring-green-600/30">
+                                                            {log.client_name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-500 text-xs italic">Аноним</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 whitespace-nowrap text-xs text-gray-400">
+                                                    {new Date(log.connect_time).toLocaleString('ru-RU')}
+                                                </td>
+                                                <td className="p-4 whitespace-nowrap text-xs text-gray-400">
+                                                    {log.disconnect_time ? new Date(log.disconnect_time).toLocaleString('ru-RU') : (
+                                                        <span className="flex items-center gap-2 text-emerald-400 font-bold">
+                                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                                            В сети
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 font-medium text-xs">
+                                                    {log.duration ? formatTime(log.duration) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -390,6 +390,7 @@ export const updateTheme = (settings) => request('/admin/theme', {
 });
 export const resetTheme = () => request('/admin/theme/reset', { method: 'POST' });
 export const fetchStats = () => request('/admin/stats');
+export const fetchAccessLogs = () => request('/admin/access_logs');
 
 
 // --- PROGRESS ---

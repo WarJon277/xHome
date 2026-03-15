@@ -168,7 +168,7 @@ app.include_router(requests_router.router, prefix="/api")
 import builtins
 import json
 
-from database import ChatMessage, Settings, SessionLocal
+from database import ChatMessage, Settings, SessionLocal, AccessLog
 
 online_connections: dict = {}  # WebSocket -> {"ip": IP, "name": Name}
 
@@ -208,10 +208,28 @@ async def ws_online(websocket: WebSocket):
     await websocket.accept()
     ip = _get_ws_ip(websocket)
     # Default to just IP, name will be set if they send it
-    online_connections[websocket] = {"ip": ip, "name": None}
+    online_connections[websocket] = {"ip": ip, "name": None, "log_id": None}
     await broadcast_online_count()
     
     connect_time = time.time()
+    
+    # Create initial access log entry
+    db = SessionLocal()
+    access_log_id = None
+    try:
+        new_log = AccessLog(
+            ip_address=ip,
+            connect_time=datetime.datetime.utcnow()
+        )
+        db.add(new_log)
+        db.commit()
+        db.refresh(new_log)
+        access_log_id = new_log.id
+        online_connections[websocket]["log_id"] = access_log_id
+    except Exception as e:
+        print(f"Error creating access log: {e}")
+    finally:
+        db.close()
     
     # Send chat history on connect
     db = SessionLocal()
@@ -254,8 +272,23 @@ async def ws_online(websocket: WebSocket):
                 
                 # Registration
                 if data.get("type") == "register" and data.get("name"):
-                    online_connections[websocket]["name"] = data["name"]
+                    name = data["name"]
+                    online_connections[websocket]["name"] = name
                     await broadcast_online_count()
+                    
+                    # Update access log with name
+                    log_id = online_connections[websocket].get("log_id")
+                    if log_id:
+                        db = SessionLocal()
+                        try:
+                            log_entry = db.query(AccessLog).filter(AccessLog.id == log_id).first()
+                            if log_entry:
+                                log_entry.client_name = name
+                                db.commit()
+                        except Exception as e:
+                            print(f"Error updating access log with name: {e}")
+                        finally:
+                            db.close()
                     
                 # Chat message
                 elif data.get("type") == "chat" and data.get("message"):
@@ -300,8 +333,23 @@ async def ws_online(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        online_connections.pop(websocket, None)
+        conn_info = online_connections.pop(websocket, None)
         await broadcast_online_count()
+        
+        # Finalize access log
+        if conn_info and conn_info.get("log_id"):
+            db = SessionLocal()
+            try:
+                log_entry = db.query(AccessLog).filter(AccessLog.id == conn_info["log_id"]).first()
+                if log_entry:
+                    log_entry.disconnect_time = datetime.datetime.utcnow()
+                    duration_sec = int(time.time() - connect_time)
+                    log_entry.duration = duration_sec
+                    db.commit()
+            except Exception as e:
+                print(f"Error finalizing access log: {e}")
+            finally:
+                db.close()
         
         # Calculate time spent and increment total_time_seconds
         duration = int(time.time() - connect_time)

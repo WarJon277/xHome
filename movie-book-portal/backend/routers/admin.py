@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Body, Depends
 
 from dependencies import get_db, get_db_books_simple, get_db_tvshows_simple, get_db_gallery_simple
-from database import Movie, Settings
+from database import Movie, Settings, AccessLog
 from database_books import Book
 from database_tvshows import Tvshow
 from database_gallery import Photo
@@ -137,3 +137,12 @@ def get_stats(
             "total_time_seconds": 0
         }
 
+@router.get("/access_logs")
+def get_access_logs(db: Session = Depends(get_db)):
+    """Get portal visit history"""
+    try:
+        logs = db.query(AccessLog).order_by(AccessLog.connect_time.desc()).limit(200).all()
+        return logs
+    except Exception as e:
+        print(f"Error fetching access logs: {e}")
+        return []

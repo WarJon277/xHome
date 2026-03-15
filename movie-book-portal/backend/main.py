@@ -65,45 +65,37 @@ async def security_middleware(request: Request, call_next):
     if not is_local:
         print(f"External access attempt: IP={real_ip}, App={is_app}, UA={user_agent}")
 
-    # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем ТОЛЬКО API и загрузки.
-    # Статические файлы фронтенда (JS, CSS, HTML, изображения, шрифты, SW) пропускаем свободно —
-    # в них нет конфиденциальных данных. Данные защищены на уровне API.
+    # Правило: Если запрос НЕ из локальной сети И это НЕ приложение -> Блокируем ВСЁ.
     if not is_local and not is_app:
-        # Определяем, является ли запрос к защищённым ресурсам (API или загрузки)
-        path = request.url.path
-        is_protected = path.startswith("/api") or path.startswith("/uploads")
-        
-        if is_protected:
-            # Для API-запросов возвращаем JSON-ошибку
-            if path.startswith("/api"):
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": "Access Denied. Only authorized app connections allowed outside local network."}
-                )
-            # Для загрузок (картинки обложек, файлы книг и т.д.) тоже блокируем
-            return HTMLResponse(
+        # Для API-запросов возвращаем JSON-ошибку
+        if request.url.path.startswith("/api"):
+            return JSONResponse(
                 status_code=403,
-                content=f"""
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin-top: 100px; padding: 20px;">
-                <h1 style="color: #e50914; font-size: 3em;">Вход заблокирован</h1>
-                <p style="font-size: 1.2em; color: #333;">Этот сервер — частная территория.</p>
-                <div style="background: #f8f8f8; border: 1px solid #ddd; padding: 20px; border-radius: 8px; max-width: 500px; margin: 30px auto; text-align: left;">
-                    <p>Для доступа необходимо выполнить одно из условий:</p>
-                    <ul style="line-height: 1.6;">
-                        <li>Находиться в <b>локальной домашней сети</b>.</li>
-                        <li>Использовать <b>официальное приложение xWV2</b>.</li>
-                    </ul>
-                </div>
-                <p style="color: #999; font-size: 0.9em;">Ваш IP: {real_ip}</p>
-                <script>
-                    if (window.AndroidApp && window.AndroidApp.hideLoadingScreen) {{
-                        window.AndroidApp.hideLoadingScreen();
-                    }}
-                </script>
-            </div>
-            """
+                content={"detail": "Access Denied. Only authorized app connections allowed outside local network."}
             )
-        # Все остальные запросы (статические файлы фронтенда) — пропускаем свободно
+        # Для загрузок и фронтенда тоже блокируем
+        return HTMLResponse(
+            status_code=403,
+            content=f"""
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin-top: 100px; padding: 20px;">
+            <h1 style="color: #e50914; font-size: 3em;">Вход заблокирован</h1>
+            <p style="font-size: 1.2em; color: #333;">Этот сервер — частная территория.</p>
+            <div style="background: #f8f8f8; border: 1px solid #ddd; padding: 20px; border-radius: 8px; max-width: 500px; margin: 30px auto; text-align: left;">
+                <p>Для доступа необходимо выполнить одно из условий:</p>
+                <ul style="line-height: 1.6;">
+                    <li>Находиться в <b>локальной домашней сети</b>.</li>
+                    <li>Использовать <b>официальное приложение xWV2</b>.</li>
+                </ul>
+            </div>
+            <p style="color: #999; font-size: 0.9em;">Ваш IP: {real_ip}</p>
+            <script>
+                if (window.AndroidApp && window.AndroidApp.hideLoadingScreen) {{
+                    window.AndroidApp.hideLoadingScreen();
+                }}
+            </script>
+        </div>
+        """
+        )
             
     response = await call_next(request)
     return response

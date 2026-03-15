@@ -107,7 +107,7 @@ export default function ChatWidget({ isFullHeight = false }) {
                     <button
                         type="button"
                         onClick={() => setShowEmojis(!showEmojis)}
-                        className="p-2 text-gray-400 hover:text-yellow-400 transition-colors bg-white/5 rounded-full hover:bg-white/10"
+                        className="p-2 text-gray-400 hover:text-yellow-400 transition-colors bg-white/5 rounded-full hover:bg-white/10 shrink-0"
                     >
                         <Smile size={20} />
                     </button>
@@ -116,17 +116,17 @@ export default function ChatWidget({ isFullHeight = false }) {
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Написать сообщение..."
+                        placeholder="Сообщение..."
                         maxLength={200}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-500"
+                        className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-full px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-500"
                     />
                     
                     <button
                         type="submit"
                         disabled={!inputValue.trim()}
-                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-600 text-white rounded-full transition-colors flex items-center justify-center gap-2 font-medium"
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-600 text-white rounded-full transition-colors flex items-center justify-center gap-2 font-medium shrink-0 flex-none"
                     >
-                        <span>Отправить</span>
+                        <span className="hidden sm:inline">Отправить</span>
                         <Send size={16} className="translate-x-[-1px] translate-y-[1px]" />
                     </button>
                 </form>

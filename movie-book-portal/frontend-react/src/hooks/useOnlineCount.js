@@ -96,5 +96,5 @@ export default function useOnlineCount() {
         };
     }, []);
 
-    return { onlineCount, onlineUsers };
+    return { onlineCount, onlineUsers, chatMessages, sendChatMessage };
 }

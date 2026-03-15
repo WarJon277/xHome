@@ -34,9 +34,15 @@ app.add_middleware(
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
     # 1. Определение реального IP адреса
-    real_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "127.0.0.1")
-    if "," in real_ip:
-        real_ip = real_ip.split(",")[0].strip()
+    x_forwarded = request.headers.get("x-forwarded-for")
+    x_real_ip = request.headers.get("x-real-ip")
+    
+    if x_forwarded:
+        real_ip = x_forwarded.split(",")[0].strip()
+    elif x_real_ip:
+        real_ip = x_real_ip.strip()
+    else:
+        real_ip = request.client.host if request.client else "127.0.0.1"
         
     # 2. Проверка: является ли подключение локальным (домашняя сеть)
     is_local = False

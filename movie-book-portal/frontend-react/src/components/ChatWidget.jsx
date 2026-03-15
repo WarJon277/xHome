@@ -86,7 +86,7 @@ export default function ChatWidget({ isFullHeight = false }) {
             </div>
 
             {/* Input Area */}
-            <div className="p-3 bg-black/40 border-t border-white/10 relative">
+            <div className="p-3 pb-24 md:pb-3 bg-black/40 border-t border-white/10 relative">
                 {/* Emoji Picker Popup */}
                 {showEmojis && (
                     <div className="absolute bottom-full left-3 mb-2 bg-[#2a2a2a] border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-5 gap-2 animate-fade-in-up">

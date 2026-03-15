@@ -59,6 +59,14 @@ async function request(endpoint, options = {}) {
             const error = new Error(detail);
             error.isServerError = true;
             error.statusCode = response.status;
+            
+            // Dispatch access denied event if globally blocked
+            if (response.status === 403 && typeof detail === 'string' && detail.includes("Access Denied")) {
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('app:access_denied'));
+                }
+            }
+            
             throw error;
         }
         return response.json();

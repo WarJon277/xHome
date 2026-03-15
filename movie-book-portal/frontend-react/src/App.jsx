@@ -50,6 +50,13 @@ const MainContentWithTransition = () => {
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [globalPlayingItem, setGlobalPlayingItem] = useState(null);
+  const [isAccessDenied, setIsAccessDenied] = useState(false);
+
+  useEffect(() => {
+    const handleAccessDenied = () => setIsAccessDenied(true);
+    window.addEventListener('app:access_denied', handleAccessDenied);
+    return () => window.removeEventListener('app:access_denied', handleAccessDenied);
+  }, []);
 
   useEffect(() => {
     const handlePlay = (e) => {
@@ -138,6 +145,22 @@ function App() {
 
   if (isLoading) {
     return <div className="app-container flex items-center justify-center">Loading...</div>;
+  }
+
+  if (isAccessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center w-full fixed inset-0 z-[9999]" style={{ background: '#141414', color: '#fff' }}>
+        <h1 className="text-4xl md:text-5xl font-bold text-red-600 mb-4">Вход заблокирован</h1>
+        <p className="text-xl md:text-2xl text-gray-300 mb-6">Этот сервер — частная территория.</p>
+        <div className="bg-white/5 border border-white/10 p-6 rounded-xl max-w-lg text-left">
+          <p className="mb-4 text-lg">Для доступа необходимо выполнить одно из условий:</p>
+          <ul className="list-disc pl-5 space-y-2 text-gray-300">
+            <li>Находиться в <b>локальной домашней сети</b>.</li>
+            <li>Использовать <b>официальное приложение xWV2</b>.</li>
+          </ul>
+        </div>
+      </div>
+    );
   }
 
   return (

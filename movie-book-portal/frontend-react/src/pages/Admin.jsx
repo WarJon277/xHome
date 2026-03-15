@@ -968,6 +968,12 @@ export default function AdminPage() {
             updateTheme(newTheme).catch(console.error);
             localStorage.setItem('appTheme', JSON.stringify(newTheme));
         }
+    const formatTime = (seconds) => {
+        if (!seconds) return '0 м';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) return `${h} ч ${m} м`;
+        return `${m} м`;
     };
 
     return (
@@ -1030,16 +1036,18 @@ export default function AdminPage() {
 
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard title="Фильмы" value={stats.movies} />
-                    <StatCard title="Книги" value={stats.books} />
-                    <StatCard title="Сериалы" value={stats.tvshows} />
-                    <StatCard title="Фото" value={stats.photos} />
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                    <StatCard title="Фильмы" value={stats.movies || 0} />
+                    <StatCard title="Книги" value={stats.books || 0} />
+                    <StatCard title="Сериалы" value={stats.tvshows || 0} />
+                    <StatCard title="Фото" value={stats.photos || 0} />
+                    <StatCard title="Всего заходов" value={stats.total_visits || 0} />
+                    <StatCard title="Время" value={formatTime(stats.total_time_seconds)} />
 
                     {/* Server Status Link Card */}
                     <div
                         onClick={() => navigate('/server-status')}
-                        className="p-6 rounded-lg text-center cursor-pointer hover:scale-105 transition-transform border border-primary/20 hover:border-primary/50 group flex flex-col items-center justify-center gap-3 shadow-lg"
+                        className="col-span-2 md:col-span-3 lg:col-span-6 p-6 rounded-lg text-center cursor-pointer hover:scale-[1.02] transition-transform border border-primary/20 hover:border-primary/50 group flex flex-col items-center justify-center gap-3 shadow-lg"
                         style={{ backgroundColor: 'var(--card-bg)' }}
                     >
                         <Activity size={32} className="text-primary group-hover:animate-pulse" />

@@ -168,6 +168,8 @@ app.include_router(requests_router.router, prefix="/api")
 import builtins
 import json
 
+from database import ChatMessage, Settings, SessionLocal
+
 online_connections: dict = {}  # WebSocket -> {"ip": IP, "name": Name}
 
 def _get_ws_ip(websocket: WebSocket) -> str:
@@ -200,6 +202,7 @@ async def broadcast_online_count():
         except Exception:
             online_connections.pop(ws, None)
 
+import time
 @app.websocket("/ws/online")
 async def ws_online(websocket: WebSocket):
     await websocket.accept()
@@ -208,9 +211,23 @@ async def ws_online(websocket: WebSocket):
     online_connections[websocket] = {"ip": ip, "name": None}
     await broadcast_online_count()
     
+    connect_time = time.time()
+    
     # Send chat history on connect
     db = SessionLocal()
     try:
+        # Increment total visits
+        visits_setting = db.query(Settings).filter(Settings.key == "total_visits").first()
+        if not visits_setting:
+            visits_setting = Settings(key="total_visits", value="1")
+            db.add(visits_setting)
+        else:
+            try:
+                visits_setting.value = str(int(visits_setting.value) + 1)
+            except ValueError:
+                visits_setting.value = "1"
+        db.commit()
+
         history = db.query(ChatMessage).order_by(ChatMessage.timestamp.desc()).limit(20).all()
         # reverse to chronological order
         history.reverse()
@@ -285,6 +302,26 @@ async def ws_online(websocket: WebSocket):
     finally:
         online_connections.pop(websocket, None)
         await broadcast_online_count()
+        
+        # Calculate time spent and increment total_time_seconds
+        duration = int(time.time() - connect_time)
+        if duration > 0:
+            db_conn = SessionLocal()
+            try:
+                time_setting = db_conn.query(Settings).filter(Settings.key == "total_time_seconds").first()
+                if not time_setting:
+                    time_setting = Settings(key="total_time_seconds", value=str(duration))
+                    db_conn.add(time_setting)
+                else:
+                    try:
+                        time_setting.value = str(int(time_setting.value) + duration)
+                    except ValueError:
+                        time_setting.value = str(duration)
+                db_conn.commit()
+            except Exception as e:
+                print(f"Error saving time spent: {e}")
+            finally:
+                db_conn.close()
 
 # IMPORTANT: React SPA routing - MUST be registered LAST (catch-all route)
 # This serves index.html for all non-API routes to support React Router

@@ -109,12 +109,21 @@ def get_stats(
                     _, ext = os.path.splitext(file)
                     if ext.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
                         photo_count += 1
+                        
+        # Get usage stats
+        visits_setting = db_movies.query(Settings).filter(Settings.key == "total_visits").first()
+        time_setting = db_movies.query(Settings).filter(Settings.key == "total_time_seconds").first()
+        
+        total_visits = int(visits_setting.value) if visits_setting and visits_setting.value else 0
+        total_time_seconds = int(time_setting.value) if time_setting and time_setting.value else 0
         
         stats = {
             "movies": db_movies.query(Movie).count(),
             "books": db_books.query(Book).count(),
             "tvshows": db_tvshows.query(Tvshow).count(),
-            "photos": photo_count
+            "photos": photo_count,
+            "total_visits": total_visits,
+            "total_time_seconds": total_time_seconds
         }
         return stats
     except Exception as e:
@@ -123,6 +132,8 @@ def get_stats(
             "movies": 0,
             "books": 0,
             "tvshows": 0,
-            "photos": 0
+            "photos": 0,
+            "total_visits": 0,
+            "total_time_seconds": 0
         }
 

@@ -146,6 +146,14 @@ export default function AdminPage() {
     const [seasonNumber, setSeasonNumber] = useState(1);
     const [isSuggesting, setIsSuggesting] = useState(false);
 
+    const formatTime = (seconds) => {
+        if (!seconds) return '0 м';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) return `${h} ч ${m} м`;
+        return `${m} м`;
+    };
+
     // Browse/Suggestion State
     const [showBrowseModal, setShowBrowseModal] = useState(false);
     const browseAbortController = useRef(null);
@@ -968,12 +976,6 @@ export default function AdminPage() {
             updateTheme(newTheme).catch(console.error);
             localStorage.setItem('appTheme', JSON.stringify(newTheme));
         }
-    const formatTime = (seconds) => {
-        if (!seconds) return '0 м';
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        if (h > 0) return `${h} ч ${m} м`;
-        return `${m} м`;
     };
 
     return (

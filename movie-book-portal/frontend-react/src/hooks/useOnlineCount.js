@@ -3,9 +3,16 @@ import { useEffect, useState, useRef } from 'react';
 export default function useOnlineCount() {
     const [onlineCount, setOnlineCount] = useState(0);
     const [onlineUsers, setOnlineUsers] = useState([]);
+    const [chatMessages, setChatMessages] = useState([]);
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
     const retryDelay = useRef(2000);
+
+    const sendChatMessage = (message) => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'chat', message }));
+        }
+    };
 
     useEffect(() => {
         function connect() {
@@ -35,6 +42,19 @@ export default function useOnlineCount() {
                             setOnlineUsers(data.users);
                         } else if (Array.isArray(data.ips)) {
                             setOnlineUsers(data.ips.map(ip => ({ ip, name: null })));
+                        }
+                        
+                        // Handle chat messages
+                        if (data.type === 'chat_history') {
+                            setChatMessages(data.messages || []);
+                        } else if (data.type === 'new_chat_message') {
+                            if (data.message) {
+                                setChatMessages(prev => {
+                                    const newMsgs = [...prev, data.message];
+                                    // Keep only last 20 messages
+                                    return newMsgs.length > 20 ? newMsgs.slice(-20) : newMsgs;
+                                });
+                            }
                         }
                     } catch (e) {
                         // ignore

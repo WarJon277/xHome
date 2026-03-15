@@ -14,6 +14,7 @@ from database_gallery import create_gallery_tables
 from database_progress import create_progress_tables
 from database_kaleidoscope import create_kaleidoscope_tables
 from database_videogallery import create_videogallery_tables
+from database import ChatMessage, SessionLocal
 
 from routers import movies, books, audiobooks, admin, gallery, videogallery, tvshows, kaleidoscopes, progress, dashboard, flibusta, audiobooks_source, discovery, system
 from routers import requests_router
@@ -208,14 +209,77 @@ async def ws_online(websocket: WebSocket):
     # Default to just IP, name will be set if they send it
     online_connections[websocket] = {"ip": ip, "name": None}
     await broadcast_online_count()
+    
+    # Send chat history on connect
+    db = SessionLocal()
+    try:
+        history = db.query(ChatMessage).order_by(ChatMessage.timestamp.desc()).limit(20).all()
+        # reverse to chronological order
+        history.reverse()
+        history_msgs = [
+            {
+                "id": msg.id,
+                "sender_name": msg.sender_name,
+                "sender_ip": msg.sender_ip,
+                "message": msg.message,
+                "timestamp": msg.timestamp.isoformat()
+            } for msg in history
+        ]
+        await websocket.send_json({"type": "chat_history", "messages": history_msgs})
+    except Exception as e:
+        print(f"Error sending chat history: {e}")
+    finally:
+        db.close()
+
     try:
         while True:
             text_data = await websocket.receive_text()
             try:
                 data = json.loads(text_data)
+                
+                # Registration
                 if data.get("type") == "register" and data.get("name"):
                     online_connections[websocket]["name"] = data["name"]
                     await broadcast_online_count()
+                    
+                # Chat message
+                elif data.get("type") == "chat" and data.get("message"):
+                    name = data.get("name") or online_connections[websocket].get("name")
+                    msg_text = data["message"].strip()
+                    if msg_text:
+                        db = SessionLocal()
+                        try:
+                            # Save to DB
+                            new_msg = ChatMessage(
+                                sender_name=name,
+                                sender_ip=ip,
+                                message=msg_text
+                            )
+                            db.add(new_msg)
+                            db.commit()
+                            db.refresh(new_msg)
+                            
+                            # Broadcast to all
+                            msg_payload = {
+                                "type": "new_chat_message",
+                                "message": {
+                                    "id": new_msg.id,
+                                    "sender_name": new_msg.sender_name,
+                                    "sender_ip": new_msg.sender_ip,
+                                    "message": new_msg.message,
+                                    "timestamp": new_msg.timestamp.isoformat()
+                                }
+                            }
+                            # Send to all connected websockets
+                            for ws in list(online_connections.keys()):
+                                try:
+                                    await ws.send_json(msg_payload)
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            print(f"Error saving/broadcasting chat: {e}")
+                        finally:
+                            db.close()
             except json.JSONDecodeError:
                 pass
     except WebSocketDisconnect:

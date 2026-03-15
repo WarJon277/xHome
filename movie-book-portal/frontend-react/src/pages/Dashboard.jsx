@@ -10,6 +10,7 @@ import PWACacheStatus from '../components/PWACacheStatus';
 import { SkeletonDashboard } from '../components/Skeleton';
 import useOnlineCount from '../hooks/useOnlineCount';
 import { useUser } from '../contexts/UserContext';
+import ChatWidget from '../components/ChatWidget';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
@@ -326,6 +327,9 @@ export default function Dashboard() {
                         </h2>
                         <PWACacheStatus />
                     </div>
+
+                    {/* Chat Widget */}
+                    <ChatWidget />
 
                     {/* 3. Random Recommendation inside stats column */}
                     {data.recommendation && (

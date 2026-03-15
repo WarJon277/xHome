@@ -38,6 +38,16 @@ class Settings(Base):
     key = Column(String, primary_key=True, index=True)
     value = Column(String)
 
+from sqlalchemy import DateTime
+import datetime
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_name = Column(String, nullable=True)
+    sender_ip = Column(String)
+    message = Column(String)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
 def get_db():
     db = SessionLocal()
     try:

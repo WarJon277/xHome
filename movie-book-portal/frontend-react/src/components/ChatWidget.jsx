@@ -42,7 +42,7 @@ export default function ChatWidget({ isFullHeight = false }) {
     };
 
     return (
-        <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'h-[400px]'} bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative`}>
+        <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'h-[400px]'} bg-transparent md:bg-white/5 md:border border-white/10 md:rounded-3xl overflow-hidden md:shadow-2xl relative`}>
             {/* Header */}
             <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between">
                 <div className="flex items-center gap-2">

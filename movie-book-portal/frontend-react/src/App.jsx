@@ -17,6 +17,8 @@ import VideoGalleryPage from './pages/VideoGallery';
 import Player from './components/Player';
 import { fetchTheme } from './api';
 import { Navigate } from 'react-router-dom';
+import { UserProvider, useUser } from './contexts/UserContext';
+import RegistrationModal from './components/RegistrationModal';
 
 // Wrapper to enable page transitions
 const MainContentWithTransition = () => {
@@ -114,6 +116,8 @@ function App() {
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
+  const { isRegistered, isAdmin, register, isLoading } = useUser();
+
   const navItems = [
     { to: "/", icon: <Home size={24} />, label: "Главная" },
     { to: "/movies", icon: <Film size={24} />, label: "Фильмы" },
@@ -123,12 +127,24 @@ function App() {
     { to: "/books", icon: <Book size={24} />, label: "Книги" },
     { to: "/audiobooks", icon: <Music size={24} />, label: "Аудиокниги" },
     { to: "/requests", icon: <Sparkles size={24} />, label: "Предложка" },
-    { to: "/admin", icon: <Settings size={24} />, label: "Админ" },
   ];
+
+  if (isAdmin) {
+    navItems.push({ to: "/admin", icon: <Settings size={24} />, label: "Админ" });
+  }
+
+  if (isLoading) {
+    return <div className="app-container flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <Router>
       <div className="app-container">
+        
+        {/* Registration Modal */}
+        {!isRegistered && (
+          <RegistrationModal onRegister={register} />
+        )}
 
         {/* Mobile Overlay */}
         <div
@@ -207,4 +223,10 @@ function App() {
   );
 }
 
-export default App;
+const AppWrapper = () => (
+  <UserProvider>
+    <App />
+  </UserProvider>
+);
+
+export default AppWrapper;

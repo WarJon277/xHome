@@ -166,7 +166,10 @@ app.include_router(system.router, prefix="/api")
 app.include_router(requests_router.router, prefix="/api")
 
 # --- WebSocket: Онлайн-счётчик ---
-online_connections: dict = {}  # WebSocket -> IP
+import builtins
+import json
+
+online_connections: dict = {}  # WebSocket -> {"ip": IP, "name": Name}
 
 def _get_ws_ip(websocket: WebSocket) -> str:
     """Extract real IP from WebSocket connection."""
@@ -178,11 +181,23 @@ def _get_ws_ip(websocket: WebSocket) -> str:
     return "unknown"
 
 async def broadcast_online_count():
-    unique_ips = list(set(online_connections.values()))
-    count = len(unique_ips)
+    # Gather unique connections by ID (we can use IP as a simpler approach, or just all connections)
+    # Using a list of IP/Name dicts
+    users = [{"ip": info["ip"], "name": info.get("name")} for info in online_connections.values()]
+    
+    # Optional: deduplicate by IP if you want exactly one user entry per IP
+    unique_users_dict = {}
+    for user in users:
+        # If we already have this IP, only override if the new one has a non-null name
+        if user["ip"] not in unique_users_dict or user["name"]:
+            unique_users_dict[user["ip"]] = user
+            
+    unique_users = list(unique_users_dict.values())
+    count = len(unique_users)
+    
     for ws in list(online_connections.keys()):
         try:
-            await ws.send_json({"online": count, "ips": unique_ips})
+            await ws.send_json({"online": count, "users": unique_users})
         except Exception:
             online_connections.pop(ws, None)
 
@@ -190,11 +205,19 @@ async def broadcast_online_count():
 async def ws_online(websocket: WebSocket):
     await websocket.accept()
     ip = _get_ws_ip(websocket)
-    online_connections[websocket] = ip
+    # Default to just IP, name will be set if they send it
+    online_connections[websocket] = {"ip": ip, "name": None}
     await broadcast_online_count()
     try:
         while True:
-            await websocket.receive_text()
+            text_data = await websocket.receive_text()
+            try:
+                data = json.loads(text_data)
+                if data.get("type") == "register" and data.get("name"):
+                    online_connections[websocket]["name"] = data["name"]
+                    await broadcast_online_count()
+            except json.JSONDecodeError:
+                pass
     except WebSocketDisconnect:
         pass
     finally:

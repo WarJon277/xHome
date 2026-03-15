@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 
 export default function useOnlineCount() {
     const [onlineCount, setOnlineCount] = useState(0);
-    const [onlineIps, setOnlineIps] = useState([]);
+    const [onlineUsers, setOnlineUsers] = useState([]);
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
     const retryDelay = useRef(2000);
@@ -18,6 +18,11 @@ export default function useOnlineCount() {
 
                 ws.onopen = () => {
                     retryDelay.current = 2000;
+                    // Send user name upon connection if available
+                    const username = localStorage.getItem('portal_username');
+                    if (username) {
+                        ws.send(JSON.stringify({ type: 'register', name: username }));
+                    }
                 };
 
                 ws.onmessage = (event) => {
@@ -26,8 +31,8 @@ export default function useOnlineCount() {
                         if (typeof data.online === 'number') {
                             setOnlineCount(data.online);
                         }
-                        if (Array.isArray(data.ips)) {
-                            setOnlineIps(data.ips);
+                        if (Array.isArray(data.users)) {
+                            setOnlineUsers(data.users);
                         }
                     } catch (e) {
                         // ignore
@@ -69,5 +74,5 @@ export default function useOnlineCount() {
         };
     }, []);
 
-    return { onlineCount, onlineIps };
+    return { onlineCount, onlineUsers };
 }

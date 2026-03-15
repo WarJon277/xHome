@@ -8,6 +8,7 @@ import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import PWACacheStatus from '../components/PWACacheStatus';
 import { SkeletonDashboard } from '../components/Skeleton';
 import useOnlineCount from '../hooks/useOnlineCount';
+import { useUser } from '../contexts/UserContext';
 
 export default function Dashboard() {
     const [data, setData] = useState(null);
@@ -16,7 +17,8 @@ export default function Dashboard() {
     const [showClearModal, setShowClearModal] = useState(false);
     const [showOnlineModal, setShowOnlineModal] = useState(false);
     const navigate = useNavigate();
-    const { onlineCount, onlineIps } = useOnlineCount();
+    const { onlineCount, onlineUsers } = useOnlineCount();
+    const { username } = useUser();
 
     const loadData = async () => {
         try {
@@ -154,7 +156,7 @@ export default function Dashboard() {
             <header className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl sm:text-4xl font-extrabold mb-2" style={{ color: 'var(--text-primary)' }}>
-                        С возвращением! 👋
+                        С возвращением{username ? `, ${username}` : ''}! 👋
                     </h1>
                     <p className="text-lg opacity-80" style={{ color: 'var(--text-secondary)' }}>Вот что нового в вашем домашнем портале.</p>
                 </div>
@@ -277,17 +279,19 @@ export default function Dashboard() {
                                     </button>
                                 </div>
                                 <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                                    {onlineIps.length > 0 ? onlineIps.map((ip, i) => (
+                                    {onlineUsers && onlineUsers.length > 0 ? onlineUsers.map((user, i) => (
                                         <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
                                             <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
-                                            <span className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>{ip}</span>
+                                            <span className="font-mono text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                                {user.name || user.ip} {user.name && <span className="text-xs text-gray-500 ml-2">({user.ip})</span>}
+                                            </span>
                                         </div>
                                     )) : (
                                         <p className="text-gray-500 text-center py-4">Нет подключений</p>
                                     )}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-4 text-center">
-                                    Всего: {onlineIps.length}
+                                    Всего: {onlineUsers ? onlineUsers.length : 0}
                                 </p>
                             </div>
                         </div>

@@ -133,6 +133,9 @@ export default defineConfig({
   server: {
     port: 5050,
     allowedHosts: ["dev.tpw-xxar.ru","garishly-feminine-urial.cloudpub.ru"],
+    hmr: {
+      overlay: false
+    },
     proxy: {
       // Consolidate all /api calls and STRIP the /api prefix before sending to backend
       '/api': {

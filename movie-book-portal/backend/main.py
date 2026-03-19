@@ -208,6 +208,8 @@ import time
 async def ws_online(websocket: WebSocket):
     await websocket.accept()
     ip = _get_ws_ip(websocket)
+    ua = websocket.headers.get("user-agent", "unknown")
+    print(f"[WS DEBUG] New connection from IP: {ip}, UA: {ua}")
     # Default to just IP, name will be set if they send it
     online_connections[websocket] = {"ip": ip, "name": None, "log_id": None}
     await broadcast_online_count()

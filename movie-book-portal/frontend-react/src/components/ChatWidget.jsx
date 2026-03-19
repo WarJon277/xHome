@@ -6,7 +6,7 @@ import { useUser } from '../contexts/UserContext';
 const EMOJIS = ['👍', '😂', '🔥', '❤️', '🎉', '👋', '🎬', '🍿', '💡', '🤔'];
 
 export default function ChatWidget({ isFullHeight = false }) {
-    const { chatMessages = [], sendChatMessage } = useOnlineCount();
+    const { chatMessages = [], sendChatMessage, wsStatus, debugUrl } = useOnlineCount();
     const { username } = useUser();
     const [inputValue, setInputValue] = useState('');
     const [showEmojis, setShowEmojis] = useState(false);
@@ -44,11 +44,20 @@ export default function ChatWidget({ isFullHeight = false }) {
     return (
         <div className={`flex flex-col ${isFullHeight ? 'h-full' : 'h-[400px]'} bg-transparent md:bg-white/5 md:border border-white/10 md:rounded-3xl overflow-hidden md:shadow-2xl relative`}>
             {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <MessageSquare size={20} className="text-blue-400" />
-                    <h3 className="font-bold text-lg">Общий чат</h3>
+            <div className="p-4 border-b border-white/10 bg-black/20 flex flex-col justify-center">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <MessageSquare size={20} className="text-blue-400" />
+                        <h3 className="font-bold text-lg">Общий чат</h3>
+                    </div>
                 </div>
+                {/* Debug Info for Android App Troubleshooting */}
+                {wsStatus !== 'Connected' && (
+                    <div className="mt-2 text-[10px] text-yellow-400 font-mono bg-black/40 p-1 rounded break-all">
+                        Status: {wsStatus} <br/>
+                        URL: {debugUrl}
+                    </div>
+                )}
             </div>
 
             {/* Messages Area */}

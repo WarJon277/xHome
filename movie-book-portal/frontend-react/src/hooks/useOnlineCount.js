@@ -4,6 +4,8 @@ export default function useOnlineCount() {
     const [onlineCount, setOnlineCount] = useState(0);
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
+    const [wsStatus, setWsStatus] = useState('Init');
+    const [debugUrl, setDebugUrl] = useState('');
     const wsRef = useRef(null);
     const reconnectTimer = useRef(null);
     const retryDelay = useRef(2000);
@@ -22,8 +24,11 @@ export default function useOnlineCount() {
             try {
                 const ws = new WebSocket(wsUrl);
                 wsRef.current = ws;
+                setDebugUrl(wsUrl);
+                setWsStatus('Connecting...');
 
                 ws.onopen = () => {
+                    setWsStatus('Connected');
                     retryDelay.current = 2000;
                     // Send user name upon connection if available
                     const username = localStorage.getItem('portal_username');
@@ -66,14 +71,17 @@ export default function useOnlineCount() {
                     }
                 };
 
-                ws.onclose = () => {
+                ws.onclose = (e) => {
+                    setWsStatus(`Closed: ${e.code}`);
                     scheduleReconnect();
                 };
 
-                ws.onerror = () => {
+                ws.onerror = (e) => {
+                    setWsStatus('Error');
                     ws.close();
                 };
             } catch (e) {
+                setWsStatus(`Exception: ${e.message}`);
                 scheduleReconnect();
             }
         }
@@ -101,5 +109,5 @@ export default function useOnlineCount() {
         };
     }, []);
 
-    return { onlineCount, onlineUsers, chatMessages, sendChatMessage };
+    return { onlineCount, onlineUsers, chatMessages, sendChatMessage, wsStatus, debugUrl };
 }

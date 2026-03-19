@@ -1,4 +1,4 @@
-import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2, PlayCircle, Wand2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2, Zap } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -142,15 +142,32 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
 
     return createPortal(
         <div className="fixed inset-0 z-[11000] bg-black/95 flex items-center justify-center backdrop-blur-sm">
-            {/* Close Button */}
-            <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-white/70 hover:text-white z-50 p-2 rounded-full hover:bg-white/10 transition-colors tv-focusable"
-                data-tv-clickable="true"
-                tabIndex={0}
-            >
-                <X size={32} />
-            </button>
+            {/* Top Right Controls: Close and Optimize */}
+            <div className="absolute top-4 right-4 flex items-center gap-3 z-50">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleOptimize();
+                    }}
+                    disabled={isOptimizing}
+                    className={`flex items-center gap-2 px-4 py-2 ${isOptimizing ? 'bg-gray-600' : 'bg-blue-600/80 hover:bg-blue-600'} text-white rounded-full transition-colors tv-focusable`}
+                    title="Сжать для быстрого просмотра (интернет)"
+                    data-tv-clickable="true"
+                    tabIndex={0}
+                >
+                    <Zap size={20} className={isOptimizing ? 'animate-pulse text-yellow-300' : 'text-yellow-300'} />
+                    <span className="hidden sm:inline font-medium text-sm">Ускорить загрузку</span>
+                </button>
+
+                <button
+                    onClick={onClose}
+                    className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors tv-focusable"
+                    data-tv-clickable="true"
+                    tabIndex={0}
+                >
+                    <X size={32} />
+                </button>
+            </div>
 
             {/* Navigation Buttons */}
             {onPrev && (
@@ -207,12 +224,12 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
             </div>
 
             {/* Footer / Controls */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end pointer-events-none">
-                <div className="text-white truncate pr-4 pointer-events-auto">
+            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-black/80 to-transparent flex flex-wrap justify-between items-end gap-4 pointer-events-none">
+                <div className="text-white flex-1 min-w-0 pr-4 pointer-events-auto">
                     <h2 className="text-lg sm:text-xl font-bold truncate">{item.title || item.name}</h2>
-                    <p className="text-xs sm:text-sm text-gray-400 mt-1 flex items-center gap-2">
-                        <span className="opacity-60">Дата съёмки:</span>
-                        <span className="font-medium text-gray-200">
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                        <span className="opacity-60 whitespace-nowrap">Дата съёмки:</span>
+                        <span className="font-medium text-gray-200 whitespace-nowrap">
                             {item.modified ? new Date(item.modified * 1000).toLocaleString('ru-RU', {
                                 day: 'numeric',
                                 month: 'long',
@@ -224,20 +241,7 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
                     </p>
                 </div>
 
-                <div className="flex gap-2 pointer-events-auto">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleOptimize();
-                        }}
-                        disabled={isOptimizing}
-                        className={`p-3 ${isOptimizing ? 'bg-gray-600' : 'bg-blue-600/80 hover:bg-blue-600'} text-white rounded-full transition-colors tv-focusable pointer-events-auto`}
-                        title="Оптимизировать для Web (исправит зависания)"
-                        data-tv-clickable="true"
-                    >
-                        <Wand2 size={20} className={isOptimizing ? 'animate-pulse' : ''} />
-                    </button>
-
+                <div className="flex gap-2 pointer-events-auto shrink-0">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();

@@ -9,9 +9,79 @@ from fastapi.responses import StreamingResponse
 from PIL import Image
 from PIL import Image
 import shutil
+from fastapi import Request, HTTPException, Response
+from fastapi.responses import StreamingResponse
 
 AUDIO_EXTENSIONS = {'.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg'}
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}
+
+def range_requests_response(
+    request: Request, file_path: str, content_type: str
+):
+    try:
+        file_size = os.stat(file_path).st_size
+    except OSError:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    range_header = request.headers.get("range")
+
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Encoding": "identity",
+        "Content-Length": str(file_size),
+        "Access-Control-Expose-Headers": (
+            "Content-Type, Accept-Ranges, Content-Length, "
+            "Content-Range, Content-Encoding"
+        ),
+    }
+
+    if not range_header:
+        # Return full file but via generator to avoid Starlette StaticFiles middleware buffering
+        def read_file():
+            with open(file_path, "rb") as f:
+                while chunk := f.read(1024 * 1024):  # 1MB chunks
+                    yield chunk
+        return StreamingResponse(
+            read_file(),
+            headers=headers,
+            media_type=content_type
+        )
+
+    # Parse Range: bytes=start-end
+    try:
+        range_str = range_header.split("=")[1]
+        start_str, end_str = range_str.split("-")
+        start = int(start_str)
+        end = int(end_str) if end_str else file_size - 1
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Range header")
+
+    if start >= file_size or end >= file_size or start > end:
+        headers["Content-Range"] = f"bytes */{file_size}"
+        return Response(status_code=416, headers=headers)
+
+    chunk_length = end - start + 1
+    headers["Content-Length"] = str(chunk_length)
+    headers["Content-Range"] = f"bytes {start}-{end}/{file_size}"
+
+    def read_range_file():
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            bytes_left = chunk_length
+            while bytes_left > 0:
+                chunk_size = min(1024 * 1024, bytes_left)
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                bytes_left -= len(chunk)
+                yield chunk
+
+    return StreamingResponse(
+        read_range_file(),
+        status_code=206,
+        headers=headers,
+        media_type=content_type
+    )
 
 def unzip_file(zip_path, dest_dir):
     """

@@ -4,9 +4,11 @@ import hashlib
 import time
 import subprocess
 import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from database_videogallery import SessionLocalVideoGallery, Video, get_db_videogallery
 from sqlalchemy.orm import Session
+from utils import range_requests_response
+import threading
 
 router = APIRouter(prefix="/videogallery", tags=["videogallery"])
 
@@ -325,3 +327,58 @@ def rename_video_folder(data: dict):
                     
     shutil.move(source_dir, target_dir)
     return {"status": "success"}
+
+@router.get("/stream")
+def stream_videogallery_video(path: str, request: Request):
+    target_file = os.path.join(VIDEOGALLERY_UPLOADS, path)
+    if not os.path.exists(target_file):
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    ext = os.path.splitext(target_file)[1].lower()
+    content_type = "video/mp4" # fallback
+    if ext == ".webm":
+        content_type = "video/webm"
+    elif ext == ".mkv":
+        content_type = "video/x-matroska"
+        
+    return range_requests_response(request, target_file, content_type)
+
+def optimize_video_task(source_file: str):
+    temp_file = source_file + ".opt.mp4"
+    try:
+        cmd = [
+            'ffmpeg', '-i', source_file,
+            '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28',
+            '-maxrate', '2.5M', '-bufsize', '5M',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', '+faststart',
+            temp_file, '-y'
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        os.rename(source_file, source_file + ".original_backup")
+        os.rename(temp_file, source_file)
+        os.remove(source_file + ".original_backup")
+    except Exception as e:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        print("Optimization failed:", e)
+
+active_optimizations = set()
+
+@router.post("/optimize")
+def optimize_video(path: str):
+    target_file = os.path.join(VIDEOGALLERY_UPLOADS, path)
+    if not os.path.exists(target_file):
+        raise HTTPException(status_code=404, detail="Video not found")
+        
+    if target_file in active_optimizations:
+        return {"status": "optimizing"}
+        
+    active_optimizations.add(target_file)
+    
+    def run_task():
+        optimize_video_task(target_file)
+        active_optimizations.discard(target_file)
+        
+    threading.Thread(target=run_task, daemon=True).start()
+    return {"status": "started"}

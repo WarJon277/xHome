@@ -1,9 +1,10 @@
-import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2, PlayCircle } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, Loader2, Share2, PlayCircle, Wand2 } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) {
     const [isLoading, setIsLoading] = useState(true);
+    const [isOptimizing, setIsOptimizing] = useState(false);
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -117,12 +118,27 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
         }
     };
 
+    const handleOptimize = async () => {
+        if (!window.confirm("Опция для слабого интернета: это сожмет видео для быстрого просмотра (займет от 1 до 5 минут на сервере). Продолжить?")) return;
+        setIsOptimizing(true);
+        try {
+            const res = await fetch(`/api/videogallery/optimize?path=${encodeURIComponent(item.path)}`, { method: 'POST' });
+            if (res.ok) {
+                alert("Оптимизация запущена! Видео станет загружаться быстрее через пару минут.");
+            }
+        } catch (e) {
+            alert("Ошибка при запуске оптимизации");
+        }
+        setIsOptimizing(false);
+    };
+
     // Early return if item is not provided
     if (!item) {
         return null;
     }
 
-    const videoUrl = safeUrl(item.file_path);
+    // Use optimized streaming endpoint which is robust to global middlewares buffering
+    const videoUrl = item.path ? safeUrl(`/api/videogallery/stream?path=${encodeURIComponent(item.path)}`) : safeUrl(item.file_path);
 
     return createPortal(
         <div className="fixed inset-0 z-[11000] bg-black/95 flex items-center justify-center backdrop-blur-sm">
@@ -209,6 +225,19 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
                 </div>
 
                 <div className="flex gap-2 pointer-events-auto">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleOptimize();
+                        }}
+                        disabled={isOptimizing}
+                        className={`p-3 ${isOptimizing ? 'bg-gray-600' : 'bg-blue-600/80 hover:bg-blue-600'} text-white rounded-full transition-colors tv-focusable pointer-events-auto`}
+                        title="Оптимизировать для Web (исправит зависания)"
+                        data-tv-clickable="true"
+                    >
+                        <Wand2 size={20} className={isOptimizing ? 'animate-pulse' : ''} />
+                    </button>
+
                     <button
                         onClick={(e) => {
                             e.stopPropagation();

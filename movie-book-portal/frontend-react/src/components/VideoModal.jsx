@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isOptimizing, setIsOptimizing] = useState(false);
+    const [useOriginal, setUseOriginal] = useState(false);
     const videoRef = useRef(null);
 
     useEffect(() => {
@@ -45,14 +46,14 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
         };
     }, [onClose, onNext, onPrev]);
 
-    // Reset loading when item changes
+    // Reset loading when item or mode changes
     useEffect(() => {
         setIsLoading(true);
         if (videoRef.current) {
             videoRef.current.load(); // force reload of video source
             videoRef.current.play().catch(e => console.log('Autoplay prevented:', e));
         }
-    }, [item?.id, item?.file_path]);
+    }, [item?.id, item?.file_path, useOriginal]);
 
     // Better URL logic matching Player.jsx
     const safeUrl = (path) => {
@@ -137,8 +138,11 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
         return null;
     }
 
-    // Use optimized streaming endpoint which is robust to global middlewares buffering
-    const videoUrl = item.path ? safeUrl(`/api/videogallery/stream?path=${encodeURIComponent(item.path)}`) : safeUrl(item.file_path);
+    // Use optimized streaming endpoint 
+    let videoUrl = item.path ? safeUrl(`/api/videogallery/stream?path=${encodeURIComponent(item.path)}`) : safeUrl(item.file_path);
+    if (useOriginal && item.path) {
+        videoUrl += "&original=true";
+    }
 
     return createPortal(
         <div className="fixed inset-0 z-[11000] bg-black/95 flex items-center justify-center backdrop-blur-sm">
@@ -147,11 +151,24 @@ export default function VideoModal({ item, onClose, onNext, onPrev, onDelete }) 
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
+                        setUseOriginal(!useOriginal);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors tv-focusable border border-white/10`}
+                    title="Переключить качество (на лету)"
+                    data-tv-clickable="true"
+                    tabIndex={0}
+                >
+                    <span className="font-medium text-sm">{useOriginal ? 'Сжатое (Live)' : 'Оригинал'}</span>
+                </button>
+
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
                         handleOptimize();
                     }}
                     disabled={isOptimizing}
                     className={`flex items-center gap-2 px-4 py-2 ${isOptimizing ? 'bg-gray-600' : 'bg-blue-600/80 hover:bg-blue-600'} text-white rounded-full transition-colors tv-focusable`}
-                    title="Сжать для быстрого просмотра (интернет)"
+                    title="Фоновое сжатие (сохранит навсегда легкую копию)"
                     data-tv-clickable="true"
                     tabIndex={0}
                 >

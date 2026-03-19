@@ -5,6 +5,7 @@ import time
 import subprocess
 import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import StreamingResponse
 from database_videogallery import SessionLocalVideoGallery, Video, get_db_videogallery
 from sqlalchemy.orm import Session
 from utils import range_requests_response
@@ -328,20 +329,56 @@ def rename_video_folder(data: dict):
     shutil.move(source_dir, target_dir)
     return {"status": "success"}
 
+def stream_transcoded_video(path: str):
+    cmd = [
+        "ffmpeg", 
+        "-i", path,
+        "-c:v", "libx264", 
+        "-preset", "ultrafast", 
+        "-crf", "30",
+        "-maxrate", "2.5M", 
+        "-bufsize", "5M",
+        "-c:a", "aac", 
+        "-b:a", "128k",
+        "-movflags", "frag_keyframe+empty_moov",
+        "-f", "mp4", 
+        "pipe:1"
+    ]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    try:
+        if not process.stdout:
+            raise RuntimeError("ffmpeg stdout is None")
+        while True:
+            chunk = process.stdout.read(1024 * 512)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        process.kill()
+
 @router.get("/stream")
-def stream_videogallery_video(path: str, request: Request):
+def stream_videogallery_video(path: str, request: Request, original: bool = False):
     target_file = os.path.join(VIDEOGALLERY_UPLOADS, path)
     if not os.path.exists(target_file):
         raise HTTPException(status_code=404, detail="Video not found")
     
+    # If explicitly requested original or if it's already an optimized backup file, or if it's not a heavy video formats
     ext = os.path.splitext(target_file)[1].lower()
-    content_type = "video/mp4" # fallback
-    if ext == ".webm":
-        content_type = "video/webm"
-    elif ext == ".mkv":
-        content_type = "video/x-matroska"
-        
-    return range_requests_response(request, target_file, content_type)
+    
+    if original or target_file.endswith(".opt.mp4"):
+        content_type = "video/mp4" # fallback
+        if ext == ".webm":
+            content_type = "video/webm"
+        elif ext == ".mkv":
+            content_type = "video/x-matroska"
+            
+        return range_requests_response(request, target_file, content_type)
+    else:
+        # Transcode on the fly
+        return StreamingResponse(
+            stream_transcoded_video(target_file), 
+            media_type="video/mp4"
+        )
 
 def optimize_video_task(source_file: str):
     temp_file = source_file + ".opt.mp4"

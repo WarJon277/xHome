@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Folder, ArrowLeft, Check, Home } from 'lucide-react';
 import { fetchPhotos } from '../api';
 
-export default function MoveModal({ item, currentPath, onClose, onMove }) {
+export default function MoveModal({ item, currentPath, onClose, onMove, fetchFolders: fetchFoldersProp }) {
     const [browsePath, setBrowsePath] = useState(""); // Start at root
     const [folders, setFolders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,9 +15,17 @@ export default function MoveModal({ item, currentPath, onClose, onMove }) {
     const loadFolders = async (path) => {
         setLoading(true);
         try {
-            const data = await fetchPhotos(path);
+            // Use the provided fetch function or fallback to fetchPhotos (should be provided)
+            const fetchFn = fetchFoldersProp || fetchPhotos;
+            const data = await fetchFn(path);
+            
+            // Handle different API formats:
+            // fetchPhotos returns an array: [item, item...]
+            // fetchVideos returns an object: { items: [item, item...] }
+            const items = Array.isArray(data) ? data : (data.items || []);
+            
             // Filter only folders
-            const folderList = data.filter(i => i.type === 'folder');
+            const folderList = items.filter(i => i.type === 'folder');
             setFolders(folderList);
         } catch (e) {
             console.error(e);

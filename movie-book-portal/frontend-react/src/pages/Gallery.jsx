@@ -675,6 +675,7 @@ export default function GalleryPage() {
                         currentPath={currentPath}
                         onClose={() => setMoveItem(null)}
                         onMove={handleMoveAction}
+                        fetchFolders={fetchPhotos}
                     />
                 )}
 

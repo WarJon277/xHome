@@ -129,10 +129,12 @@ def get_videogallery_contents(folder: str = ""):
 @router.post("/upload")
 def upload_video_to_folder(folder: str = Form(""), file: UploadFile = File(...)):
     try:
+        print(f"DEBUG: Video upload started. File: {file.filename}, Folder: '{folder}'")
         target_dir = os.path.join(VIDEOGALLERY_UPLOADS, folder)
         os.makedirs(target_dir, exist_ok=True)
 
         file_path = os.path.join(target_dir, file.filename)
+        print(f"DEBUG: Saving video to: {file_path}")
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
@@ -141,10 +143,17 @@ def upload_video_to_folder(folder: str = Form(""), file: UploadFile = File(...))
         thumb_name = f"{hashlib.md5(rel_path.encode()).hexdigest()}.jpg"
         thumb_path = os.path.join(VIDEOGALLERY_UPLOADS, "thumbnails", thumb_name)
         
-        generate_video_thumbnail(file_path, thumb_path)
+        print(f"DEBUG: Generating thumbnail: {thumb_path}")
+        success = generate_video_thumbnail(file_path, thumb_path)
+        if not success:
+            print(f"DEBUG: Thumbnail generation failed for {file.filename}")
 
+        print(f"DEBUG: Video upload successful: {file.filename}")
         return {"status": "success", "file": file.filename, "path": rel_path}
     except Exception as e:
+        import traceback
+        print(f"ERROR: Video upload failed: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/folder")

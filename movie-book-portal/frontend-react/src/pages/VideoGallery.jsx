@@ -462,9 +462,9 @@ export default function VideoGalleryPage() {
         if (path.startsWith('uploads/') || path.startsWith('static/')) return `/${path}`;
 
         // If it starts with / but not /uploads/, it likely needs prefixing
-        if (path.startsWith('/')) return `/uploads/gallery${path}`;
+        if (path.startsWith('/')) return `/uploads/videogallery${path}`;
 
-        return `/uploads/gallery/${path}`;
+        return `/uploads/videogallery/${path}`;
     };
 
     return (
@@ -678,6 +678,7 @@ export default function VideoGalleryPage() {
                         currentPath={currentPath}
                         onClose={() => setMoveItem(null)}
                         onMove={handleMoveAction}
+                        fetchFolders={fetchVideos}
                     />
                 )
             }

@@ -62,10 +62,13 @@ async def security_middleware(request: Request, call_next):
     # Рекомендуется использовать поиск в нижнем регистре для надежности
     is_app_by_ua = "xwv2-app-identifier" in user_agent
     # Также проверяем кастомный заголовок или куки (на случай, если WebView обрежет User-Agent в XHR/Fetch)
-    is_app_by_header = request.headers.get("X-App-Identifier") == "true"
+    is_app_by_header = request.headers.get("X-App-Identifier") == "true" or request.headers.get("X-User-Id") is not None
     is_app_by_cookie = "xwv2-app-identifier" in request.cookies.get("app_id", "").lower()
     
-    is_app = is_app_by_ua or is_app_by_header or is_app_by_cookie
+    # Дополнительно разрешаем стандартный UA Dalvik, который используется native-частью Android-приложения при загрузке
+    is_app_by_dalvik = "dalvik" in user_agent
+    
+    is_app = is_app_by_ua or is_app_by_header or is_app_by_cookie or is_app_by_dalvik
 
     # 4. Правила блокировки
     # Логируем для отладки, если запрос идет не из локальной сети

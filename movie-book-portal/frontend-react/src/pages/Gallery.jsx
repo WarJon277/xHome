@@ -82,8 +82,8 @@ export default function GalleryPage() {
             // Add timestamp for cache-busting
             const data = await fetchPhotos(folder, { t: Date.now() });
 
-            // Client-side sorting: Folders first, then files
-            const sorted = data.items.sort((a, b) => {
+            // API returns list directly
+            const sorted = data.sort((a, b) => {
                 // Always folders first
                 if (a.type === 'folder' && b.type !== 'folder') return -1;
                 if (a.type !== 'folder' && b.type === 'folder') return 1;

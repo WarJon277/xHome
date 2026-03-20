@@ -242,10 +242,9 @@ export const fetchBookPage = async (bookId, page) => {
 };
 
 
-// --- GALLERY ---
 export const fetchPhotos = (folder = "", params = {}) => {
     const queryParams = new URLSearchParams({ folder, ...params }).toString();
-    return request(`/gallery/?${queryParams}`, { timeout: 15000 });
+    return request(`/gallery?${queryParams}`, { timeout: 15000 });
 };
 export const fetchPhoto = (id) => request(`/gallery/${id}`);
 export const createPhotoFolder = (data) => request('/gallery', {

@@ -107,7 +107,21 @@ async def security_middleware(request: Request, call_next):
         """
         )
             
+    # 5. Выполняем запрос
     response = await call_next(request)
+    
+    # 6. Если запрос прошел успешно и это приложение, устанавливаем куку для медиа (thumbnails и т.д.)
+    if is_app:
+        # Устанавливаем куку на год. Это критично для загрузки изображений в <img> тегах
+        response.set_cookie(
+            key="app_id", 
+            value="xWV2-App-Identifier", 
+            max_age=31536000, 
+            httponly=True, 
+            samesite="lax",
+            path="/"
+        )
+    
     return response
 
 # Пути

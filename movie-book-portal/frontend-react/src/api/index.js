@@ -243,7 +243,10 @@ export const fetchBookPage = async (bookId, page) => {
 
 
 // --- GALLERY ---
-export const fetchPhotos = (folder = "") => request(`/gallery?folder=${encodeURIComponent(folder)}`, { timeout: 15000 });
+export const fetchPhotos = (folder = "", params = {}) => {
+    const queryParams = new URLSearchParams({ folder, ...params }).toString();
+    return request(`/gallery/?${queryParams}`, { timeout: 15000 });
+};
 export const fetchPhoto = (id) => request(`/gallery/${id}`);
 export const createPhotoFolder = (data) => request('/gallery', {
     method: 'POST',
@@ -260,7 +263,10 @@ export const renameFolder = (folderPath, newName) => request('/gallery/rename_fo
 });
 
 // --- VIDEOGALLERY ---
-export const fetchVideos = (folder = "") => request(`/videogallery/?folder=${encodeURIComponent(folder)}`, { timeout: 15000 });
+export const fetchVideos = (folder = "", params = {}) => {
+    const queryParams = new URLSearchParams({ folder, ...params }).toString();
+    return request(`/videogallery/?${queryParams}`, { timeout: 15000 });
+};
 export const createVideoFolder = (data) => request('/videogallery/folder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

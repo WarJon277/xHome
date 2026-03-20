@@ -79,10 +79,11 @@ export default function GalleryPage() {
     const loadItems = async (folder = "") => {
         try {
             setLoading(true);
-            const data = await fetchPhotos(folder);
+            // Add timestamp for cache-busting
+            const data = await fetchPhotos(folder, { t: Date.now() });
 
             // Client-side sorting: Folders first, then files
-            const sorted = data.sort((a, b) => {
+            const sorted = data.items.sort((a, b) => {
                 // Always folders first
                 if (a.type === 'folder' && b.type !== 'folder') return -1;
                 if (a.type !== 'folder' && b.type === 'folder') return 1;
@@ -102,24 +103,51 @@ export default function GalleryPage() {
                 return direction === 'asc' ? comparison : -comparison;
             });
 
+            console.log(`[Gallery] Loaded ${sorted.length} items for folder: ${folder}`);
             setItems(sorted);
             setError(null);
         } catch (err) {
-            console.error("Failed to load gallery:", err);
-            setError("Не удалось загрузить галерею");
+            console.error("Failed to load photo gallery:", err);
+            setError("Не удалось загрузить фотогалерею");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (viewMode === 'photos') {
-            loadItems(currentPath);
-        }
+        loadItems(currentPath);
         // Save path to localStorage
         localStorage.setItem('photo_gallery_path', currentPath);
         localStorage.setItem('gallery_sort_config', JSON.stringify(sortConfig));
-    }, [currentPath, viewMode, refreshTrigger, sortConfig]); // Added viewMode and refreshTrigger
+    }, [currentPath, refreshTrigger, sortConfig]);
+
+    useEffect(() => {
+        // Register global callbacks ONCE
+        window.onPhotoUploadProgress = (filename, percent, current, total) => {
+            if (percent === -1) {
+                setUploadStatus(prev => ({
+                    ...(prev || { active: true, total, failures: [] }),
+                    failures: [...(prev?.failures || []), { name: filename, error: 'Upload failed' }]
+                }));
+            } else {
+                setUploadStatus({
+                    active: true,
+                    total,
+                    current,
+                    progress: percent,
+                    failures: [],
+                    currentFile: filename
+                });
+            }
+        };
+
+        window.onPhotoUploadComplete = () => {
+            console.log("[Gallery] Android upload complete. Triggering refresh.");
+            setRefreshTrigger(prev => prev + 1);
+            setUploadStatus(prev => prev ? { ...prev, active: false, progress: 100 } : null);
+            setTimeout(() => setUploadStatus(null), 2000);
+        };
+    }, []);
 
     const handleFolderClick = (folderName) => {
         const newPath = currentPath ? `${currentPath}/${folderName}` : folderName;

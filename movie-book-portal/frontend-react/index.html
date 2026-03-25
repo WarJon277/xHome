@@ -9,6 +9,21 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Media Portal</title>
+  <style>
+    body {
+      background-color: #141414;
+      color: #ffffff;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    #root:empty::before {
+      content: "Загрузка...";
+      display: block;
+      padding: 50px;
+      text-align: center;
+      color: #888;
+    }
+  </style>
   <script>
     // Reload page if a script or chunk fails to load after an update
     window.onerror = function (message, source, lineno, colno, error) {

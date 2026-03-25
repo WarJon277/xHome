@@ -121,6 +121,14 @@ async def security_middleware(request: Request, call_next):
             samesite="lax",
             path="/"
         )
+        
+    # 7. Add Cache-Control headers for static assets to improve offline WebView reliability
+    if request.url.path.startswith("/assets/"):
+        # Vite assets are hashed, so cache them for a year
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif request.url.path == "/" or request.url.path == "/index.html":
+        # index.html should revalidate to fetch new HTML, but can be cached for offline fallback
+        response.headers["Cache-Control"] = "no-cache"
     
     return response
 
@@ -398,7 +406,7 @@ async def serve_react_app(full_path: str):
     # Serve index.html for React Router (SPA)
     index_path = os.path.join(FRONTEND_PATH, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache"})
     else:
         # Development mode - frontend not built yet
         return HTMLResponse(

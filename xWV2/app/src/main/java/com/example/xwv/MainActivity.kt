@@ -468,6 +468,70 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             }
+
+            // ===== OFFLINE PAGE NATIVE BACKUP =====
+            // Stores cached page HTML in SharedPreferences — never cleared by WebView cache pressure.
+            // Used by useManualCache.js to persist offline pages across WebView resets.
+
+            @JavascriptInterface
+            fun nativeSavePage(path: String, htmlContent: String) {
+                try {
+                    val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                    prefs.edit().putString("page_$path", htmlContent).apply()
+                    Log.d("OfflineCache", "Saved page: $path (${htmlContent.length} chars)")
+                } catch (e: Exception) {
+                    Log.e("OfflineCache", "Failed to save page $path", e)
+                }
+            }
+
+            @JavascriptInterface
+            fun nativeGetPage(path: String): String {
+                return try {
+                    val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                    prefs.getString("page_$path", "") ?: ""
+                } catch (e: Exception) {
+                    Log.e("OfflineCache", "Failed to get page $path", e)
+                    ""
+                }
+            }
+
+            @JavascriptInterface
+            fun nativeDeletePage(path: String) {
+                try {
+                    val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                    prefs.edit().remove("page_$path").apply()
+                    Log.d("OfflineCache", "Deleted page: $path")
+                } catch (e: Exception) {
+                    Log.e("OfflineCache", "Failed to delete page $path", e)
+                }
+            }
+
+            @JavascriptInterface
+            fun nativeClearPages() {
+                try {
+                    val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                    prefs.edit().clear().apply()
+                    Log.d("OfflineCache", "Cleared all native offline pages")
+                } catch (e: Exception) {
+                    Log.e("OfflineCache", "Failed to clear pages", e)
+                }
+            }
+
+            @JavascriptInterface
+            fun nativeGetSavedPaths(): String {
+                return try {
+                    val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                    val paths = prefs.all.keys
+                        .filter { it.startsWith("page_") }
+                        .map { "\"${it.removePrefix("page_")}\"" }
+                    "[${paths.joinToString(",")}]"
+                } catch (e: Exception) {
+                    Log.e("OfflineCache", "Failed to get saved paths", e)
+                    "[]"
+                }
+            }
+            // ===== END OFFLINE PAGE NATIVE BACKUP =====
+
         }, "AndroidApp")
 
 

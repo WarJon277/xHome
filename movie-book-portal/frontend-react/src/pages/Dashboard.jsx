@@ -7,6 +7,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useNavigate } from 'react-router-dom';
 import { getCachedBooks, getLocalProgress } from '../utils/offlineStorage';
 import PWACacheStatus from '../components/PWACacheStatus';
+import OfflinePageManager from '../components/OfflinePageManager';
 import { SkeletonDashboard } from '../components/Skeleton';
 import useOnlineCount from '../hooks/useOnlineCount';
 import { useUser } from '../contexts/UserContext';
@@ -325,6 +326,7 @@ export default function Dashboard() {
                             <RefreshCw className="text-cyan-500" size={24} /> Оффлайн режим
                         </h2>
                         <PWACacheStatus />
+                        <OfflinePageManager />
                     </div>
 
                     {/* 3. Random Recommendation inside stats column */}

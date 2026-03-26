@@ -291,11 +291,11 @@ class MainActivity : AppCompatActivity() {
         // Add a cookie as an extra layer of identification (WebView sometimes strips custom UA on XHR/fetch)
         val cookieManager = android.webkit.CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
-        cookieManager.setCookie("http://192.168.0.239:5055", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
+        cookieManager.setCookie("http://192.168.0.239:5050", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
         
         // Ensure cookie is available to all domains used by the app to prevent 403s on different hosts
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5055")) ?: emptySet()
+        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5050")) ?: emptySet()
         for (serverUrl in servers) {
             try {
                 cookieManager.setCookie(serverUrl, "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
@@ -680,8 +680,44 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // No shouldInterceptRequest override - let Service Worker handle caching!
-            // Service Worker from Vite PWA will automatically cache production build
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url?.toString() ?: ""
+                
+                // When offline, attempt to serve SPA HTML from SharedPreferences
+                if (request?.isForMainFrame == true && (!isNetworkAvailable() || isOfflineAttempt)) {
+                    try {
+                        val path = request.url.path ?: "/"
+                        val prefs = getSharedPreferences("OfflinePages", Context.MODE_PRIVATE)
+                        
+                        // Check if we have exact path cached
+                        var html = prefs.getString("page_$path", null)
+                        
+                        // If exact path not found, try the root page (since it's an SPA and index.html is the same)
+                        if (html == null) {
+                            html = prefs.getString("page_/", null)
+                        }
+                        
+                        // If we found natively backed up HTML, serve it directly
+                        if (html != null) {
+                            Log.i("OfflineCache", "Serving native backup for $path")
+                            val inputStream = java.io.ByteArrayInputStream(html.toByteArray(Charsets.UTF_8))
+                            // Create response with no-cache headers to ensure WebView parses it fresh
+                            val response = WebResourceResponse("text/html", "utf-8", inputStream)
+                            val headers = mutableMapOf(
+                                "Cache-Control" to "no-cache, no-store, must-revalidate",
+                                "Pragma" to "no-cache",
+                                "Expires" to "0"
+                            )
+                            response.responseHeaders = headers
+                            return response
+                        }
+                    } catch (e: Exception) {
+                        Log.e("OfflineCache", "Failed to intercept request", e)
+                    }
+                }
+                
+                return super.shouldInterceptRequest(view, request)
+            }
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
@@ -759,7 +795,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getLastServerUrl(): String {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        return prefs.getString("last_server_url", "http://192.168.0.239:5055") ?: "http://192.168.0.239:5055"
+        return prefs.getString("last_server_url", "http://192.168.0.239:5050") ?: "http://192.168.0.239:5050"
     }
     
     private fun getServerList(): Set<String> {

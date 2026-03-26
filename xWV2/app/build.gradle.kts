@@ -35,6 +35,8 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    buildToolsVersion = "36.1.0"
+    ndkVersion = "27.0.12077973"
 }
 kotlin {
     jvmToolchain(17)

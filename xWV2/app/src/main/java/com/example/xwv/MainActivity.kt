@@ -292,11 +292,11 @@ class MainActivity : AppCompatActivity() {
         // Add a cookie as an extra layer of identification (WebView sometimes strips custom UA on XHR/fetch)
         val cookieManager = android.webkit.CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
-        cookieManager.setCookie("http://192.168.0.239:5050", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
+        cookieManager.setCookie("https://jauntily-relevant-pompano.cloudpub.ru", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
         
         // Ensure cookie is available to all domains used by the app to prevent 403s on different hosts
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val servers = prefs.getStringSet("server_list", setOf("http://192.168.0.239:5050")) ?: emptySet()
+        val servers = prefs.getStringSet("server_list", setOf("https://jauntily-relevant-pompano.cloudpub.ru")) ?: emptySet()
         for (serverUrl in servers) {
             try {
                 cookieManager.setCookie(serverUrl, "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
@@ -675,7 +675,7 @@ class MainActivity : AppCompatActivity() {
                 
                 // Detection of "White Screen" due to missing scripts (404)
                 if (url.contains(".js") || url.contains(".css")) {
-                    if (url.contains("192.168.0.239") || url.contains("tpw-xxar.ru")) {
+                    if (url.contains("192.168.0.239") || url.contains("tpw-xxar.ru") || url.contains("cloudpub.ru")) {
                         Log.w("WebViewError", "Resource failed: $url")
                     }
                 }
@@ -796,7 +796,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getLastServerUrl(): String {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        return prefs.getString("last_server_url", "http://192.168.0.239:5050") ?: "http://192.168.0.239:5050"
+        return prefs.getString("last_server_url", "https://jauntily-relevant-pompano.cloudpub.ru") ?: "https://jauntily-relevant-pompano.cloudpub.ru"
     }
     
     private fun getServerList(): Set<String> {

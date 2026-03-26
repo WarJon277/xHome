@@ -57,6 +57,16 @@ class AccessLog(Base):
     disconnect_time = Column(DateTime, nullable=True)
     duration = Column(Integer, nullable=True)
 
+class AppVersion(Base):
+    __tablename__ = "app_versions"
+    id = Column(Integer, primary_key=True, index=True)
+    version_code = Column(Integer, unique=True, index=True)
+    version_name = Column(String)
+    release_notes = Column(String, nullable=True)
+    apk_path = Column(String)
+    is_mandatory = Column(Integer, default=0) # 0 for false, 1 for true
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 def get_db():
     db = SessionLocal()
     try:

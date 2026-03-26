@@ -38,6 +38,12 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.RelativeLayout
 import android.widget.ImageView
 import android.widget.TextView
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -61,6 +67,17 @@ class MainActivity : AppCompatActivity() {
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
     private var pulseAnimator: ObjectAnimator? = null
+
+    // OTA Update logic
+    private var downloadId: Long = -1L
+    private val downloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+            if (id == downloadId && downloadId != -1L) {
+                installApk()
+            }
+        }
+    }
 
     // Для загрузки файлов
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
@@ -200,6 +217,11 @@ class MainActivity : AppCompatActivity() {
         // CLEAR CACHE REMOVED: To allow instant loading from Service Worker and Browser cache
         // webView.clearCache(false)
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        }
 
         // Use saved server URLs
         val enabledServers = getEnabledServerList()
@@ -227,6 +249,8 @@ class MainActivity : AppCompatActivity() {
             isPrimaryUrlLoaded = false
             currentServerUrl = primaryUrl
             webView.loadUrl(primaryUrl)
+            
+            checkForUpdates(currentServerUrl)
         } else {
             // Offline: Force WebView to use cache immediately
             isPrimaryUrlLoaded = false
@@ -798,7 +822,118 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         return prefs.getString("last_server_url", "https://jauntily-relevant-pompano.cloudpub.ru") ?: "https://jauntily-relevant-pompano.cloudpub.ru"
     }
-    
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(downloadReceiver)
+        } catch (e: Exception) {
+            // Might not be registered
+        }
+    }
+
+    private fun checkForUpdates(serverUrl: String) {
+        if (!isNetworkAvailable()) return
+        Thread {
+            try {
+                val base = serverUrl.trimEnd('/')
+                val url = java.net.URL("$base/api/system/updates/latest")
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                if (connection.responseCode == 200) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = org.json.JSONObject(response)
+                    if (json.has("version_code")) {
+                        val serverVersionCode = json.getInt("version_code")
+                        val serverVersionName = json.getString("version_name")
+                        val releaseNotes = json.optString("release_notes", "")
+                        val isMandatory = json.optBoolean("is_mandatory", false)
+                        val apkUrl = json.getString("apk_url")
+
+                        val pInfo = packageManager.getPackageInfo(packageName, 0)
+                        val currentVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                            pInfo.longVersionCode.toInt()
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pInfo.versionCode
+                        }
+                        
+                        if (serverVersionCode > currentVersionCode) {
+                            runOnUiThread {
+                                showUpdateDialog(serverVersionCode, serverVersionName, releaseNotes, isMandatory, base, apkUrl)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OTAUpdate", "Failed to check for updates", e)
+            }
+        }.start()
+    }
+
+    private fun showUpdateDialog(serverVersionCode: Int, serverVersionName: String, releaseNotes: String, isMandatory: Boolean, serverUrl: String, apkUrl: String) {
+        val builder = android.app.AlertDialog.Builder(this)
+        builder.setTitle("Доступно обновление ($serverVersionName)")
+        builder.setMessage("Новая версия приложения доступна для скачивания.\n\nЧто нового:\n$releaseNotes")
+        builder.setCancelable(!isMandatory)
+        
+        builder.setPositiveButton("Обновить") { _, _ ->
+            startApkDownload(serverUrl, apkUrl, "xwv2_update_$serverVersionCode.apk")
+        }
+        
+        if (!isMandatory) {
+            builder.setNegativeButton("Позже") { dialog, _ -> dialog.dismiss() }
+        }
+        
+        builder.show()
+    }
+
+    private fun startApkDownload(serverUrl: String, apkUrl: String, fileName: String) {
+        try {
+            val fullUrl = if (apkUrl.startsWith("http")) apkUrl else "$serverUrl$apkUrl"
+            val request = android.app.DownloadManager.Request(android.net.Uri.parse(fullUrl))
+            request.setTitle("Загрузка обновления")
+            request.setDescription("Скачивание новой версии...")
+            request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            request.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
+            
+            val file = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), fileName)
+            if (file.exists()) file.delete()
+
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+            downloadId = manager.enqueue(request)
+            android.widget.Toast.makeText(this, "Загрузка обновления началась...", android.widget.Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Ошибка скачивания: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun installApk() {
+        try {
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+            val query = android.app.DownloadManager.Query().setFilterById(downloadId)
+            val cursor = manager.query(query)
+            if (cursor.moveToFirst()) {
+                val columnIndex = cursor.getColumnIndex(android.app.DownloadManager.COLUMN_STATUS)
+                if (android.app.DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
+                    val uri = manager.getUriForDownloadedFile(downloadId)
+                    if (uri != null) {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                        intent.setDataAndType(uri, "application/vnd.android.package-archive")
+                        intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                    }
+                }
+            }
+            cursor.close()
+        } catch (e: Exception) {
+            Log.e("OTAUpdate", "Failed to install APK", e)
+            android.widget.Toast.makeText(this, "Ошибка при установке обновления: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
     private fun getServerList(): Set<String> {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         return prefs.getStringSet("server_list", emptySet()) ?: emptySet()

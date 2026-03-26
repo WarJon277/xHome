@@ -1,5 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 from services.system_monitor import get_system_stats
+from dependencies import get_db
+from database import AppVersion
 import os
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -306,3 +309,20 @@ async def update_discovery_settings(settings: dict):
     
     from fastapi import HTTPException
     raise HTTPException(status_code=404, detail="Settings file not found")
+
+@router.get("/updates/latest")
+def get_latest_update(db: Session = Depends(get_db)):
+    try:
+        latest = db.query(AppVersion).order_by(AppVersion.version_code.desc()).first()
+        if latest:
+            return {
+                "version_code": latest.version_code,
+                "version_name": latest.version_name,
+                "release_notes": latest.release_notes,
+                "apk_url": f"/uploads/apk/{latest.apk_path}",
+                "is_mandatory": bool(latest.is_mandatory),
+            }
+        return {"version_code": 0}
+    except Exception as e:
+        print(f"Error fetching latest update: {e}")
+        return {"version_code": 0}

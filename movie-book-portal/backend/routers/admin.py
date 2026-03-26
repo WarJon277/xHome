@@ -3,10 +3,11 @@ import json
 from typing import Dict, Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException, Body, Depends, UploadFile, File, Form
+import shutil
 
 from dependencies import get_db, get_db_books_simple, get_db_tvshows_simple, get_db_gallery_simple
-from database import Movie, Settings, AccessLog
+from database import Movie, Settings, AccessLog, AppVersion
 from database_books import Book
 from database_tvshows import Tvshow
 from database_gallery import Photo
@@ -146,3 +147,36 @@ def get_access_logs(db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Error fetching access logs: {e}")
         return []
+
+@router.post("/updates/upload")
+async def upload_update(
+    version_code: int = Form(...),
+    version_name: str = Form(...),
+    release_notes: str = Form(""),
+    is_mandatory: int = Form(0),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        apk_dir = os.path.join(BASE_DIR, "uploads", "apk")
+        os.makedirs(apk_dir, exist_ok=True)
+        file_path = os.path.join(apk_dir, file.filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        new_version = AppVersion(
+            version_code=version_code,
+            version_name=version_name,
+            release_notes=release_notes,
+            apk_path=file.filename,
+            is_mandatory=is_mandatory
+        )
+        db.add(new_version)
+        db.commit()
+        db.refresh(new_version)
+        
+        return {"status": "success", "message": "Обновление загружено", "version_code": new_version.version_code}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

@@ -131,6 +131,51 @@ export default function AdminPage() {
     const [accessLogs, setAccessLogs] = useState([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
+    // App Update State
+    const [updateFormData, setUpdateFormData] = useState({
+        version_code: '',
+        version_name: '',
+        release_notes: '',
+        is_mandatory: false
+    });
+    const [updateApkFile, setUpdateApkFile] = useState(null);
+    const [currentAppVersion, setCurrentAppVersion] = useState(null);
+
+    const loadCurrentAppVersion = async () => {
+        try {
+            const res = await fetch('/api/system/updates/latest');
+            const data = await res.json();
+            setCurrentAppVersion(data?.version_code ? data : null);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleUpdateSubmit = async (e) => {
+        e.preventDefault();
+        if (!updateApkFile) return alert("Выберите APK файл");
+        const form = new FormData();
+        form.append("version_code", updateFormData.version_code);
+        form.append("version_name", updateFormData.version_name);
+        form.append("release_notes", updateFormData.release_notes);
+        form.append("is_mandatory", updateFormData.is_mandatory ? 1 : 0);
+        form.append("file", updateApkFile);
+        
+        setIsUploading(true);
+        try {
+            const res = await fetch('/api/admin/updates/upload', {
+                method: 'POST', body: form
+            });
+            if (!res.ok) throw new Error(await res.text());
+            alert("Обновление успешно загружено!");
+            setUpdateFormData({version_code: '', version_name: '', release_notes: '', is_mandatory: false});
+            setUpdateApkFile(null);
+            loadCurrentAppVersion();
+        } catch (e) {
+            alert("Ошибка: " + e.message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     // Form State
     const [formData, setFormData] = useState({
         title: '',
@@ -391,6 +436,8 @@ export default function AdminPage() {
             loadContent();
         } else if (activeTab === 'statistics') {
             loadAccessLogs();
+        } else if (activeTab === 'updates') {
+            loadCurrentAppVersion();
         }
     }, [contentType, activeTab]);
 
@@ -1059,6 +1106,15 @@ export default function AdminPage() {
                 >
                     Статистика
                 </button>
+                <button
+                    onClick={() => setActiveTab('updates')}
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors ${activeTab === 'updates'
+                        ? 'border-b-2 border-primary text-primary'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                >
+                    Обновление
+                </button>
             </div>
 
             {/* Dashboard Tab */}
@@ -1280,6 +1336,81 @@ export default function AdminPage() {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Updates Tab */}
+            {activeTab === 'updates' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">Обновление Android-приложения (xWV2)</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--card-bg)' }}>
+                            <h3 className="text-lg font-bold mb-4">Текущая версия</h3>
+                            {currentAppVersion ? (
+                                <div className="space-y-2 text-gray-300">
+                                    <p><strong className="text-white">Версия:</strong> {currentAppVersion.version_name} (Code: {currentAppVersion.version_code})</p>
+                                    <p><strong className="text-white">Обязательное:</strong> {currentAppVersion.is_mandatory ? 'Да' : 'Нет'}</p>
+                                    <p><strong className="text-white">Описание:</strong> {currentAppVersion.release_notes || '-'}</p>
+                                    <p><strong className="text-white">Файл:</strong> <a href={currentAppVersion.apk_url} className="text-primary underline" download>Скачать APK</a></p>
+                                </div>
+                            ) : (
+                                <div className="text-gray-500">Нет доступных обновлений базе.</div>
+                            )}
+                        </div>
+
+                        <form onSubmit={handleUpdateSubmit} className="p-6 rounded-lg" style={{ backgroundColor: 'var(--card-bg)' }}>
+                            <h3 className="text-lg font-bold mb-4">Загрузить новое обновление</h3>
+                            <input
+                                type="number"
+                                placeholder="Version Code (например, 2)"
+                                value={updateFormData.version_code}
+                                onChange={(e) => setUpdateFormData({...updateFormData, version_code: e.target.value})}
+                                className="w-full p-3 mb-4 bg-gray-800 rounded"
+                                required
+                            />
+                            <input
+                                type="text"
+                                placeholder="Version Name (например, 1.0.1)"
+                                value={updateFormData.version_name}
+                                onChange={(e) => setUpdateFormData({...updateFormData, version_name: e.target.value})}
+                                className="w-full p-3 mb-4 bg-gray-800 rounded"
+                                required
+                            />
+                            <textarea
+                                placeholder="Что нового? (Release Notes)"
+                                value={updateFormData.release_notes}
+                                onChange={(e) => setUpdateFormData({...updateFormData, release_notes: e.target.value})}
+                                className="w-full p-3 mb-4 bg-gray-800 rounded h-24"
+                            />
+                            <div className="flex items-center gap-2 mb-4">
+                                <input
+                                    type="checkbox"
+                                    id="is_mandatory"
+                                    checked={updateFormData.is_mandatory}
+                                    onChange={(e) => setUpdateFormData({...updateFormData, is_mandatory: e.target.checked})}
+                                    className="w-4 h-4 cursor-pointer"
+                                />
+                                <label htmlFor="is_mandatory" className="cursor-pointer select-none">Обязательное обновление (нельзя отменить)</label>
+                            </div>
+                            <input
+                                type="file"
+                                accept=".apk"
+                                onChange={(e) => setUpdateApkFile(e.target.files[0])}
+                                className="w-full p-3 mb-4 bg-gray-800 rounded"
+                                required
+                            />
+                            <button
+                                type="submit"
+                                disabled={isUploading}
+                                className="w-full bg-[#1855e5] hover:bg-[#1344bb] text-white font-bold py-3 px-4 rounded transition-colors flex justify-center items-center gap-2"
+                            >
+                                {isUploading ? <Loader2 className="animate-spin" size={20} /> : 'Загрузить обновление'}
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

@@ -1,0 +1,103 @@
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\api\index.js:312 -> if (e.lengthComputable) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\App.jsx:91 -> if (!theme || Object.keys(theme).length === 0) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\AudiobookPlayer.jsx:68 -> if (currentTrackIndex < tracks.length - 1) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\AudiobookPlayer.jsx:90 -> }, [audiobook, currentTrackIndex, tracks.length]);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\AudiobookPlayer.jsx:206 -> {tracks.length > 1 ? `Глава ${savedTrackIndex + 1}, ` : ''}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\AudiobookPlayer.jsx:249 -> {tracks.length > 1 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\AudiobookPlayer.jsx:260 -> {tracks.length > 1 && !showPlaylist && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\ChatWidget.jsx:65 -> {chatMessages.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:80 -> {items.length === 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:167 -> if (formData.items.length === 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:228 -> if (selected.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:308 -> <label className="block text-sm font-medium">Фотографии ({formData.items.length})</label>
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:320 -> {formData.items.length === 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:418 -> <span className="text-sm text-green-400 font-medium">Выбрано: {selectedItems.length}</span>
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeManager.jsx:422 -> disabled={selectedItems.length === 0}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeViewer.jsx:32 -> if (details && details.items && details.items.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeViewer.jsx:58 -> {kaleidoscopes.length === 0 && <div className="col-span-full text-center text-gray-500">Нет калейдоскопов</div>}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeViewer.jsx:168 -> const nextIdx = (index + 1) % items.length;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\KaleidoscopeViewer.jsx:200 -> {activeItem && <p className="text-sm opacity-80">Фото {currentIndex + 1} из {items.length}</p>}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\MediaCard.jsx:90 -> const truncate = (str, n) => str && str.length > n ? str.substr(0, n - 1) + "..." : str;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\MoveModal.jsx:91 -> {folders.length === 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\OfflinePageManager.jsx:36 -> const cachedCount = PAGES.filter(p => isPageCached(p.path)).length;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\OfflinePageManager.jsx:40 -> setProgress({ done: 0, total: urls.length });
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\OfflinePageManager.jsx:86 -> {cachedCount}/{PAGES.length}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\Player.jsx:316 -> const nextIndex = (rates.indexOf(playbackRate) + 1) % rates.length;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\components\Skeleton.jsx:86 -> style={{ backgroundColor: 'var(--card-bg)', height: `${heights[i % heights.length]}px` }}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useManualCache.js:48 -> if (html && html.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useManualCache.js:64 -> if (!html || html.length === 0) return false;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useManualCache.js:73 -> console.log(`[ManualCache] Restored ${path} from native backup (${html.length} chars)`);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useManualCache.js:99 -> if (savedPaths.length === 0) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useManualCache.js:156 -> if (onProgress) onProgress(completed, urls.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useOnlineCount.js:65 -> return newMsgs.length > 20 ? newMsgs.slice(-20) : newMsgs;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useTvNavigation.js:48 -> if (focusable.length === 0) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\hooks\useTvNavigation.js:117 -> if (candidates.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:283 -> if (Array.isArray(results) && results.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:312 -> if (browseItems.length > 0 && showBrowseModal) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:376 -> if (theme && Object.keys(theme).length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:536 -> if (contentType === 'tvshows' && episodeFiles.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:537 -> for (let i = 0; i < episodeFiles.length; i++) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:892 -> const message = filesInfo.length > 0
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:1156 -> {items.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:1248 -> {!isLoadingLogs && accessLogs.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:1355 -> ) : searchQuery.trim() && browseItems.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Admin.jsx:1360 -> ) : !searchQuery.trim() && browseItems.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Audiobooks.jsx:42 -> if (location.state?.openBookId && audiobooks.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Audiobooks.jsx:115 -> {filteredAudiobooks.length} audiobooks
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Audiobooks.jsx:147 -> ) : filteredAudiobooks.length === 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Books.jsx:133 -> if (cachedBooks && cachedBooks.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Books.jsx:287 -> {filteredBooks.length} книг
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Books.jsx:295 -> cachedBooksCount={books.length}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Dashboard.jsx:182 -> {data.continue_watching.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Dashboard.jsx:192 -> {data.continue_watching.length > 0 ? (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Dashboard.jsx:284 -> {onlineUsers && onlineUsers.length > 0 ? onlineUsers.map((user, i) => (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Dashboard.jsx:296 -> Всего: {onlineUsers ? onlineUsers.length : 0}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:106 -> console.log(`[Gallery] Loaded ${sorted.length} items for folder: ${folder}`);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:178 -> if (nextIndex >= 0 && nextIndex < photoItems.length) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:322 -> if (files && files.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:337 -> if (!files || files.length === 0) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:341 -> total: files.length,
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:348 -> for (let i = 0; i < files.length; i++) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:352 -> const safePrev = prev || { active: true, total: files.length, failures: [] };
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:374 -> const safePrev = prev || { active: true, total: files.length, failures: [] };
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:387 -> if (safePrev.failures.length === 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:557 -> className={`cursor-pointer hover:opacity-80 ${index === arr.length - 1 ? 'font-bold' : ''}`}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:558 -> style={{ color: index === arr.length - 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:691 -> hasNext={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) < items.filter(item => item.type !== 'folder').length - 1}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:779 -> : `Uploaded ${uploadStatus.total - uploadStatus.failures.length} of ${uploadStatus.total} files`
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Gallery.jsx:792 -> {uploadStatus.failures.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Movies.jsx:168 -> {filteredMovies.length} titles
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Reader.jsx:205 -> if (scrollTotal <= 0 && pageContent.length > 1000) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Reader.jsx:385 -> console.log('✓ Content found, length:', data.content.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Reader.jsx:389 -> console.log('✓ Content processed, length:', processed.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Reader.jsx:541 -> console.log('Content processed successfully, final length:', processed.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:39 -> if (!q || q.length < 2) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:138 -> if (item.type === 'movie' && details?.torrents?.length) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:256 -> {(activeDownloads.length > 0 || recentDownloads.length > 0) && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:321 -> {!isSearching && searchQuery.trim().length >= 2 && results.length === 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:340 -> {!isSearching && results.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:343 -> Найдено: {results.length}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\Requests.jsx:451 -> {details?.torrents?.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\ServerStatus.jsx:299 -> {data.recent_activity && data.recent_activity.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\ServerStatus.jsx:455 -> {stats.temperature && Object.keys(stats.temperature).length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\TvShowDetails.jsx:49 -> if (!loading && location.state?.resumeEpisodeId && episodes.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\TvShows.jsx:70 -> {filteredShows.length} shows
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:104 -> console.log(`[VideoGallery] Loaded ${sorted.length} items for folder: ${folder}`);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:185 -> if (nextIndex >= 0 && nextIndex < photoItems.length) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:340 -> if (!files || files.length === 0) return;
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:344 -> total: files.length,
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:351 -> for (let i = 0; i < files.length; i++) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:355 -> const safePrev = prev || { active: true, total: files.length, failures: [] };
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:377 -> const safePrev = prev || { active: true, total: files.length, failures: [] };
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:390 -> if (safePrev.failures.length === 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:519 -> className={`cursor-pointer hover:opacity-80 ${index === arr.length - 1 ? 'font-bold' : ''}`}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:520 -> style={{ color: index === arr.length - 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:669 -> hasNext={items.filter(item => item.type !== 'folder').findIndex(item => item.id === selectedPhoto.id) < items.filter(item => item.type !== 'folder').length - 1}
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:764 -> : `Uploaded ${uploadStatus.total - uploadStatus.failures.length} of ${uploadStatus.total} files`
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\pages\VideoGallery.jsx:777 -> {uploadStatus.failures.length > 0 && (
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\nativePhotoPicker.js:21 -> const ab = new ArrayBuffer(byteString.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\nativePhotoPicker.js:23 -> for (let i = 0; i < byteString.length; i++) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\offlineStorage.js:114 -> console.log('[OfflineStorage] Retrieved cached books:', books.length);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\offlineStorage.js:184 -> console.log(`[OfflineStorage] Book ${bookId} has ${pages.length} cached pages`);
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\offlineUtils.js:133 -> if (resources.length > 0) {
+c:\Users\xxar\xHomePortal\movie-book-portal\frontend-react\src\utils\offlineUtils.js:295 -> const count = allBooks.length;

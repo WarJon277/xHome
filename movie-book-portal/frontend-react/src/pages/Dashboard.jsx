@@ -54,7 +54,8 @@ export default function Dashboard() {
             const validLocal = localProgresses.filter(p => p !== null);
 
             // Merge: For each book, take newest between remote and local
-            const merged = [...result.continue_watching];
+            const safeContinueWatching = Array.isArray(result?.continue_watching) ? result.continue_watching : [];
+            const merged = [...safeContinueWatching];
             validLocal.forEach(lp => {
                 const existingIndex = merged.findIndex(rp => rp.type === 'book' && parseInt(rp.id) === parseInt(lp.id));
                 if (existingIndex !== -1) {
@@ -78,8 +79,17 @@ export default function Dashboard() {
             // Re-sort by last_updated
             merged.sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
 
-            result.continue_watching = merged.slice(0, 10);
-            setData(result);
+            // Safely structure final state to prevent React component crashes 
+            // from undefined.length or undefined.map
+            const safeResult = {
+                ...result,
+                continue_watching: merged.slice(0, 10),
+                new_arrivals: Array.isArray(result?.new_arrivals) ? result.new_arrivals : [],
+                latest_photos: Array.isArray(result?.latest_photos) ? result.latest_photos : [],
+                stats: result?.stats || { movies_count: 0, books_count: 0, tvshows_count: 0, photos_count: 0 }
+            };
+
+            setData(safeResult);
         } catch (err) {
             console.error("Failed to load dashboard:", err);
             setError("Не удалось загрузить данные дашборда");

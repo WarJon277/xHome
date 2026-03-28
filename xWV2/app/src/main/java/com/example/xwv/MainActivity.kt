@@ -53,6 +53,39 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadingImage: ImageView
     private lateinit var loadingText: TextView
     private lateinit var settingsButton: ImageButton
+    // Install receiver for PackageInstaller API
+    private val installReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == "com.example.xwv.INSTALL_COMPLETE") {
+                val status = intent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -1)
+                when (status) {
+                    android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                        val confirmationIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            intent.getParcelableExtra(android.content.Intent.EXTRA_INTENT, android.content.Intent::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)
+                        }
+                        if (confirmationIntent != null) {
+                            confirmationIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            try {
+                                startActivity(confirmationIntent)
+                            } catch (e: Exception) {}
+                        }
+                    }
+                    android.content.pm.PackageInstaller.STATUS_SUCCESS -> {
+                        android.widget.Toast.makeText(this@MainActivity, "Установка обновления запущена...", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        val message = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE)
+                        android.util.Log.e("OTAUpdate", "Install status: $status, message: $message")
+                        android.widget.Toast.makeText(this@MainActivity, "Ошибка установки: $message (Status: $status)", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
     private var currentServerUrl: String = "" // Track currently attempted server
     private var enabledServerUrls: List<String> = emptyList()
     private var currentServerIndex: Int = -1
@@ -67,17 +100,6 @@ class MainActivity : AppCompatActivity() {
     private val timeoutHandler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
     private var pulseAnimator: ObjectAnimator? = null
-
-    // OTA Update logic
-    private var downloadId: Long = -1L
-    private val downloadReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-            if (id == downloadId && downloadId != -1L) {
-                installApk()
-            }
-        }
-    }
 
     // Для загрузки файлов
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
@@ -217,16 +239,17 @@ class MainActivity : AppCompatActivity() {
         // CLEAR CACHE REMOVED: To allow instant loading from Service Worker and Browser cache
         // webView.clearCache(false)
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        }
-
         // Use saved server URLs
         val enabledServers = getEnabledServerList()
         enabledServerUrls = enabledServers.toList()
         currentServerIndex = 0
+
+        // Register Install Receiver for PackageInstaller API
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(installReceiver, android.content.IntentFilter("com.example.xwv.INSTALL_COMPLETE"), android.content.Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(installReceiver, android.content.IntentFilter("com.example.xwv.INSTALL_COMPLETE"))
+        }
         
         Log.i("MainActivity", "=== SERVER STARTUP ===")
         Log.i("MainActivity", "Enabled servers from prefs: $enabledServers")
@@ -826,10 +849,8 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         try {
-            unregisterReceiver(downloadReceiver)
-        } catch (e: Exception) {
-            // Might not be registered
-        }
+            unregisterReceiver(installReceiver)
+        } catch (e: Exception) {}
     }
 
     private fun checkForUpdates(serverUrl: String) {
@@ -859,10 +880,11 @@ class MainActivity : AppCompatActivity() {
                             @Suppress("DEPRECATION")
                             pInfo.versionCode
                         }
+                        val currentVersionName = pInfo.versionName ?: "Неизвестно"
                         
                         if (serverVersionCode > currentVersionCode) {
                             runOnUiThread {
-                                showUpdateDialog(serverVersionCode, serverVersionName, releaseNotes, isMandatory, base, apkUrl)
+                                showUpdateDialog(serverVersionCode, serverVersionName, currentVersionName, releaseNotes, isMandatory, base, apkUrl)
                             }
                         }
                     }
@@ -873,10 +895,13 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun showUpdateDialog(serverVersionCode: Int, serverVersionName: String, releaseNotes: String, isMandatory: Boolean, serverUrl: String, apkUrl: String) {
+    private fun showUpdateDialog(serverVersionCode: Int, serverVersionName: String, currentVersionName: String, releaseNotes: String, isMandatory: Boolean, serverUrl: String, apkUrl: String) {
         val builder = android.app.AlertDialog.Builder(this)
-        builder.setTitle("Доступно обновление ($serverVersionName)")
-        builder.setMessage("Новая версия приложения доступна для скачивания.\n\nЧто нового:\n$releaseNotes")
+        builder.setTitle("Обновление приложения")
+        builder.setMessage("Доступна новая версия для загрузки.\n\n" +
+                           "Текущая версия:\t$currentVersionName\n" +
+                           "Новая версия:\t\t$serverVersionName\n\n" +
+                           "Что нового:\n$releaseNotes")
         builder.setCancelable(!isMandatory)
         
         builder.setPositiveButton("Обновить") { _, _ ->
@@ -891,47 +916,106 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startApkDownload(serverUrl: String, apkUrl: String, fileName: String) {
-        try {
-            val fullUrl = if (apkUrl.startsWith("http")) apkUrl else "$serverUrl$apkUrl"
-            val request = android.app.DownloadManager.Request(android.net.Uri.parse(fullUrl))
-            request.setTitle("Загрузка обновления")
-            request.setDescription("Скачивание новой версии...")
-            request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
-            
-            val file = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), fileName)
-            if (file.exists()) file.delete()
-
-            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-            downloadId = manager.enqueue(request)
-            android.widget.Toast.makeText(this, "Загрузка обновления началась...", android.widget.Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            android.widget.Toast.makeText(this, "Ошибка скачивания: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun installApk() {
-        try {
-            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-            val query = android.app.DownloadManager.Query().setFilterById(downloadId)
-            val cursor = manager.query(query)
-            if (cursor.moveToFirst()) {
-                val columnIndex = cursor.getColumnIndex(android.app.DownloadManager.COLUMN_STATUS)
-                if (android.app.DownloadManager.STATUS_SUCCESSFUL == cursor.getInt(columnIndex)) {
-                    val uri = manager.getUriForDownloadedFile(downloadId)
-                    if (uri != null) {
-                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
-                        intent.setDataAndType(uri, "application/vnd.android.package-archive")
-                        intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                    }
+        val fullUrl = if (apkUrl.startsWith("http")) apkUrl else "$serverUrl$apkUrl"
+        android.widget.Toast.makeText(this, "Скачивание началось, пожалуйста подождите...", android.widget.Toast.LENGTH_LONG).show()
+        
+        Thread {
+            try {
+                val url = java.net.URL(fullUrl)
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                
+                // Allow self-signed certs just for OTA if needed
+                if (connection is javax.net.ssl.HttpsURLConnection) {
+                    val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                        override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+                        override fun checkClientTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
+                        override fun checkServerTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
+                    })
+                    val sc = javax.net.ssl.SSLContext.getInstance("SSL")
+                    sc.init(null, trustAllCerts, java.security.SecureRandom())
+                    connection.sslSocketFactory = sc.socketFactory
+                    connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                }
+                
+                connection.requestMethod = "GET"
+                connection.connect()
+                
+                if (connection.responseCode != 200) {
+                    throw Exception("Ошибка сервера HTTP ${connection.responseCode}")
+                }
+                
+                val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: cacheDir
+                val file = java.io.File(dir, fileName)
+                if (file.exists()) file.delete()
+                
+                val inputStream = connection.inputStream
+                val outputStream = java.io.FileOutputStream(file)
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+                outputStream.close()
+                inputStream.close()
+                connection.disconnect()
+                
+                runOnUiThread {
+                    android.widget.Toast.makeText(this@MainActivity, "Загрузка завершена! Запуск установки...", android.widget.Toast.LENGTH_LONG).show()
+                    installApkFromFile(file)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("OTAUpdate", "Failed to download update", e)
+                runOnUiThread {
+                    android.widget.Toast.makeText(this@MainActivity, "Ошибка загрузки: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
                 }
             }
-            cursor.close()
+        }.start()
+    }
+
+    private fun installApkFromFile(file: java.io.File) {
+        try {
+            val packageInstaller = packageManager.packageInstaller
+            val params = android.content.pm.PackageInstaller.SessionParams(
+                android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL
+            )
+            val sessionId = packageInstaller.createSession(params)
+            val session = packageInstaller.openSession(sessionId)
+
+            val out = session.openWrite("package", 0, -1)
+            val input = java.io.FileInputStream(file)
+            val buffer = ByteArray(65536)
+            var length: Int
+            while (input.read(buffer).also { length = it } >= 0) {
+                out.write(buffer, 0, length)
+            }
+            session.fsync(out)
+            input.close()
+            out.close()
+
+            val intent = android.content.Intent("com.example.xwv.INSTALL_COMPLETE")
+            intent.setPackage(packageName)
+            val pendingIntent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                android.app.PendingIntent.getBroadcast(
+                    this,
+                    sessionId,
+                    intent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+                )
+            } else {
+                android.app.PendingIntent.getBroadcast(
+                    this,
+                    sessionId,
+                    intent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            }
+
+            session.commit(pendingIntent.intentSender)
+            session.close()
+
         } catch (e: Exception) {
-            Log.e("OTAUpdate", "Failed to install APK", e)
-            android.widget.Toast.makeText(this, "Ошибка при установке обновления: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            android.util.Log.e("OTAUpdate", "Session Install failed", e)
+            android.widget.Toast.makeText(this, "Сбой системной установки: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
     private fun getServerList(): Set<String> {

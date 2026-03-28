@@ -4,7 +4,7 @@
 PROJECT_ROOT="/data/xHomePro/xHome/movie-book-portal"
 LOG_DIR="$HOME"
 
-PORTS_TO_KILL=(5055 5050)
+PORTS_TO_KILL=(5055 80)
 
 echo "=== Stopping Media Portal Services ==="
 

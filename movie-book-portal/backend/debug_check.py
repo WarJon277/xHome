@@ -24,8 +24,8 @@ def test_url(url, name):
 
 # Backend runs on 5055
 success_backend = test_url("http://127.0.0.1:5055/api/movies", "Direct Backend")
-# Frontend proxy runs on 5050
-success_proxy = test_url("http://127.0.0.1:5050/api/movies", "Vite Proxy")
+# Frontend proxy runs on 80
+success_proxy = test_url("http://127.0.0.1:80/api/movies", "Vite Proxy")
 
 if not success_backend:
     print("\nCRITICAL: Backend is NOT working correctly.")

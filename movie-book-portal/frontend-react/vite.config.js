@@ -131,7 +131,7 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 5050,
+    port: 80,
     allowedHosts: ["dev.tpw-xxar.ru","garishly-feminine-urial.cloudpub.ru"],
     hmr: {
       overlay: false

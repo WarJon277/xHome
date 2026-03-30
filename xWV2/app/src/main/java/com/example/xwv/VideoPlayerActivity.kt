@@ -66,7 +66,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         // Get server URL dynamically from Intent or SharedPreferences
         serverUrl = intent.getStringExtra("SERVER_URL") ?: run {
             val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-            prefs.getString("last_server_url", "https://jauntily-relevant-pompano.cloudpub.ru") ?: "https://jauntily-relevant-pompano.cloudpub.ru"
+            prefs.getString("last_server_url", "https://xxar.ru") ?: "https://xxar.ru"
         }
         // Ensure serverUrl doesn't end with /
         serverUrl = serverUrl.trimEnd('/')

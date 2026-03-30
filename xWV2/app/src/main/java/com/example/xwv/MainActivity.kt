@@ -360,11 +360,11 @@ class MainActivity : AppCompatActivity() {
         // Add a cookie as an extra layer of identification (WebView sometimes strips custom UA on XHR/fetch)
         val cookieManager = android.webkit.CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
-        cookieManager.setCookie("https://jauntily-relevant-pompano.cloudpub.ru", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
-        
+        cookieManager.setCookie("https://xxar.ru", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
+
         // Ensure cookie is available to all domains used by the app to prevent 403s on different hosts
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val servers = prefs.getStringSet("server_list", setOf("https://jauntily-relevant-pompano.cloudpub.ru")) ?: emptySet()
+        val servers = prefs.getStringSet("server_list", setOf("https://xxar.ru")) ?: emptySet()
         for (serverUrl in servers) {
             try {
                 cookieManager.setCookie(serverUrl, "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
@@ -693,9 +693,9 @@ class MainActivity : AppCompatActivity() {
                     // we can just save it if it's NOT the cloud URL.
                 // If loaded successfully, save this URL as the new default if it matches what we tried
                 // and it's not the fallback cloud URL.
-                if (currentServerUrl.isNotEmpty() && 
-                    !currentServerUrl.contains("lightly-shipshape-stonefish.cloudpub.ru") && 
-                    !currentServerUrl.contains("dev.tpw-xxar.ru")) {
+                if (currentServerUrl.isNotEmpty() &&
+                    !currentServerUrl.contains("cloudpub.ru") &&
+                    !currentServerUrl.contains("tpw-xxar.ru")) {
                      saveServerUrl(currentServerUrl)
                 }
             }
@@ -747,7 +747,7 @@ class MainActivity : AppCompatActivity() {
                 
                 // Detection of "White Screen" due to missing scripts (404)
                 if (url.contains(".js") || url.contains(".css")) {
-                    if (url.contains("192.168.0.239") || url.contains("tpw-xxar.ru") || url.contains("cloudpub.ru")) {
+                    if (url.contains("192.168.0.239") || url.contains("tpw-xxar.ru") || url.contains("xxar.ru")) {
                         Log.w("WebViewError", "Resource failed: $url")
                     }
                 }
@@ -868,7 +868,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getLastServerUrl(): String {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        return prefs.getString("last_server_url", "https://jauntily-relevant-pompano.cloudpub.ru") ?: "https://jauntily-relevant-pompano.cloudpub.ru"
+        return prefs.getString("last_server_url", "https://xxar.ru") ?: "https://xxar.ru"
     }
 
     override fun onDestroy() {

@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.webkit.*
@@ -207,7 +208,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun loadServers() {
-        val servers = prefs.getStringSet("server_list", setOf("https://jauntily-relevant-pompano.cloudpub.ru")) ?: emptySet()
+        val servers = prefs.getStringSet("server_list", setOf("https://xxar.ru")) ?: emptySet()
         val enabledServers = prefs.getStringSet("enabled_server_list", servers) ?: emptySet()
 
         serverListContainer.removeAllViews()
@@ -218,25 +219,55 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun checkForUpdatesManually() {
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val servers = prefs.getStringSet("enabled_server_list", emptySet()) ?: emptySet()
-        val serverUrl = servers.firstOrNull() ?: run {
+        
+        // Get enabled servers
+        val enabledServers = prefs.getStringSet("enabled_server_list", emptySet()) ?: emptySet()
+        
+        // If no enabled servers, try to get last used server from MainActivity
+        val serverUrl = if (enabledServers.isNotEmpty()) {
+            enabledServers.first()
+        } else {
+            val lastServer = prefs.getString("last_server_url", "https://xxar.ru") ?: "https://xxar.ru"
+            lastServer
+        }
+
+        if (serverUrl.isEmpty()) {
             Toast.makeText(this, "Нет выбранных серверов", Toast.LENGTH_SHORT).show()
             return
         }
 
-        Toast.makeText(this, "Проверка обновлений...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Проверка обновлений...\nСервер: $serverUrl", Toast.LENGTH_LONG).show()
 
         Thread {
             try {
                 val base = serverUrl.trimEnd('/')
                 val url = URL("$base/api/system/updates/latest")
-                val connection = url.openConnection() as HttpURLConnection
+                
+                // Allow self-signed certificates
+                val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                    override fun getAcceptedIssuers(): Array<X509Certificate>? = null
+                    override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                    override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                })
+                
+                val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+                
+                val connection = url.openConnection() as javax.net.ssl.HttpsURLConnection
+                connection.sslSocketFactory = sslContext.socketFactory
+                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
 
-                if (connection.responseCode == 200) {
+                val responseCode = connection.responseCode
+                Log.d("OTAUpdate", "Response code: $responseCode from $url")
+                
+                if (responseCode == 200) {
                     val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.d("OTAUpdate", "Response: $response")
+                    
                     val json = org.json.JSONObject(response)
 
                     if (json.has("version_code")) {
@@ -254,6 +285,8 @@ class SettingsActivity : AppCompatActivity() {
                         }
                         val currentVersionName = pInfo.versionName ?: "Неизвестно"
 
+                        Log.d("OTAUpdate", "Server version: $serverVersionCode ($serverVersionName), Current: $currentVersionCode ($currentVersionName)")
+
                         runOnUiThread {
                             if (serverVersionCode > currentVersionCode) {
                                 AlertDialog.Builder(this)
@@ -269,18 +302,29 @@ class SettingsActivity : AppCompatActivity() {
                                     .setNegativeButton("Позже", null)
                                     .show()
                             } else {
-                                Toast.makeText(this, "Установлена последняя версия", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Установлена последняя версия\n$serverVersionName", Toast.LENGTH_LONG).show()
                             }
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this, "Неверный формат ответа сервера", Toast.LENGTH_LONG).show()
                         }
                     }
                 } else {
+                    val errorBody = try {
+                        connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
+                    } catch (e: Exception) {
+                        "Cannot read error body"
+                    }
+                    Log.e("OTAUpdate", "HTTP error: $responseCode, body: $errorBody")
                     runOnUiThread {
-                        Toast.makeText(this, "Ошибка проверки обновлений", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Ошибка сервера: $responseCode", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
+                Log.e("OTAUpdate", "Exception: ${e.message}", e)
                 runOnUiThread {
-                    Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Ошибка: ${e.message}\nСервер: $serverUrl", Toast.LENGTH_LONG).show()
                 }
             }
         }.start()

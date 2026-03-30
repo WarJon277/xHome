@@ -258,6 +258,8 @@ def apply_image_filter(img, filter_type):
         return img
 
 async def get_book_page_content(book, page_num, db):
+    import base64
+    
     full_path = book.file_path
     if not full_path or not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Book or file not found")
@@ -330,17 +332,23 @@ async def get_book_page_content(book, page_num, db):
                 content = content_bytes.decode('utf-8')
                 return {"content": content, "total": total_pages}
         else:
+            # PDF/FB2 handling - convert page to base64 image
             doc = fitz.open(full_path)
             if page_num < 1 or page_num > doc.page_count:
+                total_pages = doc.page_count
                 doc.close()
                 raise HTTPException(status_code=404, detail="Page number out of range")
 
             page = doc.load_page(page_num - 1)
             pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), colorspace=fitz.csRGB)
             img_bytes = pix.tobytes("png")
+            total_pages = doc.page_count
             doc.close()
 
-            return StreamingResponse(io.BytesIO(img_bytes), media_type="image/png")
+            # Convert to base64 for JSON response
+            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+            img_html = f'<div style="display:flex;justify-content:center;"><img src="data:image/png;base64,{img_base64}" style="max-width:100%;height:auto;box-shadow:0 4px 6px rgba(0,0,0,0.1);" /></div>'
+            return {"content": img_html, "total": total_pages}
 
     except HTTPException:
         raise

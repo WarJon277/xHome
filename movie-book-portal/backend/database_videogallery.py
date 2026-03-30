@@ -3,8 +3,10 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+import os
 
-DATABASE_URL_VIDEOGALLERY = "sqlite:///./videogallery.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL_VIDEOGALLERY = f"sqlite:///{os.path.join(BASE_DIR, 'videogallery.db')}"
 
 engine_videogallery = create_engine(DATABASE_URL_VIDEOGALLERY, connect_args={"check_same_thread": False})
 SessionLocalVideoGallery = sessionmaker(autocommit=False, autoflush=False, bind=engine_videogallery)

@@ -76,6 +76,15 @@
     </ScrollView>
 
     <Button
+        android:id="@+id/btnCheckUpdates"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Проверить обновления"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#4CAF50"
+        android:textColor="#FFFFFF"/>
+
+    <Button
         android:id="@+id/btnClearCache"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

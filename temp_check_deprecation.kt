@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         // webView.clearCache(true)
         // android.webkit.WebStorage.getInstance().deleteAllData()
 
-        val primaryUrl = "http://192.168.0.182:5050/"
+        val primaryUrl = "http://192.168.0.182:80/"
         val fallbackUrl = "https://dev.tpw-xxar.ru"
 
         if (isNetworkAvailable()) {
@@ -213,7 +213,7 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 val url = request?.url.toString()
-                if (!isPrimaryUrlLoaded && url.contains("192.168.0.182:5050")) {
+                if (!isPrimaryUrlLoaded && url.contains("192.168.0.182:80")) {
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "Ошибка сервера. Переход на резерв...", Toast.LENGTH_LONG).show()
                         webView.loadUrl("https://dev.tpw-xxar.ru")

@@ -29,12 +29,62 @@
             margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .retry-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .retry-btn:hover { background: #dc2626; }
+        #status { margin-top: 15px; font-size: 14px; color: #fbbf24; }
     </style>
 </head>
 <body>
     <div class="spinner"></div>
     <h1>Нет подключения к серверу</h1>
     <p>Проверьте подключение к Wi-Fi сети дома или включите VPN.</p>
-    <p style="margin-top:20px; font-size:14px;">Попытка загрузки сохранённой версии...</p>
+    <p id="status">Попытка загрузки сохранённой версии...</p>
+    <button class="retry-btn" onclick="retryLoad()">Попробовать снова</button>
+    
+    <script>
+        // Get the current path from URL
+        const currentPath = window.location.pathname || '/';
+        
+        // Try to load the main app from Service Worker cache
+        setTimeout(function() {
+            const statusEl = document.getElementById('status');
+            
+            // Try to reload the current page - Service Worker should serve from cache
+            fetch(currentPath, { cache: 'force-cache' })
+                .then(response => {
+                    if (response.ok) {
+                        statusEl.textContent = '✓ Кэш найден! Перезагрузка...';
+                        statusEl.style.color = '#34d399';
+                        setTimeout(() => {
+                            window.location.href = currentPath;
+                        }, 1000);
+                    } else {
+                        statusEl.textContent = '✗ Кэш не найден. Подключитесь к интернету.';
+                        statusEl.style.color = '#f87171';
+                    }
+                })
+                .catch(err => {
+                    console.log('Cache load failed:', err);
+                    statusEl.textContent = '✗ Кэш недоступен. Проверьте подключение.';
+                    statusEl.style.color = '#f87171';
+                });
+        }, 500);
+        
+        function retryLoad() {
+            document.getElementById('status').textContent = 'Повторная попытка...';
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        }
+    </script>
 </body>
 </html>

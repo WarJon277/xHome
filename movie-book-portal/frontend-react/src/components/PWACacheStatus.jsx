@@ -3,6 +3,13 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { ShieldCheck, ShieldAlert, RefreshCw, Smartphone } from 'lucide-react';
 
 export default function PWACacheStatus() {
+    const [offlineReadyFromStorage, setOfflineReadyFromStorage] = useState(() => {
+        return localStorage.getItem('sw-offline-ready') === 'true';
+    });
+    const [needUpdateFromStorage, setNeedUpdateFromStorage] = useState(() => {
+        return localStorage.getItem('sw-update-available') === 'true';
+    });
+
     const swResult = useRegisterSW({
         onRegistered(r) {
             console.log('SW Registered: ', r);
@@ -10,7 +17,33 @@ export default function PWACacheStatus() {
         onRegisterError(error) {
             console.error('SW Registration error', error);
         },
+        onOfflineReady() {
+            localStorage.setItem('sw-offline-ready', 'true');
+            setOfflineReadyFromStorage(true);
+        },
+        onNeedRefresh() {
+            localStorage.setItem('sw-update-available', 'true');
+            setNeedUpdateFromStorage(true);
+        },
     });
+
+    // Listen for custom events from main.jsx
+    useEffect(() => {
+        const handleUpdateAvailable = () => {
+            setNeedUpdateFromStorage(true);
+        };
+        const handleOfflineReady = () => {
+            setOfflineReadyFromStorage(true);
+        };
+
+        window.addEventListener('sw-update-available', handleUpdateAvailable);
+        window.addEventListener('sw-offline-ready', handleOfflineReady);
+
+        return () => {
+            window.removeEventListener('sw-update-available', handleUpdateAvailable);
+            window.removeEventListener('sw-offline-ready', handleOfflineReady);
+        };
+    }, []);
 
     // Handle case where vite-plugin-pwa hook is not available or returns undefined
     if (!swResult) {
@@ -24,10 +57,14 @@ export default function PWACacheStatus() {
     }
 
     const {
-        offlineReady: [offlineReady, setOfflineReady] = [false, () => { }],
-        needUpdate: [needUpdate, setNeedUpdate] = [false, () => { }],
+        offlineReady: [offlineReadyHook, setOfflineReady] = [false, () => { }],
+        needUpdate: [needUpdateHook, setNeedUpdate] = [false, () => { }],
         updateServiceWorker,
     } = swResult;
+
+    // Use storage-based flags as fallback
+    const needUpdate = needUpdateHook || needUpdateFromStorage;
+    const offlineReady = offlineReadyHook || offlineReadyFromStorage;
 
     const [isChecking, setIsChecking] = useState(false);
     const [swActive, setSwActive] = useState(false);

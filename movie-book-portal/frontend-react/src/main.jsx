@@ -11,10 +11,32 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 const updateSW = registerSW({
   onNeedRefresh() {
     console.log('[SW] Update available. Will apply on next app restart.');
+    // Store flag in localStorage for PWACacheStatus component
+    localStorage.setItem('sw-update-available', 'true');
+    // Dispatch custom event to notify components
+    window.dispatchEvent(new CustomEvent('sw-update-available'));
     // Do NOT call updateSW() here — that would reload during reading
   },
   onOfflineReady() {
     console.log('[SW] App ready to work offline.');
+    localStorage.setItem('sw-offline-ready', 'true');
+    window.dispatchEvent(new CustomEvent('sw-offline-ready'));
+  },
+  onRegistered(registration) {
+    console.log('[SW] Registered:', registration);
+    // Check for updates periodically (every 10 minutes)
+    setInterval(() => {
+      if (registration.active) {
+        registration.update().then(() => {
+          console.log('[SW] Checked for updates');
+        }).catch(err => {
+          console.warn('[SW] Update check failed:', err);
+        });
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+  },
+  onRegisterError(error) {
+    console.error('[SW] Registration error:', error);
   },
 });
 

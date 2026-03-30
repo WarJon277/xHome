@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      injectRegister: false,
+      injectRegister: 'auto',
       devOptions: {
         enabled: true // Enable SW in development
       },
@@ -17,14 +17,31 @@ export default defineConfig({
         // Ensure app shell is always cached
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/, /^\/thumbnails/],
+        // Check for updates periodically
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // Manual Offline Pages (/, /movies, /books, etc.) - Cache First from manual-pages-v1
+            urlPattern: /^\/(?:movies|tvshows|gallery|video-gallery|books|audiobooks|chat|requests)?\/?$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'manual-pages-v1',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             // Book Pages - Network First but with very long expiration
             urlPattern: /\/api\/books\/.*\/page\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'book-pages-cache',
-              networkTimeoutSeconds: 1,
+              networkTimeoutSeconds: 5,
               expiration: {
                 maxEntries: 2000, // Large Enough for multiple books
                 maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
@@ -132,7 +149,7 @@ export default defineConfig({
   ],
   server: {
     port: 80,
-    allowedHosts: ["dev.tpw-xxar.ru", "tpw-xxar.ru"],
+    allowedHosts: ["dev.xxar.ru", "xxar.ru"],
     hmr: {
       overlay: false
     },

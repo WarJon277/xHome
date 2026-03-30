@@ -39,6 +39,11 @@ class SettingsActivity : AppCompatActivity() {
         serverListContainer = findViewById(R.id.serverListContainer)
         btnBack = findViewById(R.id.btnBack)
         val btnClearCache = findViewById<Button>(R.id.btnClearCache)
+        val btnCheckUpdates = findViewById<Button>(R.id.btnCheckUpdates)
+
+        btnCheckUpdates.setOnClickListener {
+            checkForUpdatesManually()
+        }
 
         btnClearCache.setOnClickListener {
             AlertDialog.Builder(this)
@@ -209,5 +214,112 @@ class SettingsActivity : AppCompatActivity() {
         for (url in servers) {
             addServerToList(url, enabledServers.contains(url))
         }
+    }
+
+    private fun checkForUpdatesManually() {
+        val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val servers = prefs.getStringSet("enabled_server_list", emptySet()) ?: emptySet()
+        val serverUrl = servers.firstOrNull() ?: run {
+            Toast.makeText(this, "Нет выбранных серверов", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Проверка обновлений...", Toast.LENGTH_SHORT).show()
+
+        Thread {
+            try {
+                val base = serverUrl.trimEnd('/')
+                val url = URL("$base/api/system/updates/latest")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+
+                if (connection.responseCode == 200) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = org.json.JSONObject(response)
+
+                    if (json.has("version_code")) {
+                        val serverVersionCode = json.getInt("version_code")
+                        val serverVersionName = json.getString("version_name")
+                        val releaseNotes = json.optString("release_notes", "")
+                        val apkUrl = json.getString("apk_url")
+
+                        val pInfo = packageManager.getPackageInfo(packageName, 0)
+                        val currentVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                            pInfo.longVersionCode.toInt()
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pInfo.versionCode
+                        }
+                        val currentVersionName = pInfo.versionName ?: "Неизвестно"
+
+                        runOnUiThread {
+                            if (serverVersionCode > currentVersionCode) {
+                                AlertDialog.Builder(this)
+                                    .setTitle("Обновление приложения")
+                                    .setMessage("Доступна новая версия.\n\n" +
+                                                "Текущая: $currentVersionName\n" +
+                                                "Новая: $serverVersionName\n\n" +
+                                                "Что нового:\n$releaseNotes")
+                                    .setPositiveButton("Обновить") { _, _ ->
+                                        val fullUrl = if (apkUrl.startsWith("http")) apkUrl else "$base$apkUrl"
+                                        startApkDownload(fullUrl, "xwv2_update_$serverVersionCode.apk")
+                                    }
+                                    .setNegativeButton("Позже", null)
+                                    .show()
+                            } else {
+                                Toast.makeText(this, "Установлена последняя версия", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(this, "Ошибка проверки обновлений", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun startApkDownload(url: String, fileName: String) {
+        Toast.makeText(this, "Скачивание...", Toast.LENGTH_SHORT).show()
+        // Reuse download logic from MainActivity or implement here
+        Thread {
+            try {
+                val connection = URL(url).openConnection() as HttpURLConnection
+                connection.connect()
+                val input = connection.inputStream
+                val file = java.io.File(cacheDir, fileName)
+                file.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+
+                // Install APK
+                val packageInstaller = packageManager.packageInstaller
+                val params = android.content.pm.PackageInstaller.SessionParams(
+                    android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL
+                )
+                val sessionId = packageInstaller.createSession(params)
+                val session = packageInstaller.openSession(sessionId)
+                file.inputStream().use { input ->
+                    session.openWrite(fileName, 0, -1).use { output ->
+                        input.copyTo(output)
+                        session.fsync(output)
+                    }
+                }
+                session.close()
+
+                Toast.makeText(this, "Загрузка завершена. Установка...", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
     }
 }

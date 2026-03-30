@@ -239,6 +239,26 @@ class MainActivity : AppCompatActivity() {
         // CLEAR CACHE REMOVED: To allow instant loading from Service Worker and Browser cache
         // webView.clearCache(false)
 
+        // Check app version for cache invalidation on update
+        val prefs = getSharedPreferences("AppVersion", Context.MODE_PRIVATE)
+        val currentVersionCode = packageManager.getPackageInfo(packageName, 0).longVersionCode
+        val savedVersionCode = prefs.getLong("last_version_code", -1)
+        
+        if (savedVersionCode != -1L && savedVersionCode != currentVersionCode) {
+            // App was updated - clear old cache
+            Log.i("MainActivity", "App updated from $savedVersionCode to $currentVersionCode. Clearing cache...")
+            webView.clearCache(true)
+            prefs.edit().putLong("last_version_code", currentVersionCode).apply()
+            // Also clear Service Worker caches
+            webView.evaluateJavascript(
+                "if ('caches' in window) { caches.keys().then(names => names.forEach(n => caches.delete(n))); }",
+                null
+            )
+        } else if (savedVersionCode == -1L) {
+            // First launch
+            prefs.edit().putLong("last_version_code", currentVersionCode).apply()
+        }
+
         // Use saved server URLs
         val enabledServers = getEnabledServerList()
         enabledServerUrls = enabledServers.toList()
@@ -272,14 +292,15 @@ class MainActivity : AppCompatActivity() {
             isPrimaryUrlLoaded = false
             currentServerUrl = primaryUrl
             webView.loadUrl(primaryUrl)
-            
+
             checkForUpdates(currentServerUrl)
         } else {
-            // Offline: Force WebView to use cache immediately
+            // Offline: Use LOAD_DEFAULT to let Service Worker handle cache
+            // Service Worker will serve from manual-pages-v1 or book-pages-cache
             isPrimaryUrlLoaded = false
             isOfflineAttempt = true
-            webView.settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
-            Toast.makeText(this, "Нет интернета. Загрузка из кеша...", Toast.LENGTH_SHORT).show()
+            webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            Toast.makeText(this, "Нет интернета. Загрузка из кэша...", Toast.LENGTH_SHORT).show()
             webView.loadUrl(primaryUrl)
         }
     }
@@ -690,10 +711,16 @@ class MainActivity : AppCompatActivity() {
                     // Specific handling for Offline Mode attempt
                     if (isOfflineAttempt) {
                         isOfflineAttempt = false
-                        // Fallback to instructions if SW cache failed
-                        view?.post {
-                            view.loadUrl("file:///android_asset/offline.html")
-                        }
+                        // DON'T immediately fallback to offline.html
+                        // Service Worker will try to load from cache automatically
+                        // Only show offline.html if SW also fails after timeout
+                        view?.postDelayed({
+                            // Check if we're still on error page (SW didn't load)
+                            if (view?.url == "file:///android_asset/offline.html") {
+                                // SW failed, keep offline.html
+                                Log.w("OfflineMode", "Service Worker failed to load from cache")
+                            }
+                        }, 2000)
                         return
                     }
 
@@ -705,18 +732,16 @@ class MainActivity : AppCompatActivity() {
                          if (currentServerUrl.isEmpty() && url.isNotEmpty()) {
                              currentServerUrl = url
                          }
-                         
-                         // If this was an offline attempt and it failed, show catastrophic fallback
-                         if (isOfflineAttempt) {
-                             isOfflineAttempt = false
-                             view?.post {
-                                 view.loadUrl("file:///android_asset/offline.html")
-                             }
-                             return
+
+                         // Try next server if available BEFORE showing offline.html
+                         if (enabledServerUrls.size > 1) {
+                             Log.i("MainActivity", "Trying next server...")
+                             tryNextServer()
+                         } else {
+                             // No more servers - let Service Worker handle cache
+                             // Don't show offline.html immediately, give SW time to load
+                             Log.w("MainActivity", "No more servers, relying on Service Worker cache")
                          }
-                         
-                          // Try next server if available
-                          tryNextServer()
                     }
                 }
                 

@@ -5,8 +5,8 @@
     "min_rating": 6.0,
     "min_year": 2015,
     "qbt_host": "localhost",
-    "qbt_port": 8080,
+    "qbt_port": 8088,
     "qbt_username": "admin",
     "qbt_password": "123e4r5",
-    "force_run": true
+    "force_run": false
 }

@@ -3,8 +3,10 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-DATABASE_URL_TVSHOWS = "sqlite:///./tvshows.db"  # Отдельный файл!
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL_TVSHOWS = f"sqlite:///{os.path.join(BASE_DIR, 'tvshows.db')}"  # Отдельный файл!
 
 engine_tvshows = create_engine(DATABASE_URL_TVSHOWS, connect_args={"check_same_thread": False})
 SessionLocalTvshows = sessionmaker(autocommit=False, autoflush=False, bind=engine_tvshows)

@@ -216,6 +216,22 @@ export const fetchBookPage = async (bookId, page) => {
             throw new Error(errorBody.detail || `HTTP Error ${response.status}`);
         }
 
+        // Check for empty response
+        const contentLength = response.headers.get('content-length');
+        if (contentLength === '0' || !contentLength) {
+            // Try to read the body to check if it's actually empty
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                throw new Error('Пустой ответ от сервера');
+            }
+            // If there's content, try to parse it as JSON
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('Некорректный формат ответа сервера');
+            }
+        }
+
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('image')) {
             const blob = await response.blob();

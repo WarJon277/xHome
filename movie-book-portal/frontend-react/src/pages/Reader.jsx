@@ -351,11 +351,14 @@ export default function Reader() {
 
                             // Cache the page content for offline use
                             if (data && data.content) {
-                                await saveBookPage(id, currentPage, data.content);
-
-                                // Update cached pages list
-                                if (!cachedPages.includes(currentPage)) {
-                                    setCachedPages(prev => [...prev, currentPage]);
+                                const saved = await saveBookPage(id, currentPage, data.content);
+                                if (saved) {
+                                    // Update cached pages list correctly using functional update
+                                    setCachedPages(prev => {
+                                        if (prev.includes(currentPage)) return prev;
+                                        return [...prev, currentPage];
+                                    });
+                                    console.log(`✓ Page ${currentPage} cached successfully`);
                                 }
                             }
                         } catch (err) {

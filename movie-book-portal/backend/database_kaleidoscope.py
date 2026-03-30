@@ -3,8 +3,10 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+import os
 
-DATABASE_URL_KALEIDOSCOPE = "sqlite:///./kaleidoscopes.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_URL_KALEIDOSCOPE = f"sqlite:///{os.path.join(BASE_DIR, 'kaleidoscopes.db')}"
 
 engine_kaleidoscope = create_engine(DATABASE_URL_KALEIDOSCOPE, connect_args={"check_same_thread": False})
 SessionLocalKaleidoscope = sessionmaker(autocommit=False, autoflush=False, bind=engine_kaleidoscope)

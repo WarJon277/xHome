@@ -242,21 +242,24 @@ class SettingsActivity : AppCompatActivity() {
             try {
                 val base = serverUrl.trimEnd('/')
                 val url = URL("$base/api/system/updates/latest")
-                
+
                 // Allow self-signed certificates
                 val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
                     override fun getAcceptedIssuers(): Array<X509Certificate>? = null
                     override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
                     override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
                 })
-                
+
                 val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
                 sslContext.init(null, trustAllCerts, java.security.SecureRandom())
-                
+
                 val connection = url.openConnection() as javax.net.ssl.HttpsURLConnection
                 connection.sslSocketFactory = sslContext.socketFactory
                 connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
-                
+
+                // Set User-Agent to pass nginx access check
+                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
+
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000

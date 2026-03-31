@@ -885,6 +885,10 @@ class MainActivity : AppCompatActivity() {
                 val base = serverUrl.trimEnd('/')
                 val url = java.net.URL("$base/api/system/updates/latest")
                 val connection = url.openConnection() as java.net.HttpURLConnection
+                
+                // Set User-Agent to pass nginx access check
+                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
+                
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000

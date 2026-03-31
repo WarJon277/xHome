@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(curl *)",
+      "Bash(cat *)",
+      "Bash(./gradlew *)",
+      "Bash(bash *)",
+      "Bash(java *)",
+      "Bash(apt *)",
+      "Bash(sudo *)"
+    ]
+  },
+  "$version": 3
+}

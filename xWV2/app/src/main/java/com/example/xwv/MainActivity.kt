@@ -649,13 +649,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
-                // Allow self-signed certificates for development/local servers
-                // This is safe because we're connecting to trusted local servers
-                Log.w("xWV-Native", "SSL Error ignored (self-signed cert): ${error?.primaryError}")
-                handler?.proceed()
-            }
-
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 

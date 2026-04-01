@@ -11,7 +11,8 @@ function getUserId() {
     // 1. Try to get registered username
     const username = localStorage.getItem('portal_username');
     if (username && username.trim() !== '') {
-        return username.trim();
+        // Enforce ASCII-safe header value (browsers reject UTF-8 in headers)
+        return encodeURIComponent(username.trim());
     }
 
     // 2. Fallback to Device ID

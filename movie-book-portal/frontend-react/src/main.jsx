@@ -24,6 +24,25 @@ const updateSW = registerSW({
   },
   onRegistered(registration) {
     console.log('[SW] Registered:', registration);
+    console.log('[SW] Active:', registration.active);
+    console.log('[SW] Waiting:', registration.waiting);
+    console.log('[SW] Installing:', registration.installing);
+    
+    // Listen for state changes
+    if (registration.installing) {
+      registration.installing.onstatechange = (e) => {
+        console.log('[SW] Installing state:', e.target.state);
+      };
+    }
+    
+    if (registration.waiting) {
+      console.log('[SW] Waiting worker:', registration.waiting);
+    }
+    
+    if (registration.active) {
+      console.log('[SW] Active worker:', registration.active);
+    }
+    
     // Check for updates periodically (every 10 minutes)
     setInterval(() => {
       if (registration.active) {

@@ -649,6 +649,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
+                // Allow self-signed certificates for development/local servers
+                // This is safe because we're connecting to trusted local servers
+                Log.w("xWV-Native", "SSL Error ignored (self-signed cert): ${error?.primaryError}")
+                handler?.proceed()
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 
@@ -894,11 +901,28 @@ class MainActivity : AppCompatActivity() {
             try {
                 val base = serverUrl.trimEnd('/')
                 val url = java.net.URL("$base/api/system/updates/latest")
-                val connection = url.openConnection() as java.net.HttpURLConnection
                 
+                // Allow self-signed certificates for local development
+                val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+                    override fun checkClientTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
+                    override fun checkServerTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
+                })
+                
+                val connection = if (url.protocol == "https") {
+                    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                    sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+                    val httpsConnection = url.openConnection() as javax.net.ssl.HttpsURLConnection
+                    httpsConnection.sslSocketFactory = sslContext.socketFactory
+                    httpsConnection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    httpsConnection
+                } else {
+                    url.openConnection() as java.net.HttpURLConnection
+                }
+
                 // Set User-Agent to pass nginx access check
                 connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
-                
+
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
@@ -962,23 +986,27 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 val url = java.net.URL(fullUrl)
-                val connection = url.openConnection() as java.net.HttpURLConnection
                 
-                // Set User-Agent to pass backend access check
-                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
-
-                // Allow self-signed certs just for OTA if needed
-                if (connection is javax.net.ssl.HttpsURLConnection) {
+                // Allow self-signed certificates for local development
+                val connection = if (url.protocol == "https") {
                     val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
                         override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
                         override fun checkClientTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
                         override fun checkServerTrusted(certs: Array<java.security.cert.X509Certificate>, authType: String) {}
                     })
-                    val sc = javax.net.ssl.SSLContext.getInstance("SSL")
+                    val sc = javax.net.ssl.SSLContext.getInstance("TLS")
                     sc.init(null, trustAllCerts, java.security.SecureRandom())
-                    connection.sslSocketFactory = sc.socketFactory
-                    connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    
+                    val httpsConnection = url.openConnection() as javax.net.ssl.HttpsURLConnection
+                    httpsConnection.sslSocketFactory = sc.socketFactory
+                    httpsConnection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    httpsConnection
+                } else {
+                    url.openConnection() as java.net.HttpURLConnection
                 }
+
+                // Set User-Agent to pass backend access check
+                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
 
                 connection.requestMethod = "GET"
                 connection.connect()

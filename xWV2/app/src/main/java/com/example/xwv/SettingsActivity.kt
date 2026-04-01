@@ -245,19 +245,24 @@ class SettingsActivity : AppCompatActivity() {
                 val url = URL("$base/api/system/updates/latest")
                 android.util.Log.d("OTAUpdate", "Request URL: $url")
 
-                // Allow self-signed certificates
-                val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
-                    override fun getAcceptedIssuers(): Array<X509Certificate>? = null
-                    override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
-                    override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
-                })
+                // Allow self-signed certificates for local development
+                val connection = if (url.protocol == "https") {
+                    val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                        override fun getAcceptedIssuers(): Array<X509Certificate>? = null
+                        override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                        override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                    })
 
-                val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
-                sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+                    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                    sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-                val connection = url.openConnection() as javax.net.ssl.HttpsURLConnection
-                connection.sslSocketFactory = sslContext.socketFactory
-                connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    val httpsConnection = url.openConnection() as javax.net.ssl.HttpsURLConnection
+                    httpsConnection.sslSocketFactory = sslContext.socketFactory
+                    httpsConnection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    httpsConnection
+                } else {
+                    url.openConnection() as java.net.HttpURLConnection
+                }
 
                 // Set User-Agent to pass nginx access check
                 connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
@@ -341,7 +346,27 @@ class SettingsActivity : AppCompatActivity() {
         // Reuse download logic from MainActivity or implement here
         Thread {
             try {
-                val connection = URL(url).openConnection() as HttpURLConnection
+                val fileUrl = URL(url)
+                
+                // Allow self-signed certificates for local development
+                val connection = if (fileUrl.protocol == "https") {
+                    val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                        override fun getAcceptedIssuers(): Array<X509Certificate>? = null
+                        override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                        override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                    })
+                    
+                    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+                    sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+                    
+                    val httpsConnection = fileUrl.openConnection() as javax.net.ssl.HttpsURLConnection
+                    httpsConnection.sslSocketFactory = sslContext.socketFactory
+                    httpsConnection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+                    httpsConnection
+                } else {
+                    fileUrl.openConnection() as HttpURLConnection
+                }
+                
                 connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
                 connection.connect()
                 

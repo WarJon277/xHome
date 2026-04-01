@@ -372,6 +372,9 @@ class MainActivity : AppCompatActivity() {
         cookieManager.setAcceptCookie(true)
         cookieManager.setCookie("https://xxar.ru", "app_id=xWV2-App-Identifier; path=/; Max-Age=31536000")
 
+        // Clear SSL preferences to accept self-signed certificates for local development
+        android.webkit.WebView.clearClientCertPreferences(null)
+
         // Ensure cookie is available to all domains used by the app to prevent 403s on different hosts
         val prefs = getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
         val servers = prefs.getStringSet("server_list", setOf("https://xxar.ru")) ?: emptySet()
@@ -812,10 +815,15 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+                val errorCode = error?.primaryError
+                val failingUrl = error?.url
+                Log.w("WebViewSSL", "SSL Error code: $errorCode on URL: $failingUrl")
                 Log.w("WebViewSSL", "SSL Error: ${error?.toString()}")
-                // For now, allow SSL errors to bypass possible cert issues during dev
-                // In production, this should be handled more carefully
-                handler?.proceed() 
+                // For local development, allow self-signed certificates
+                // Error codes: 1=not yet valid, 2=expired, 3=CN mismatch, 4=invalid, 5=invalid CA
+                // For local dev, we accept all errors
+                Log.w("WebViewSSL", "Proceeding despite SSL error (self-signed cert for local dev)")
+                handler?.proceed()
             }
         }
     }

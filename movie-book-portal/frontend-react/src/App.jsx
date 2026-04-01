@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { Home, Film, Tv, Image, Book, Settings, Menu, X, Music, Sparkles, MessageSquare } from 'lucide-react';
+import { Home, Film, Tv, Image, Book, Settings, Menu, X, Music, Sparkles, MessageSquare, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTvNavigation } from './hooks/useTvNavigation';
 import MoviesPage from './pages/Movies';
@@ -125,7 +125,7 @@ function App() {
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-  const { isRegistered, isAdmin, register, isLoading } = useUser();
+  const { isRegistered, isAdmin, register, logout, isLoading, username } = useUser();
 
   const navItems = [
     { to: "/", icon: <Home size={24} />, label: "Главная" },
@@ -214,23 +214,43 @@ function App() {
               </NavLink>
             ))}
 
-            {/* App Settings Button - Always visible to ensure it shows up regardless of timing */}
-            <button
-              onClick={() => {
-                setIsMenuOpen(false);
-                if (window.AndroidApp && window.AndroidApp.openSettings) {
-                  window.AndroidApp.openSettings();
-                } else {
-                  // Fallback for browser testing or if bridge isn't ready
-                  alert('Настройки доступны только в Android-приложении. Если вы в приложении, попробуйте перезапустить его.');
-                }
-              }}
-              className="flex items-center gap-4 p-3 rounded-lg transition-all hover:opacity-80"
-              style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
-            >
-              <Settings size={24} />
-              <span>Настройки приложения</span>
-            </button>
+            <div className="mt-auto pt-4 border-t border-white/10 flex flex-col gap-2">
+              {/* App Settings Button - Always visible to ensure it shows up regardless of timing */}
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  if (window.AndroidApp && window.AndroidApp.openSettings) {
+                    window.AndroidApp.openSettings();
+                  } else {
+                    // Fallback for browser testing or if bridge isn't ready
+                    alert('Настройки доступны только в Android-приложении. Если вы в приложении, попробуйте перезапустить его.');
+                  }
+                }}
+                className="flex items-center gap-4 p-3 rounded-lg transition-all hover:opacity-80"
+                style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
+              >
+                <Settings size={24} />
+                <span>Настройки приложения</span>
+              </button>
+
+              {/* Logout/Switch User Button */}
+              {isRegistered && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    if (window.confirm(`Вы уверены, что хотите выйти из профиля ${username}?`)) {
+                      logout();
+                      window.location.reload(); // Refresh to clear all states and re-fetch for new user
+                    }
+                  }}
+                  className="flex items-center gap-4 p-3 rounded-lg transition-all hover:text-red-500 hover:bg-red-500/10"
+                  style={{ color: 'var(--text-secondary)', width: '100%', textAlign: 'left' }}
+                >
+                  <LogOut size={24} />
+                  <span>Сменить пользователя</span>
+                </button>
+              )}
+            </div>
           </div>
         </nav>
 

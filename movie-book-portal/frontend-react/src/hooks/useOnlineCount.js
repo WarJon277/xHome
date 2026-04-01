@@ -16,6 +16,22 @@ export default function useOnlineCount() {
         }
     };
 
+    const [username, setUsernameState] = useState(localStorage.getItem('portal_username'));
+
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setUsernameState(localStorage.getItem('portal_username'));
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
+    useEffect(() => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && username) {
+            wsRef.current.send(JSON.stringify({ type: 'register', name: username }));
+        }
+    }, [username]);
+
     useEffect(() => {
         function connect() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

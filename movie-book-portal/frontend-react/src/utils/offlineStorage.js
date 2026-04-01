@@ -7,6 +7,12 @@ const BOOKS_STORE = 'books';
 const PAGES_STORE = 'pages';
 const PROGRESS_STORE = 'progress';
 
+// Helper to get current user identifier
+const getUserId = () => {
+    const user = localStorage.getItem('portal_username');
+    return user ? user.trim() : 'global';
+};
+
 // Helper to promisify IndexedDB requests
 const requestToPromise = (request) => {
     return new Promise((resolve, reject) => {
@@ -252,7 +258,7 @@ export const saveLocalProgress = async (id, page, scrollRatio, updatedAt = null)
         }
 
         // 2. FAST PATH: localStorage (synchronous, instant)
-        localStorage.setItem(`book-pos-${id}`, JSON.stringify(progressData));
+        localStorage.setItem(`user-${getUserId()}-book-pos-${id}`, JSON.stringify(progressData));
 
         // 3. DURABLE PATH: IndexedDB (asynchronous)
         const db = await initDB();
@@ -285,7 +291,7 @@ export const getLocalProgress = async (id) => {
     }
 
     // 2. TRY FAST PATH (localStorage)
-    const fastData = localStorage.getItem(`book-pos-${id}`);
+    const fastData = localStorage.getItem(`user-${getUserId()}-book-pos-${id}`);
     if (fastData) {
         try {
             return JSON.parse(fastData);
@@ -315,7 +321,7 @@ export const getLocalProgress = async (id) => {
 export const deleteBookCache = async (bookId) => {
     try {
         // Clear FAST PATH
-        localStorage.removeItem(`book-pos-${bookId}`);
+        localStorage.removeItem(`user-${getUserId()}-book-pos-${bookId}`);
 
         const db = await initDB();
 
@@ -354,7 +360,7 @@ export const clearAllData = async () => {
     try {
         // Clear all progress-related fast path entries
         Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('book-pos-')) {
+            if (key.includes('-book-pos-')) {
                 localStorage.removeItem(key);
             }
         });

@@ -6,8 +6,15 @@ const API_BASE = '/api'; // Proxied by Vite to http://localhost:5055/api
 // Configuration
 export const API_TIMEOUT = 10000; // 10 seconds default timeout to accommodate slower mobile networks
 
-// Helper to get or create a unique Device ID
-function getDeviceId() {
+// Helper to get or create a unique User ID (prefers username if registered)
+function getUserId() {
+    // 1. Try to get registered username
+    const username = localStorage.getItem('portal_username');
+    if (username && username.trim() !== '') {
+        return username.trim();
+    }
+
+    // 2. Fallback to Device ID
     let deviceId = localStorage.getItem('device_id');
     if (!deviceId) {
         deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -22,7 +29,7 @@ async function request(endpoint, options = {}) {
 
     // Add User-ID header to all requests
     const headers = {
-        'X-User-Id': getDeviceId(),
+        'X-User-Id': getUserId(),
         ...(options.headers || {})
     };
 
@@ -197,7 +204,7 @@ export const downloadFromFlibusta = (data) => request('/audiobooks-source/downlo
 
 export const fetchBookPage = async (bookId, page) => {
     const url = `${API_BASE}/books/${bookId}/page/${page}`;
-    const headers = { 'X-User-Id': getDeviceId() };
+    const headers = { 'X-User-Id': getUserId() };
 
     // Create AbortController for timeout - use shorter timeout for book pages
     // so that blocked networks fall through to SW cache faster

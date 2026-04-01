@@ -351,6 +351,16 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = true
             allowContentAccess = true
             
+            // Enable Service Worker support (required for PWA offline functionality)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                domStorageEnabled = true
+            }
+            
+            // Allow mixed content (HTTP resources on HTTPS page) for local development
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            }
+
             // Fix User-Agent setting: explicitly get default and append
             val defaultUa = android.webkit.WebSettings.getDefaultUserAgent(this@MainActivity)
             userAgentString = "$defaultUa xWV2-App-Identifier"
@@ -946,13 +956,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun startApkDownload(serverUrl: String, apkUrl: String, fileName: String) {
         val fullUrl = if (apkUrl.startsWith("http")) apkUrl else "$serverUrl$apkUrl"
+        android.util.Log.d("OTAUpdate", "Downloading APK from: $fullUrl")
         android.widget.Toast.makeText(this, "Скачивание началось, пожалуйста подождите...", android.widget.Toast.LENGTH_LONG).show()
-        
+
         Thread {
             try {
                 val url = java.net.URL(fullUrl)
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 
+                // Set User-Agent to pass backend access check
+                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
+
                 // Allow self-signed certs just for OTA if needed
                 if (connection is javax.net.ssl.HttpsURLConnection) {
                     val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
@@ -965,9 +979,11 @@ class MainActivity : AppCompatActivity() {
                     connection.sslSocketFactory = sc.socketFactory
                     connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
                 }
-                
+
                 connection.requestMethod = "GET"
                 connection.connect()
+
+                android.util.Log.d("OTAUpdate", "Download response code: ${connection.responseCode}")
                 
                 if (connection.responseCode != 200) {
                     throw Exception("Ошибка сервера HTTP ${connection.responseCode}")

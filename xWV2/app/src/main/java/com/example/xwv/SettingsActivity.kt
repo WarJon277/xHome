@@ -236,12 +236,14 @@ class SettingsActivity : AppCompatActivity() {
             return
         }
 
+        android.util.Log.d("OTAUpdate", "Checking for updates at: $serverUrl")
         Toast.makeText(this, "Проверка обновлений...\nСервер: $serverUrl", Toast.LENGTH_LONG).show()
 
         Thread {
             try {
                 val base = serverUrl.trimEnd('/')
                 val url = URL("$base/api/system/updates/latest")
+                android.util.Log.d("OTAUpdate", "Request URL: $url")
 
                 // Allow self-signed certificates
                 val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
@@ -335,16 +337,30 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun startApkDownload(url: String, fileName: String) {
         Toast.makeText(this, "Скачивание...", Toast.LENGTH_SHORT).show()
+        Log.d("OTAUpdate", "Downloading APK from: $url")
         // Reuse download logic from MainActivity or implement here
         Thread {
             try {
                 val connection = URL(url).openConnection() as HttpURLConnection
+                connection.setRequestProperty("User-Agent", "xWV2-App-Identifier")
                 connection.connect()
+                
+                val responseCode = connection.responseCode
+                Log.d("OTAUpdate", "Download response code: $responseCode")
+                
+                if (responseCode != 200) {
+                    runOnUiThread {
+                        Toast.makeText(this, "Ошибка сервера: $responseCode", Toast.LENGTH_LONG).show()
+                    }
+                    return@Thread
+                }
+                
                 val input = connection.inputStream
                 val file = java.io.File(cacheDir, fileName)
                 file.outputStream().use { output ->
                     input.copyTo(output)
                 }
+                Log.d("OTAUpdate", "APK downloaded to: ${file.absolutePath}")
 
                 // Install APK
                 val packageInstaller = packageManager.packageInstaller

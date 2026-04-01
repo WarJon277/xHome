@@ -68,12 +68,29 @@ export default function PWACacheStatus() {
 
     const [isChecking, setIsChecking] = useState(false);
     const [swActive, setSwActive] = useState(false);
+    const [swState, setSwState] = useState('checking');
 
     useEffect(() => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then((registration) => {
-                setSwActive(!!registration.active);
+            navigator.serviceWorker.getRegistration().then((registration) => {
+                if (registration) {
+                    const active = !!registration.active;
+                    const waiting = !!registration.waiting;
+                    const installing = !!registration.installing;
+                    setSwActive(active);
+                    setSwState(`active:${active}, waiting:${waiting}, installing:${installing}`);
+                    console.log('[PWACacheStatus] SW Registration:', { active, waiting, installing });
+                } else {
+                    setSwActive(false);
+                    setSwState('no-registration');
+                    console.log('[PWACacheStatus] No SW registration found');
+                }
+            }).catch(err => {
+                console.error('[PWACacheStatus] SW registration error:', err);
+                setSwState('error');
             });
+        } else {
+            setSwState('not-supported');
         }
     }, []);
 
@@ -164,6 +181,11 @@ export default function PWACacheStatus() {
 
             <p className="text-[11px] text-gray-400 leading-tight">
                 {status.detail}
+            </p>
+
+            {/* Debug info - remove in production */}
+            <p className="text-[9px] text-gray-600 font-mono">
+                SW: {swState} | offlineReady: {String(offlineReady)} | needUpdate: {String(needUpdate)}
             </p>
 
             <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center justify-between pt-1 border-t border-white/5">

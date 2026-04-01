@@ -9,7 +9,8 @@
       "Bash(bash *)",
       "Bash(java *)",
       "Bash(apt *)",
-      "Bash(sudo *)"
+      "Bash(sudo *)",
+      "Bash(npm run *)"
     ]
   },
   "$version": 3

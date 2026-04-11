@@ -46,7 +46,7 @@ if [ -n "$still_alive" ]; then
     echo "Warning! Some processes still alive on ports:$still_alive"
     echo "You can check them with:"
     echo "  lsof -iTCP:5055 -sTCP:LISTEN"
-    echo "  lsof -iTCP:5050 -sTCP:LISTEN"
+    echo "  lsof -iTCP:80 -sTCP:LISTEN"
 else
     echo "All processes on target ports successfully terminated ✓"
 fi

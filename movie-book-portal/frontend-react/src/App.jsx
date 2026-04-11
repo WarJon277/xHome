@@ -87,6 +87,9 @@ function App() {
 
   // Load and apply theme on start
   useEffect(() => {
+    // Set app_id cookie for nginx access control
+    document.cookie = "app_id=xWV2-Browser-Identifier; path=/; max-age=31536000; SameSite=Lax";
+
     const applyTheme = (theme) => {
       if (!theme || Object.keys(theme).length === 0) return;
       Object.entries(theme).forEach(([key, value]) => {

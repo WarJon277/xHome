@@ -1212,7 +1212,10 @@ class MainActivity : AppCompatActivity() {
                     requestMethod = "POST"
                     doOutput = true
                     setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    setRequestProperty("X-App-Identifier", "true")
                     setRequestProperty("X-User-Id", getSharedPreferences("AppPrefs", Context.MODE_PRIVATE).getString("device_id", "android-app") ?: "android-app")
+                    setRequestProperty("User-Agent", android.webkit.WebSettings.getDefaultUserAgent(this@MainActivity) + " xWV2-App-Identifier")
+                    setRequestProperty("Cookie", "app_id=xWV2-App-Identifier")
                     connectTimeout = 30000
                     readTimeout = 300000 // 5 min for large videos
                     setChunkedStreamingMode(0) // Use chunked mode to avoid ProtocolException with inaccurate fileSize

@@ -424,7 +424,7 @@ npm run build
 cd frontend-react
 npm run dev
                     </pre>
-                    <p>Then access at <a href="http://localhost">http://localhost</a></p>
+                    <p>Then access at <a href="http://localhost:80">http://localhost:80</a></p>
                 </body>
             </html>
             """,
